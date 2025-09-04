@@ -1,5 +1,5 @@
 // API helpers for Stripe Checkout integration (Checkout redirect)
-const API_BASE = process.env.REACT_APP_API_BASE || 'https://react-redux-ijyc.onrender.com';
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://fruitsapp-0vl3.onrender.com';
 
 // Create Stripe Checkout Session (redirect)
 export async function createCheckoutSession({ items, customer }) {
