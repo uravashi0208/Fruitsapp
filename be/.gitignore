@@ -7,9 +7,8 @@ logs/
 npm-debug.log*
 
 # Environment variables
-.env
+# .env
 
 # Build folders
 dist/
 build/
-.env
