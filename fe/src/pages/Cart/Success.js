@@ -1,10 +1,10 @@
-import { clearCart } from "features/cart/slice/cartSlice";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { Box, Typography, Button, Paper } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ShopPageHeader from "../Shop/ShopPageHeader";
+import { clearCart } from "../../features/cart/slice/cartSlice";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
