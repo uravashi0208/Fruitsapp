@@ -201,4 +201,31 @@ app.get('/orders', async (req, res) => {
   }
 });
 
+
+app.post("/api/contact", async (req, res) => {
+  try {
+    const { error, value } = schema.validate(req.body, { abortEarly: false });
+    if (error) {
+      return res.status(400).json({ message: "Validation failed", details: error.details });
+    }
+
+    const { name, email, message } = value;
+
+    const docRef = db.collection("contacts").doc(); // auto id
+    await docRef.set({
+      name,
+      email,
+      message,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      ip: req.ip || null,
+      userAgent: req.get("User-Agent") || null,
+    });
+
+    return res.status(201).json({ success: true, id: docRef.id });
+  } catch (err) {
+    console.error("Error saving contact:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 app.listen(PORT, () => console.log(`🚀 Backend running on http://localhost:${PORT}`));

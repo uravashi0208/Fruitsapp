@@ -10,6 +10,9 @@ import Shop from './pages/Shop/Shop';
 import { useSelector } from 'react-redux';
 import './App.css';
 import CartPage from './pages/Cart/Cart';
+import Cancel from './pages/Cart/Cancel';
+import Success from './pages/Cart/Cancel';
+import ContactPage from './pages/Contact/Contact';
 
 const theme = createTheme({
   palette: {
@@ -45,7 +48,10 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/shop" element={<Shop />} />
+              <Route path="/contact" element={<ContactPage />} />
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/success" element={<Success />} />
+              <Route path="/cancel" element={<Cancel />} />
             </Routes>
           )}
         </main>

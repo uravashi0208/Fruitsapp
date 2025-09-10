@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -22,8 +22,17 @@ import { NavLink } from 'react-router-dom';
 
 const Header = ({ cartItems = [] }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [elevated, setElevated] = useState(false);
   const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+
+  // Toggle shadow when scrolling past 10px
+  useEffect(() => {
+    const onScroll = () => setElevated(window.scrollY > 10);
+    onScroll();
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const navLinkStyle = ({ isActive }) => ({
     color: isActive ? '#81c408' : 'rgb(0 0 0 / 51%)',
@@ -58,7 +67,7 @@ const Header = ({ cartItems = [] }) => {
 
   return (
     <>
-      <AppBar position="fixed" sx={{ backgroundColor: 'white', color: 'text.primary', boxShadow: 0,p:2 }}>
+      <AppBar position="fixed" sx={{ backgroundColor: 'white', color: 'text.primary', p:2, transition:'box-shadow 200ms ease', boxShadow: elevated ? '0 4px 12px rgba(0,0,0,0.12)' : 0 }}>
         <Container sx={{ px: { xs: 0, sm: 2 } }}>
           <Toolbar sx={{ justifyContent: 'space-between' }}>
             <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: '800', lineHeight:1.2, display: { xs: 'none', md: 'block' } }}>

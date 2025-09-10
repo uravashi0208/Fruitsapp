@@ -244,8 +244,8 @@ const categoryCounts = products.reduce((acc, product) => {
               >
               {displayedProducts.map((prod) => (
                 <Card key={prod.id} sx={{borderRadius:'15px',boxShadow:'none',"&:hover": { boxShadow:'0 0 55px rgba(0, 0, 0, 0.4)' }}}>
-                  <Box sx={{ position: "relative" }}>
-                    <CardMedia component="img" image={prod.image} alt={prod.name} sx={{height:'230px',"&:hover": { transform:'scale(1.3)',transition:'0.7s' }}}/>
+                  <Box sx={{ position: "relative", overflow:'hidden', borderTopLeftRadius: '15px', borderTopRightRadius: '15px' }}>
+                    <CardMedia component="img" image={prod.image} alt={prod.name} sx={{height:'230px', transition:'transform 0.7s', "&:hover": { transform:'scale(1.15)' }}}/>
                     <Box
                       sx={{
                         position: "absolute",
