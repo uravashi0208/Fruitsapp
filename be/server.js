@@ -5,6 +5,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const admin = require('firebase-admin');
+const Joi = require("joi");
+const path = require("path");
 
 const app = express();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -201,6 +203,11 @@ app.get('/orders', async (req, res) => {
   }
 });
 
+const schema = Joi.object({
+  name: Joi.string().trim().min(1).max(200).required(),
+  email: Joi.string().trim().email().required(),
+  message: Joi.string().trim().min(5).max(5000).required(),
+});
 
 app.post("/api/contact", async (req, res) => {
   try {
