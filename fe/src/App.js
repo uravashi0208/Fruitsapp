@@ -11,7 +11,7 @@ import { useSelector } from 'react-redux';
 import './App.css';
 import CartPage from './pages/Cart/Cart';
 import Cancel from './pages/Cart/Cancel';
-import Success from './pages/Cart/Cancel';
+import Success from './pages/Cart/Success';
 import ContactPage from './pages/Contact/Contact';
 
 const theme = createTheme({
