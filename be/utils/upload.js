@@ -1,20 +1,22 @@
 /**
  * utils/upload.js
- * Local-disk image storage (replaces Firebase Storage).
- * Files are saved to  <project-root>/uploads/<folder>/<uuid><ext>
- * and served statically at  GET /uploads/<folder>/<file>
+ * Firebase Storage — persistent, CDN-backed image storage.
+ * Files are saved to  <folder>/<uuid><ext>  in your Storage bucket
+ * and served via a permanent public download URL (no expiry).
+ *
+ * Public URL shape:
+ *   https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<encoded-path>?alt=media
+ *
+ * Drop-in replacement — uploadToFirebase / deleteFromFirebase signatures
+ * are identical to the old local-disk version.
  */
 
-const multer  = require('multer');
-const path    = require('path');
-const fs      = require('fs');
+const multer         = require('multer');
+const path           = require('path');
 const { v4: uuidv4 } = require('uuid');
+const { storage }    = require('../config/firebase');   // admin.storage() instance
 
-// ── Root uploads directory ────────────────────────────────────
-const UPLOADS_ROOT = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(UPLOADS_ROOT)) fs.mkdirSync(UPLOADS_ROOT, { recursive: true });
-
-// ── Multer — memory storage (same API as before) ──────────────
+// ── Multer — keep memory storage (buffer passed straight to Firebase) ─────────
 const fileFilter = (req, file, cb) => {
   const allowed = /jpeg|jpg|png|gif|webp|pdf/;
   const extOk   = allowed.test(path.extname(file.originalname).toLowerCase());
@@ -25,31 +27,46 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: 5 * 1024 * 1024 },
+  limits:  { fileSize: 5 * 1024 * 1024 },   // 5 MB
   fileFilter,
 });
 
-// ── Save buffer to disk, return public URL ────────────────────
+// ── Upload buffer → Firebase Storage, return permanent public URL ─────────────
 const uploadToFirebase = async (buffer, originalname, mimetype, folder = 'uploads') => {
-  const dir = path.join(UPLOADS_ROOT, folder);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const ext        = path.extname(originalname) || '.jpg';
+  const filename   = `${uuidv4()}${ext}`;
+  const storagePath = `${folder}/${filename}`;           // e.g. "products/abc-123.jpg"
 
-  const ext      = path.extname(originalname) || '.jpg';
-  const filename = `${uuidv4()}${ext}`;
-  const filepath = path.join(dir, filename);
+  const bucket = storage.bucket();
+  const file   = bucket.file(storagePath);
 
-  fs.writeFileSync(filepath, buffer);
+  await file.save(buffer, {
+    metadata: {
+      contentType: mimetype,
+      cacheControl: 'public, max-age=31536000',          // 1-year CDN cache
+    },
+    public: true,                                        // make object world-readable
+  });
 
-  // Return a URL the frontend can use — served by Express static middleware
-  return `/uploads/${folder}/${filename}`;
+  // Permanent public URL — no token, no expiry
+  const encodedPath = encodeURIComponent(storagePath);
+  const publicUrl   = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media`;
+
+  return publicUrl;
 };
 
-// ── Delete file from disk ─────────────────────────────────────
+// ── Delete file from Firebase Storage ────────────────────────────────────────
 const deleteFromFirebase = async (url) => {
   try {
-    if (!url || !url.startsWith('/uploads/')) return;
-    const filepath = path.join(__dirname, '..', url);
-    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+    if (!url || !url.includes('firebasestorage.googleapis.com')) return;
+
+    // Extract the storage path from the URL
+    // URL shape: .../o/<encoded-path>?alt=media
+    const match = url.match(/\/o\/([^?]+)/);
+    if (!match) return;
+
+    const storagePath = decodeURIComponent(match[1]);
+    await storage.bucket().file(storagePath).delete({ ignoreNotFound: true });
   } catch (_) {
     // silently ignore — file may already be gone
   }

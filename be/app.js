@@ -126,9 +126,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 app.use(globalRateLimiter);
 
-// ── Static uploads (local image storage) ──────────────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) =>
   res.json({ status: 'ok', env: process.env.NODE_ENV, ts: Date.now() })
