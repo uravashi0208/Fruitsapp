@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { productsApi, ApiProduct, slidersApi, ApiSlider, testimonialsApi, ApiTestimonial } from '../api/storefront';
+import { productsApi, ApiProduct, slidersApi, ApiSlider, testimonialsApi, ApiTestimonial, blogsApi, ApiBlogPost } from '../api/storefront';
 import { ApiError } from '../api/client';
 
 // ── Generic fetch hook ────────────────────────────────────────
@@ -55,8 +55,6 @@ export const useTestimonials = () =>
   useFetch<ApiTestimonial[]>(() => testimonialsApi.list());
 
 // ── Blogs hook ────────────────────────────────────────────────
-import { blogsApi, ApiBlogPost } from '../api/storefront';
-
 export const useBlogs = (params: { page?: number; limit?: number; tag?: string; search?: string } = {}) => {
   const [data,       setData]       = useState<ApiBlogPost[]>([]);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1, page: 1, limit: 10 });
