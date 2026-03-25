@@ -3,7 +3,6 @@ import styled, { keyframes, css } from 'styled-components';
 import { theme } from '../../styles/theme';
 import { Container, Section } from '../../styles/shared';
 import { ProductCard } from '../ui/ProductCard';
-import { PRODUCTS } from '../../data';
 import { useProducts } from '../../hooks/useApi';
 
 // ── Animations ────────────────────────────────────────────────

@@ -388,7 +388,7 @@ export const ProductsPage: React.FC = () => {
                   <TD>
                     <ProductCell>
                       {p.image || p.thumbnail
-                        ? <ProductThumb src={`http://localhost:4000${p.image}` || p.thumbnail || ''} alt={p.name} />
+                        ? <ProductThumb src={p.image?.startsWith('http') ? p.image : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${p.image}`} alt={p.name} />
                         : <ProductThumbPh><Package size={18} color={t.colors.textMuted} /></ProductThumbPh>
                       }
                       <div>

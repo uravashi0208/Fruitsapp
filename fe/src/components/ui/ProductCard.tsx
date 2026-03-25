@@ -170,7 +170,11 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
       <ImgProd>
         <ProductImg
           className="product-img"
-          src={`${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${product.image}`}
+          src={
+            product.image?.startsWith('http')
+              ? product.image
+              : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${product.image}`
+          }
           alt={product.name}
           loading="lazy"
         />
