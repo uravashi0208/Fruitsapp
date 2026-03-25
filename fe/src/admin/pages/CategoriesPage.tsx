@@ -74,6 +74,7 @@ export const CategoriesPage: React.FC = () => {
   const [editTarget, setEditTarget] = useState<AdminCategory | null>(null);
   const [form,       setForm]       = useState<Partial<AdminCategory> & { imageFile?: File | null }>(emptyForm());
   const [saving,     setSaving]     = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [imgPreview, setImgPreview] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);

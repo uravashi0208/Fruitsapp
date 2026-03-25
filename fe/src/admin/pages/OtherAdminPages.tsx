@@ -67,6 +67,7 @@ export const UsersPage: React.FC = () => {
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<AdminUser|null>(null);
   const [deleteId, setDeleteId] = useState<string|null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [openDrop, setOpenDrop] = useState<string|null>(null);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search,status:statusF==='all'?'':statusF}),[page,search,statusF]);
@@ -204,6 +205,7 @@ export const OrdersPage: React.FC = () => {
   const [statusF,   setStatusF]   = useState('all');
   const [page,      setPage]      = useState(1);
   const [selected,  setSelected]  = useState<Order|null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [openDrop,  setOpenDrop]  = useState<string|null>(null);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search,status:statusF==='all'?'':statusF}),[page,search,statusF]);
@@ -433,6 +435,7 @@ export const ContactsPage: React.FC = () => {
   const [statusF,  setStatusF]  = useState('all');
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<Contact|null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [openDrop, setOpenDrop] = useState<string|null>(null);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search,status:statusF==='all'?'':statusF}),[page,search,statusF]);

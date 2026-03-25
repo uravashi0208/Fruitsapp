@@ -165,13 +165,13 @@ export const Footer: React.FC = () => {
             <WidgetTitle>Help</WidgetTitle>
             <div style={{ display: 'flex', gap: 20 }}>
               <FooterList>
-                <li><a href="#">Shipping Information</a></li>
-                <li><a href="#">Returns &amp; Exchange</a></li>
-                <li><a href="#">Terms &amp; Conditions</a></li>
-                <li><a href="#">Privacy Policy</a></li>
+                <li><span style={{cursor:"pointer"}}>Shipping Information</span></li>
+                <li><span style={{cursor:"pointer"}}>Returns &amp; Exchange</span></li>
+                <li><span style={{cursor:"pointer"}}>Terms &amp; Conditions</span></li>
+                <li><span style={{cursor:"pointer"}}>Privacy Policy</span></li>
               </FooterList>
               <FooterList>
-                <li><a href="#">FAQs</a></li>
+                <li><span style={{cursor:"pointer"}}>FAQs</span></li>
                 <li><Link to="/contact">Contact</Link></li>
               </FooterList>
             </div>
@@ -210,8 +210,8 @@ export const Footer: React.FC = () => {
         <Divider>
           <span>© {new Date().getFullYear()} {siteName}. All rights reserved.</span>
           <span style={{ display: 'flex', gap: 16 }}>
-            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="#" style={{ color: 'inherit', textDecoration: 'none' }}>Terms</a>
+            <span style={{ color: 'inherit', cursor: 'pointer' }}>Privacy Policy</span>
+            <span style={{ color: 'inherit', cursor: 'pointer' }}>Terms</span>
           </span>
         </Divider>
       </Container>

@@ -121,7 +121,7 @@ export const RegisterPage: React.FC = () => {
               </InputWrap>
             </Field>
             <TermsRow>
-              <CheckLabel><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)}/> I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></CheckLabel>
+              <CheckLabel><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)}/> I agree to the <span style={{textDecoration:"underline",cursor:"pointer"}}>Terms of Service</span> and <span style={{textDecoration:"underline",cursor:"pointer"}}>Privacy Policy</span></CheckLabel>
             </TermsRow>
             <SubmitBtn type="submit" disabled={loading}>
               {loading?<><span style={{width:16,height:16,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'white',borderRadius:'50%',animation:'adminSpin 0.7s linear infinite',display:'inline-block'}}/>Creating account…</>:'Create Account'}

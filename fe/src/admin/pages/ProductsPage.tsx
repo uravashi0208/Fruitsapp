@@ -119,7 +119,7 @@ export const ProductsPage: React.FC = () => {
   const categories = (categoriesData ?? []).filter(c => c.status === 'active');
 
   // Refetch categories every time this page mounts (in case new ones were added)
-  React.useEffect(() => { refetchCats(); }, []);
+  React.useEffect(() => { refetchCats(); }, [refetchCats]);
 
   const [search,       setSearch]       = useState('');
   const [catFilter,    setCatFilter]    = useState('all');
@@ -133,7 +133,7 @@ export const ProductsPage: React.FC = () => {
   const [form,         setForm]         = useState<Partial<AdminProduct> & { imageFile?: File|null }>(emptyForm());
   const [saving,       setSaving]       = useState(false);
   const [toggling,     setToggling]     = useState<string | null>(null); // productId being toggled
-  const [openMenuId,   setOpenMenuId]   = useState<string|null>(null);
+  const [, setOpenMenuId]   = useState<string|null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
 

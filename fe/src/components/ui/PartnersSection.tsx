@@ -36,7 +36,7 @@ const PartnersRow = styled.nav`
   padding: 40px 0;
 `;
 
-const PartnerItem = styled.a<{ $visible: boolean; $delay: number }>`
+const PartnerItem = styled.div<{ $visible: boolean; $delay: number }>`
   display: flex;
   opacity: 0;
   transition: transform 0.3s ease, filter 0.3s ease;
@@ -76,7 +76,6 @@ export const PartnersSection: React.FC<PartnersSectionProps> = ({ count = 5 }) =
               {Array.from({ length: count }, (_, i) => i + 1).map((n) => (
                 <PartnerItem
                   key={n}
-                  href="#"
                   $visible={visible}
                   $delay={n * 100}
                 >
