@@ -2,8 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
-  Plus, Trash2, Tag, RefreshCw,
-  MoreHorizontal, Edit2, Eye, Download, Filter, Search,
+  Plus, Trash2, Tag, Edit2, Eye, Download, Filter, Search,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
@@ -47,14 +46,10 @@ const CatCell   = styled.div`display:flex;align-items:center;gap:12px;`;
 const CatThumb  = styled.img`width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid ${t.colors.border};flex-shrink:0;`;
 const CatPh     = styled.div`width:44px;height:44px;border-radius:8px;background:${t.colors.surfaceAlt};border:1px solid ${t.colors.border};display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
 const CatName   = styled.div`font-weight:600;color:${t.colors.textPrimary};font-size:0.875rem;`;
-const CatSlug   = styled.div`font-size:0.75rem;color:${t.colors.textMuted};margin-top:2px;`;
 const CheckBox  = styled.input.attrs({type:'checkbox'})`width:16px;height:16px;cursor:pointer;accent-color:${t.colors.primary};`;
 const SearchBar = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
 const SearchInp = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
 const FilterBtn = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
-const ActionDot = styled.button`background:none;border:none;cursor:pointer;color:${t.colors.textMuted};padding:4px;border-radius:6px;display:flex;align-items:center;position:relative;&:hover{background:${t.colors.border};color:${t.colors.textPrimary};}`;
-const DropMenu  = styled.div`position:absolute;right:0;top:calc(100% + 4px);background:white;border:1px solid ${t.colors.border};border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:140px;z-index:100;overflow:hidden;`;
-const DropItem  = styled.button<{$danger?:boolean}>`display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;border:none;cursor:pointer;font-size:0.8125rem;font-weight:500;color:${({$danger})=>$danger?t.colors.danger:t.colors.textSecondary};&:hover{background:${({$danger})=>$danger?'#fef3f2':t.colors.surfaceAlt};}`;
 const UploadBox = styled.label`display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed ${t.colors.border};border-radius:12px;padding:24px;cursor:pointer;gap:8px;text-align:center;transition:border-color 0.15s,background 0.15s;&:hover{border-color:${t.colors.primary};background:${t.colors.primaryGhost};}`;
 const UploadInput = styled.input`display:none;`;
 const PreviewImg  = styled.img`width:72px;height:72px;border-radius:10px;object-fit:cover;border:1px solid ${t.colors.border};`;

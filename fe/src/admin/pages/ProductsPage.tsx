@@ -2,15 +2,13 @@ import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
-  Plus, Search, Trash2, Package, RefreshCw,
-  MoreHorizontal, Edit2, Eye, Download, Filter, Upload,
+  Plus, Search, Trash2, Package, RefreshCw, Edit2, Eye, Download, Filter, Upload,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill, AdminInput, AdminSelect, AdminTextarea,
-  FormGroup, FormLabel, FormGrid, SearchBar, SearchInput,
-  ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
-  PaginationWrapper, PageBtns, PageBtn, SectionTitle, EmptyState,
+  AdminCard, AdminBtn, IconBtn, StatusPill, AdminInput, AdminSelect, AdminTextarea,
+  FormGroup, FormLabel, FormGrid,
+  ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter, PageBtns, PageBtn, SectionTitle, EmptyState,
 } from '../styles/adminShared';
 import { adminProductsApi } from '../../api/admin';
 import { API_BASE } from '../../api/client';
@@ -89,27 +87,6 @@ const CheckBox = styled.input.attrs({ type: 'checkbox' })`
   width: 16px; height: 16px; cursor: pointer; accent-color: ${t.colors.primary};
 `;
 
-const ActionDot = styled.button`
-  background: none; border: none; cursor: pointer;
-  color: ${t.colors.textMuted}; padding: 4px; border-radius: 6px;
-  display: flex; align-items: center;
-  &:hover { background: ${t.colors.border}; color: ${t.colors.textPrimary}; }
-  position: relative;
-`;
-const DropMenu = styled.div`
-  position: absolute; right: 0; top: calc(100% + 4px);
-  background: white; border: 1px solid ${t.colors.border};
-  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  min-width: 140px; z-index: 100; overflow: hidden;
-`;
-const DropItem = styled.button<{ $danger?: boolean }>`
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 10px 14px;
-  background: none; border: none; cursor: pointer;
-  font-size: 0.8125rem; font-weight: 500;
-  color: ${({ $danger }) => $danger ? t.colors.danger : t.colors.textSecondary};
-  &:hover { background: ${({ $danger }) => $danger ? '#fef3f2' : t.colors.surfaceAlt}; }
-`;
 
 const SearchBar2  = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
 const SearchInput2= styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;

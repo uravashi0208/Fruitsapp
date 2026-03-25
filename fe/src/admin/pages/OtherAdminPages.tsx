@@ -6,7 +6,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
-  Search, Edit2, Trash2, Eye, Plus,
+  Search, Trash2, Eye, Plus,
   Ban, CheckCircle, Mail, CreditCard,
   MessageSquare, FileText, MoreHorizontal,
   Star, BookOpen, RefreshCw, Download, Filter,
@@ -16,9 +16,7 @@ import {
   AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill,
   AdminInput, AdminSelect, AdminTextarea,
   FormGroup, FormLabel, FormGrid, SearchBar, SearchInput,
-  ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
-  PaginationWrapper, PageBtns, PageBtn, EmptyState,
-  BodyText, AdminDivider,
+  ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter, PageBtns, PageBtn, EmptyState, AdminDivider,
 } from '../styles/adminShared';
 import { useAdminDispatch, showAdminToast } from '../store';
 import { useAdminUsers, useAdminOrders, useAdminCards, useAdminContacts, useAdminBlogs } from '../../hooks/useAdminApi';
@@ -56,10 +54,6 @@ const PersonCell = styled.div`display:flex;align-items:center;gap:12px;`;
 const Avatar     = styled.div`width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,${t.colors.primary},${t.colors.primaryDark});color:white;font-size:0.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
 const PersonName = styled.div`font-weight:600;color:${t.colors.textPrimary};font-size:0.875rem;`;
 const PersonSub  = styled.div`font-size:0.75rem;color:${t.colors.textMuted};margin-top:1px;`;
-const FilterWrap = styled.div`display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;`;
-const ActionDot  = styled.button`background:none;border:none;cursor:pointer;color:${t.colors.textMuted};padding:4px;border-radius:6px;display:flex;align-items:center;position:relative;&:hover{background:${t.colors.border};color:${t.colors.textPrimary};}`;
-const DropMenu   = styled.div`position:absolute;right:0;top:calc(100% + 4px);background:white;border:1px solid ${t.colors.border};border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:140px;z-index:100;overflow:hidden;`;
-const DropItem   = styled.button<{$danger?:boolean}>`display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;border:none;cursor:pointer;font-size:0.8125rem;font-weight:500;color:${({$danger})=>$danger?t.colors.danger:t.colors.textSecondary};&:hover{background:${({$danger})=>$danger?'#fef3f2':t.colors.surfaceAlt};}`;
 const FilterBtn  = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
 
 // ── USERS PAGE ────────────────────────────────────────────────────────────────

@@ -10,7 +10,6 @@ import {
 import { adminTheme as t } from '../styles/adminTheme';
 import { useAdminDispatch, useAdminSelector, toggleSidebar, logout } from '../store';
 
-const slideIn = keyframes`from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}`;
 
 const Aside = styled.aside<{ $w: string }>`
   position: fixed; top: 0; left: 0; height: 100vh;
@@ -112,15 +111,6 @@ const NavLabel = styled.span<{ $c: boolean }>`
   flex: 1;
 `;
 
-const NavBadge = styled.span<{ $c: boolean }>`
-  ${({ $c }) => $c && css`display:none;`}
-  margin-left: auto;
-  background: rgba(70,95,255,0.1);
-  color: ${t.colors.primary};
-  font-size: 0.65rem; font-weight: 700;
-  padding: 1px 7px; border-radius: 99px;
-  min-width: 20px; text-align: center;
-`;
 
 const SubMenu = styled.div<{ $open: boolean }>`
   overflow: hidden;

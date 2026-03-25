@@ -60,11 +60,6 @@ const FormHead=styled.div`margin-bottom:2rem;`;
 const FormTitle=styled.h1`font-size:1.75rem;font-weight:700;color:${t.colors.textPrimary};margin-bottom:0.375rem;letter-spacing:-0.3px;`;
 const FormSub=styled.p`font-size:0.9375rem;color:${t.colors.textMuted};`;
 
-const FillBtn=styled.button`
-  background:none;border:none;color:${t.colors.primary};cursor:pointer;
-  padding:0;font-size:0.8125rem;font-weight:600;margin-top:3px;
-  &:hover{text-decoration:underline;}
-`;
 
 const ErrorBox=styled.div`
   display:flex;align-items:center;gap:8px;

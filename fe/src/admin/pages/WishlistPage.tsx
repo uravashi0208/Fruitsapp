@@ -4,7 +4,7 @@ import { Heart, Search, Trash2, User, ShoppingCart, Package, RefreshCw } from 'l
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminCard, AdminFlex, AdminTable, AdminTHead, AdminTh, AdminTr, AdminTd,
-  AdminBtn, IconBtn, StatusPill, SearchBar, SearchInput,
+  AdminBtn, IconBtn, SearchBar, SearchInput,
   SectionTitle, EmptyState, AdminGrid,
 } from '../styles/adminShared';
 import { adminWishlistApi, WishlistByUser, WishlistAdminEntry } from '../../api/admin';

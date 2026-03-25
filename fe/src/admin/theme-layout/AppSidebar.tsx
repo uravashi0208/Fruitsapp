@@ -3,7 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useSidebar } from '../context/SidebarContext';
 import {
   GridIcon,
-  CalenderIcon,
   UserCircleIcon,
   ListIcon,
   TableIcon,

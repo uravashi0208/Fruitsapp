@@ -103,8 +103,6 @@ const TimerBox = styled.footer`
 `;
 
 
-// Workaround for template literal in styled
-const _delay = 0; // placeholder, will be overridden
 
 const TimeUnitStyled = styled.figure<{ $visible: boolean; $delay: number }>`
   text-align: left;

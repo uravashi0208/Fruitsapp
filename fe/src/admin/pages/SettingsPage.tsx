@@ -3,8 +3,8 @@ import styled from 'styled-components';
 import { Save } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminFlex, AdminBtn, AdminInput, AdminSelect, AdminTextarea,
-  FormGroup, FormLabel, FormGrid, AdminDivider,
+  AdminBtn, AdminInput, AdminSelect, AdminTextarea,
+  FormGroup, FormLabel, FormGrid,
 } from '../styles/adminShared';
 import { useAdminDispatch, showAdminToast } from '../store';
 import { useAdminSettings } from '../../hooks/useAdminApi';
