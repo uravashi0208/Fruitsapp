@@ -159,7 +159,8 @@ export const ProductsPage: React.FC = () => {
   const openEdit = (p: AdminProduct) => {
     setEditTarget(p);
     setForm({ ...p, imageFile: null });
-    setImagePreview(p.image || p.thumbnail || '');
+    const rawUrl = p.image || p.thumbnail || '';
+    setImagePreview(rawUrl.startsWith('http') ? rawUrl : rawUrl ? `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${rawUrl}` : '');
     setModalOpen(true);
     setOpenMenuId(null);
   };
@@ -187,11 +188,19 @@ export const ProductsPage: React.FC = () => {
       // If there's a file, upload via multipart; otherwise JSON
       const { imageFile, ...rest } = form;
       if (imageFile) {
+        // Fields the server owns — never send these back or validation breaks
+        const SERVER_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'image', 'thumbnail', 'images', 'reviewCount']);
         const fd = new FormData();
         Object.entries(rest).forEach(([k, v]) => {
-          if (v === undefined) return;          // skip truly absent fields
-          if (v === null) return;               // skip explicit nulls
-          fd.append(k, String(v));              // '' | false | 0 all serialize correctly
+          if (SERVER_FIELDS.has(k)) return;     // skip read-only / computed fields
+          if (v === undefined) return;
+          if (v === null) return;
+          if (k === 'tags') {
+            const arr = Array.isArray(v) ? v : String(v).split(',').map((s:string) => s.trim()).filter(Boolean);
+            arr.forEach((tag:string) => fd.append('tags', tag));
+            return;
+          }
+          fd.append(k, String(v));
         });
         // Always send badge explicitly so an empty value clears it in the database
         if (!fd.has('badge')) fd.append('badge', '');
@@ -365,7 +374,7 @@ export const ProductsPage: React.FC = () => {
                   <TD>
                     <ProductCell>
                       {p.image || p.thumbnail
-                        ? <ProductThumb src={p.image?.startsWith('http') ? p.image : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${p.image}`} alt={p.name} />
+                        ? <ProductThumb src={(() => { const u = p.image || p.thumbnail || ''; return u.startsWith('http') ? u : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${u}`; })()} alt={p.name} />
                         : <ProductThumbPh><Package size={18} color={t.colors.textMuted} /></ProductThumbPh>
                       }
                       <div>
@@ -559,7 +568,7 @@ export const ProductsPage: React.FC = () => {
             <ModalHeader><SectionTitle>{viewProduct.name}</SectionTitle><IconBtn onClick={() => setViewId(null)}>✕</IconBtn></ModalHeader>
             <ModalBody>
               <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                <ProductThumb src={viewProduct.image || viewProduct.thumbnail || 'https://placehold.co/80x80/e8f5e9/4CAF50?text=P'} alt={viewProduct.name}
+                <ProductThumb src={(() => { const u = viewProduct.image || viewProduct.thumbnail || ''; return u ? (u.startsWith('http') ? u : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${u}`) : 'https://placehold.co/80x80/e8f5e9/4CAF50?text=P'; })()} alt={viewProduct.name}
                   style={{ width: 80, height: 80 }}
                   onError={e => { (e.target as HTMLImageElement).src = `https://placehold.co/80x80/e8f5e9/4CAF50?text=P`; }} />
                 <div>
