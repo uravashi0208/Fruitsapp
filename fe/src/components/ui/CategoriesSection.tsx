@@ -10,11 +10,6 @@ const fadeLeft = keyframes`
   to   { opacity: 1; transform: translateX(0); }
 `;
 
-const fadeRight = keyframes`
-  from { opacity: 0; transform: translateX(50px); }
-  to   { opacity: 1; transform: translateX(0); }
-`;
-
 const fadeUp = keyframes`
   from { opacity: 0; transform: translateY(30px); }
   to   { opacity: 1; transform: translateY(0); }

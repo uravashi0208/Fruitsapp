@@ -5,7 +5,7 @@ import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { useCart } from '../hooks/useCart';
 import { theme } from '../styles/theme';
-import { Container, Section, Flex, Button, Divider, QuantityWrapper, QuantityBtn, QuantityNum, Input } from '../styles/shared';
+import { Container, Section, Flex, Button, Divider, QuantityWrapper, QuantityBtn, QuantityNum } from '../styles/shared';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 
 const CartLayout = styled.div`

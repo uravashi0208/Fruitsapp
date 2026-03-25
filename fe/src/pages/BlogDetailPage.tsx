@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { Calendar, User, Tag, ArrowLeft, ArrowRight as Arrow, BookOpen } from 'lucide-react';
+import { Calendar, User, Tag, ArrowLeft, BookOpen } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { theme } from '../styles/theme';
 import { Container, Section } from '../styles/shared';
@@ -100,7 +100,6 @@ const formatDate = (d: string | null) =>
 // ── Component ──────────────────────────────────────────────────
 const BlogDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   const { data: post, loading, error } = useFetch<ApiBlogPost>(
     () => blogsApi.getOne(id!),

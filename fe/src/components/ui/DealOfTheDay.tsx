@@ -102,29 +102,6 @@ const TimerBox = styled.footer`
   flex-wrap: wrap;
 `;
 
-const TimeUnit = styled.figure<{ $visible: boolean; $delay: number }>`
-  text-align: left;
-  border-left: 1px solid rgba(0,0,0,0.05);
-  padding-left: 16px;
-  margin: 0;
-  opacity: 0;
-  ${({ $visible, $delay }) => $visible && css`
-    animation: ${countUp} 0.5s ease both;
-    animation-delay: ${_delay}ms;
-  `}
-  .number {
-    font-size: 40px;
-    font-weight: ${theme.fontWeights.medium};
-    color: ${theme.colors.primary};
-    line-height: 1;
-    display: block;
-    transition: transform 0.2s ease;
-  }
-  .label {
-    font-size: 13px;
-    color: ${theme.colors.text};
-  }
-`;
 
 // Workaround for template literal in styled
 const _delay = 0; // placeholder, will be overridden

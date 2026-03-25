@@ -117,47 +117,7 @@ const NavLinkStyled = styled(NavLink)<{ $scrolled: boolean }>`
   }
 `;
 
-// Scrolled active link
-const scrolledActive = `color: ${theme.colors.primary} !important`;
 
-// Dropdown wrapper
-const DropdownWrap = styled.li`
-  position: relative;
-  list-style: none;
-
-  &:hover > ul {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
-  }
-`;
-
-const DropdownList = styled.ul`
-  position: absolute;
-  top: 100%; left: 0;
-  min-width: 180px;
-  background: #fff;
-  box-shadow: 0px 10px 34px -20px rgba(0,0,0,0.41);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-8px);
-  transition: ${theme.transitions.base};
-  z-index: ${theme.zIndex.dropdown};
-  border-radius: 0;
-  list-style: none;
-  margin: 0; padding: 0;
-`;
-
-const DropdownLinkItem = styled(Link)`
-  display: block;
-  padding: 10px 20px;
-  font-size: 14px;
-  color: ${theme.colors.textDark};
-  text-decoration: none;
-  transition: ${theme.transitions.base};
-
-  &:hover { background: transparent; color: ${theme.colors.textDark}; text-decoration: none; }
-`;
 
 // Cart CTA button — green pill
 const CartCta = styled(Link)<{ $scrolled: boolean }>`
