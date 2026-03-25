@@ -1,70 +1,112 @@
-# Getting Started with Create React App
+# 🌿 Vegefoods — React + Redux + Styled Components
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A production-grade e-commerce SPA converted from Bootstrap 4 / jQuery to modern React,
+written to senior (10+ years) engineering standards.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 🚀 Quick Start
 
-### `npm start`
+```bash
+npm install
+npm start        # dev server → http://localhost:3000
+npm run build    # production build → /build
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 🏗️ Architecture
 
-### `npm test`
+```
+src/
+├── styles/
+│   ├── theme.ts          ← Single source of truth: colors, fonts, spacing, shadows
+│   ├── GlobalStyles.ts   ← CSS reset, custom properties, @keyframe animations
+│   └── shared.ts         ← 25+ reusable styled-component primitives
+│
+├── store/
+│   ├── index.ts          ← configureStore + typed useAppDispatch / useAppSelector
+│   ├── cartSlice.ts      ← addToCart · removeFromCart · updateQuantity · clearCart
+│   ├── wishlistSlice.ts  ← toggleWishlist · removeFromWishlist
+│   └── uiSlice.ts        ← Toast notifications · mobile menu · search state
+│
+├── hooks/
+│   └── useCart.ts        ← useCart() and useWishlist() — all Redux + toast logic
+│
+├── data/index.ts         ← PRODUCTS · TESTIMONIALS · BLOG_POSTS
+├── types/index.ts        ← TypeScript interfaces
+│
+├── components/
+│   ├── layout/
+│   │   ├── Navbar.tsx    ← Sticky scroll-aware nav, dropdown, badges, mobile drawer
+│   │   └── Footer.tsx    ← 4-column footer, social links, newsletter form
+│   └── ui/
+│       ├── ProductCard.tsx   ← Hover actions, wishlist toggle, lazy image
+│       ├── PageHero.tsx      ← Reusable breadcrumb hero for inner pages
+│       └── Toast.tsx         ← Auto-dismiss toast stack (success/error/info)
+│
+├── pages/
+│   ├── HomePage.tsx           ← Hero slider, services, categories, countdown, testimonials
+│   ├── ShopPage.tsx           ← Filter sidebar, search, sort, price range
+│   ├── CartPage.tsx           ← Item table, quantity controls, coupon, summary
+│   ├── CheckoutPage.tsx       ← Shipping form, payment methods, success screen
+│   ├── ProductDetailPage.tsx  ← Gallery, star rating, qty picker, related products
+│   └── OtherPages.tsx         ← Wishlist · About · Blog · Contact
+│
+└── App.tsx                    ← Provider + BrowserRouter + React.lazy routes
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## ⚙️ Tech Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+| Layer         | Technology                      |
+|--------------|---------------------------------|
+| UI Framework  | React 18 + TypeScript           |
+| State         | Redux Toolkit + React-Redux     |
+| Styling       | styled-components               |
+| Routing       | React Router v6                 |
+| Icons         | Lucide React                    |
+| Build         | Create React App                |
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 🎯 Senior-Level Patterns Used
 
-### `npm run eject`
+- **No `<div>` anywhere** — semantic `<main>`, `<section>`, `<article>`, `<aside>`, `<nav>`, `<footer>`
+- **Single theme file** — all tokens in `theme.ts`, consumed as CSS custom properties
+- **Redux slices by domain** — cart / wishlist / ui are independent, never cross-write
+- **Typed custom hooks** — `useCart()` and `useWishlist()` hide all dispatch from UI layer
+- **Lazy loading** — all pages via `React.lazy()` + `Suspense`
+- **Shared primitives** — `shared.ts` provides the design system's building blocks
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 📄 Routes
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+| Path             | Page               |
+|------------------|--------------------|
+| `/`              | Home               |
+| `/shop`          | Product Listing    |
+| `/product/:id`   | Product Detail     |
+| `/cart`          | Shopping Cart      |
+| `/checkout`      | Checkout           |
+| `/wishlist`      | Wishlist           |
+| `/about`         | About Us           |
+| `/blog`          | Blog               |
+| `/contact`       | Contact            |
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 🎨 Customising the Theme
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Edit `src/styles/theme.ts`:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```ts
+colors: {
+  primary: '#4CAF50',  // ← change to rebrand the entire app
+  accent:  '#FF7043',
+}
+```
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+CSS custom properties update automatically across every component.

@@ -1,0 +1,828 @@
+/* TailAdmin CSS Design Tokens - injected into admin panel */
+
+/* ── Fonts ─────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+/* ── CSS Variables (TailAdmin design tokens) ─────────────────── */
+:root {
+  --font-outfit: 'Outfit', sans-serif;
+
+  --color-brand-25: #f2f7ff;
+  --color-brand-50: #ecf3ff;
+  --color-brand-100: #dde9ff;
+  --color-brand-200: #c2d6ff;
+  --color-brand-300: #9cb9ff;
+  --color-brand-400: #7592ff;
+  --color-brand-500: #465fff;
+  --color-brand-600: #3641f5;
+  --color-brand-700: #2a31d8;
+  --color-brand-800: #252dae;
+  --color-brand-900: #262e89;
+  --color-brand-950: #161950;
+
+  --color-gray-25: #fcfcfd;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f7;
+  --color-gray-200: #e4e7ec;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;
+  --color-gray-700: #344054;
+  --color-gray-800: #1d2939;
+  --color-gray-900: #101828;
+  --color-gray-dark: #1a2231;
+
+  --color-success-500: #12b76a;
+  --color-error-500: #f04438;
+  --color-warning-500: #f79009;
+
+  --shadow-theme-xs: 0px 1px 2px 0px rgba(16,24,40,0.05);
+  --shadow-theme-sm: 0px 1px 3px 0px rgba(16,24,40,0.1),0px 1px 2px 0px rgba(16,24,40,0.06);
+  --shadow-theme-md: 0px 4px 8px -2px rgba(16,24,40,0.1),0px 2px 4px -2px rgba(16,24,40,0.06);
+  --shadow-theme-lg: 0px 12px 16px -4px rgba(16,24,40,0.08),0px 4px 6px -2px rgba(16,24,40,0.03);
+}
+
+/* ── Admin root reset ─────────────────────────────────────────── */
+.admin-root {
+  font-family: var(--font-outfit);
+  background-color: var(--color-gray-50);
+  min-height: 100vh;
+}
+
+.admin-root *,
+.admin-root *::before,
+.admin-root *::after {
+  box-sizing: border-box;
+}
+
+/* ── Sidebar menu items ─────────────────────────────────────────── */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+  color: var(--color-gray-700);
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
+
+.menu-item:hover {
+  background: var(--color-brand-50);
+  color: var(--color-brand-600);
+}
+
+.menu-item-active {
+  background: var(--color-brand-50) !important;
+  color: var(--color-brand-600) !important;
+}
+
+.menu-item-inactive {
+  color: var(--color-gray-700);
+}
+
+.menu-item-icon-size {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-item-icon-active {
+  color: var(--color-brand-500);
+}
+
+.menu-item-icon-inactive {
+  color: var(--color-gray-500);
+}
+
+.menu-item-text {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* ── Dropdown sub-items ─────────────────────────────────────────── */
+.menu-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+  color: var(--color-gray-600);
+  width: 100%;
+}
+
+.menu-dropdown-item:hover {
+  background: var(--color-brand-50);
+  color: var(--color-brand-600);
+}
+
+.menu-dropdown-item-active {
+  color: var(--color-brand-500) !important;
+}
+
+.menu-dropdown-item-inactive {
+  color: var(--color-gray-600);
+}
+
+.menu-dropdown-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.menu-dropdown-badge-active {
+  background: var(--color-brand-50);
+  color: var(--color-brand-500);
+}
+
+.menu-dropdown-badge-inactive {
+  background: var(--color-gray-100);
+  color: var(--color-gray-500);
+}
+
+/* ── No-scrollbar utility ─────────────────────────────────────── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Dark mode sidebar/header ─────────────────────────────────── */
+.dark .admin-sidebar-bg { background-color: #1c2333; }
+.dark .menu-item { color: var(--color-gray-400); }
+.dark .menu-item:hover { background: rgba(255,255,255,0.05); color: white; }
+.dark .menu-item-active { background: rgba(70,95,255,0.15) !important; color: #7592ff !important; }
+.dark .menu-item-icon-inactive { color: var(--color-gray-400); }
+.dark .menu-dropdown-item { color: var(--color-gray-400); }
+.dark .menu-dropdown-item:hover { background: rgba(255,255,255,0.05); color: white; }
+
+/* ── Toast animations ─────────────────────────────────────────── */
+@keyframes adminSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes adminSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes adminFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes adminPulse {
+  0%, 100% { background-position: 0%; }
+  50%       { background-position: 100%; }
+}
+
+.admin-fade-in {
+  animation: adminFadeIn 0.25s ease;
+}
+
+/* ── Dropdown toggle helper ─────────────────────────────────── */
+.dropdown-toggle { cursor: pointer; }
+
+/* ── Admin page content area ─────────────────────────────────── */
+.admin-content {
+  padding: calc(72px + 2rem) 1.5rem 2rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  animation: adminFadeIn 0.25s ease;
+}
+
+/* ── z-index layers ─────────────────────────────────────────── */
+.z-99999 { z-index: 99999; }
+.z-50 { z-index: 50; }
+.z-40 { z-index: 40; }
+
+/* ── Dashboard responsive 12-col grid ────────────────────────── */
+@media (min-width: 1280px) {
+  .xl-col-7 { grid-column: span 7 !important; }
+  .xl-col-5 { grid-column: span 5 !important; }
+}
+
+/* ── Flatpickr overrides ─────────────────────────────────────── */
+.flatpickr-calendar {
+  font-family: var(--font-outfit) !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--color-gray-200) !important;
+  box-shadow: var(--shadow-theme-lg) !important;
+  font-size: 13px !important;
+}
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+  background: #465fff !important;
+  border-color: #465fff !important;
+}
+.flatpickr-day.inRange {
+  background: #ecf3ff !important;
+  border-color: #ecf3ff !important;
+  box-shadow: -5px 0 0 #ecf3ff, 5px 0 0 #ecf3ff !important;
+}
+.flatpickr-day.today {
+  border-color: #465fff !important;
+}
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+  background: transparent !important;
+  color: var(--color-gray-900) !important;
+  fill: var(--color-gray-900) !important;
+}
+.flatpickr-weekday {
+  color: var(--color-gray-500) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+}
+
+/* ── ApexCharts dark-mode friendly overrides ─────────────────── */
+.apexcharts-tooltip {
+  font-family: var(--font-outfit) !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--color-gray-200) !important;
+  box-shadow: var(--shadow-theme-md) !important;
+}
+.apexcharts-xaxis-label,
+.apexcharts-yaxis-label {
+  font-family: var(--font-outfit) !important;
+  font-size: 12px !important;
+  fill: var(--color-gray-500) !important;
+}
+.apexcharts-legend-text {
+  font-family: var(--font-outfit) !important;
+  font-size: 13px !important;
+}
+
+/* ── Custom scrollbar ────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: var(--color-gray-100); border-radius: 99px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--color-gray-300); border-radius: 99px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE — Full admin panel
+   Applied when <html class="dark"> is set by ThemeContext
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── CSS variable overrides in dark mode ── */
+html.dark {
+  --color-gray-25:  #1e2533;
+  --color-gray-50:  #161b27;
+  --color-gray-100: #1e2533;
+  --color-gray-200: #2a3347;
+  --color-gray-300: #3d4f6e;
+  --color-gray-400: #6b7a99;
+  --color-gray-500: #8b9ab5;
+  --color-gray-600: #a8b5cc;
+  --color-gray-700: #c4cfe0;
+  --color-gray-800: #dce4f0;
+  --color-gray-900: #f0f4fa;
+
+  --shadow-theme-xs: 0px 1px 2px 0px rgba(0,0,0,0.3);
+  --shadow-theme-sm: 0px 1px 3px 0px rgba(0,0,0,0.4);
+  --shadow-theme-md: 0px 4px 8px -2px rgba(0,0,0,0.4);
+  --shadow-theme-lg: 0px 12px 16px -4px rgba(0,0,0,0.4);
+}
+
+/* ── Root background ── */
+html.dark .admin-root { background-color: #161b27; }
+html.dark body        { background-color: #161b27; }
+
+/* ── Header ── */
+html.dark header {
+  background: #1e2533 !important;
+  border-bottom-color: #2a3347 !important;
+}
+html.dark header h1  { color: #f0f4fa !important; }
+html.dark header span { color: #8b9ab5 !important; }
+
+/* ── Header hamburger & theme toggle buttons ── */
+html.dark header button {
+  border-color: #2a3347 !important;
+  background: #1e2533 !important;
+  color: #a8b5cc !important;
+}
+html.dark header button:hover {
+  background: #2a3347 !important;
+  color: #f0f4fa !important;
+}
+
+/* ── Sidebar ── */
+html.dark .admin-sidebar-bg {
+  background-color: #1e2533 !important;
+  border-right-color: #2a3347 !important;
+}
+html.dark aside {
+  background: #1e2533 !important;
+  border-right-color: #2a3347 !important;
+}
+
+/* ── Main content area ── */
+html.dark main,
+html.dark .admin-content {
+  background-color: #161b27 !important;
+}
+
+/* ── Admin cards / white boxes ── */
+html.dark .admin-card,
+html.dark [class*="AdminCard"],
+html.dark [class*="TableWrap"],
+html.dark [class*="Card"],
+html.dark [class*="PageWrap"],
+html.dark [class*="NavPanel"],
+html.dark [class*="ContentPanel"] {
+  background: #1e2533 !important;
+  border-color: #2a3347 !important;
+  color: #c4cfe0 !important;
+}
+
+/* ── Styled-components dark overrides via attribute selectors ── */
+/* Target all white/light bg elements inside .dark */
+html.dark [style*="background: white"],
+html.dark [style*="background: #fff"],
+html.dark [style*="background: rgb(255, 255, 255)"],
+html.dark [style*="background-color: white"],
+html.dark [style*="background-color: rgb(255, 255, 255)"],
+html.dark [style*="background:#fff"],
+html.dark [style*="background: #ffffff"],
+html.dark [style*="background:#ffffff"] {
+  background: #1e2533 !important;
+}
+
+html.dark [style*="background: white"] * ,
+html.dark [style*="background: #fff"] * {
+  border-color: #2a3347 !important;
+}
+
+/* ── Border colors ── */
+html.dark [style*="border: 1px solid"],
+html.dark [style*="border-bottom: 1px solid"],
+html.dark [style*="border-top: 1px solid"],
+html.dark [style*="border-right: 1px solid"],
+html.dark [style*="border-left: 1px solid"] {
+  border-color: #2a3347 !important;
+}
+
+/* ── Text colors ── */
+html.dark [style*="color: rgb(16, 24, 40)"],
+html.dark [style*="color: #101828"],
+html.dark [style*="color: var(--color-gray-900)"] { color: #f0f4fa !important; }
+
+html.dark [style*="color: rgb(52, 64, 84)"],
+html.dark [style*="color: #344054"],
+html.dark [style*="color: var(--color-gray-700)"] { color: #c4cfe0 !important; }
+
+html.dark [style*="color: rgb(71, 84, 103)"],
+html.dark [style*="color: var(--color-gray-600)"] { color: #a8b5cc !important; }
+
+html.dark [style*="color: var(--color-gray-500)"],
+html.dark [style*="color: rgb(102, 112, 133)"] { color: #8b9ab5 !important; }
+
+/* ── Tables ── */
+html.dark table { color: #c4cfe0; }
+html.dark thead { background: #252e42 !important; border-color: #2a3347 !important; }
+html.dark tbody tr:hover { background: #252e42 !important; }
+html.dark tbody tr { border-color: #2a3347 !important; }
+html.dark th { color: #8b9ab5 !important; }
+html.dark td { color: #c4cfe0 !important; }
+
+/* ── Inputs, textareas, selects ── */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background: #252e42 !important;
+  border-color: #2a3347 !important;
+  color: #f0f4fa !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #6b7a99 !important; }
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: #465fff !important;
+  box-shadow: 0 0 0 2px rgba(70, 95, 255, 0.2) !important;
+}
+html.dark select option { background: #1e2533; color: #f0f4fa; }
+
+/* ── Buttons ── */
+html.dark button:not([style*="background: #465fff"]):not([style*="background:#465fff"]):not([class*="primary"]) {
+  border-color: #2a3347;
+}
+
+/* ── Dropdowns / menus ── */
+html.dark [style*="position: absolute"],
+html.dark [style*="position: fixed"] {
+  background: #1e2533;
+  border-color: #2a3347;
+}
+
+/* ── Modals ── */
+html.dark [style*="position: fixed"][style*="inset: 0"],
+html.dark [style*="position:fixed"][style*="inset:0"] {
+  background: rgba(0,0,0,0.6) !important;
+}
+
+/* ── Dividers / hr ── */
+html.dark hr { border-color: #2a3347 !important; }
+
+/* ── Scrollbar ── */
+html.dark ::-webkit-scrollbar { width: 6px; height: 6px; }
+html.dark ::-webkit-scrollbar-track { background: #161b27; }
+html.dark ::-webkit-scrollbar-thumb { background: #2a3347; border-radius: 3px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #3d4f6e; }
+
+/* ── Status pills (keep colors, just adjust bg lightness) ── */
+html.dark [style*="background: #f0fdf4"],
+html.dark [style*="background:#f0fdf4"],
+html.dark [style*="background: rgb(240,253,244)"] {
+  background: rgba(18, 183, 106, 0.15) !important;
+}
+html.dark [style*="background: #fef3f2"],
+html.dark [style*="background:#fef3f2"] {
+  background: rgba(240, 68, 56, 0.15) !important;
+}
+html.dark [style*="background: #fffaeb"],
+html.dark [style*="background:#fffaeb"] {
+  background: rgba(247, 144, 9, 0.15) !important;
+}
+html.dark [style*="background: #eff8ff"],
+html.dark [style*="background:#eff8ff"] {
+  background: rgba(70, 95, 255, 0.15) !important;
+}
+html.dark [style*="background: #f8f9fc"],
+html.dark [style*="background: #f2f4f7"],
+html.dark [style*="background: var(--color-gray-100)"],
+html.dark [style*="background: var(--color-gray-50)"] {
+  background: #252e42 !important;
+}
+
+/* ── Surface alt (table hover, sidebar sub-items) ── */
+html.dark [style*="background: #f9fafb"] { background: #252e42 !important; }
+html.dark [style*="background-color: #f9fafb"] { background-color: #252e42 !important; }
+
+/* ── Theme toggle button icon color in dark mode ── */
+html.dark .theme-toggle-btn { background: #252e42 !important; color: #f5d060 !important; }
+
+/* ── Notification dot keep orange ── */
+html.dark [style*="background: #f79009"],
+html.dark [style*="background:#f79009"] { background: #f79009 !important; }
+
+/* ── Page title / heading text ── */
+html.dark h1, html.dark h2, html.dark h3, html.dark h4 { color: #f0f4fa; }
+html.dark p  { color: #8b9ab5; }
+
+/* ── Empty state icons ── */
+html.dark [style*="color: var(--color-gray-400)"] { color: #6b7a99 !important; }
+
+/* ── Transition for smooth dark/light switching ── */
+html, body, header, main, aside,
+input, textarea, select, button, table, th, td {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DARK MODE — Styled-components overrides
+   Targets every component defined in adminShared.ts
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── AdminCard ── */
+html.dark [class*="AdminCard"],
+html.dark [class*="TableWrap"],
+html.dark [class*="SettingsPage"],
+html.dark [class*="PageWrap"],
+html.dark [class*="NavPanel"] {
+  background: #1e2533 !important;
+  border-color: #2a3347 !important;
+  color: #c4cfe0 !important;
+}
+
+/* ── Modals ── */
+html.dark [class*="ModalBox"] {
+  background: #1e2533 !important;
+  border-color: #2a3347 !important;
+}
+html.dark [class*="ModalHeader"] {
+  background: #1e2533 !important;
+  border-bottom-color: #2a3347 !important;
+}
+html.dark [class*="ModalFooter"] {
+  background: #252e42 !important;
+  border-top-color: #2a3347 !important;
+}
+html.dark [class*="ModalBackdrop"] {
+  background: rgba(0,0,0,0.7) !important;
+}
+
+/* ── All white/light backgrounds inside dark mode ── */
+html.dark [class*="sc-"] {
+  --surface: #1e2533;
+  --border: #2a3347;
+  --text: #c4cfe0;
+}
+
+/* ── Inputs, Selects, Textareas ── */
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark input[type="number"],
+html.dark input[type="tel"],
+html.dark input[type="url"],
+html.dark input[type="search"],
+html.dark input[type="color"],
+html.dark textarea,
+html.dark select {
+  background: #252e42 !important;
+  background-color: #252e42 !important;
+  border-color: #2a3347 !important;
+  color: #f0f4fa !important;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #6b7a99 !important; }
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: #465fff !important;
+  outline: none !important;
+}
+html.dark select option {
+  background: #252e42 !important;
+  color: #f0f4fa !important;
+}
+
+/* ── AdminInput / AdminSelect / AdminTextarea (styled-components) ── */
+html.dark [class*="AdminInput"],
+html.dark [class*="AdminSelect"],
+html.dark [class*="AdminTextarea"],
+html.dark [class*="SearchInput"] {
+  background: #252e42 !important;
+  background-color: #252e42 !important;
+  border-color: #2a3347 !important;
+  color: #f0f4fa !important;
+}
+
+/* ── Tables ── */
+html.dark [class*="AdminTable"] { color: #c4cfe0 !important; }
+html.dark [class*="AdminTHead"] {
+  background: #252e42 !important;
+  border-bottom-color: #2a3347 !important;
+}
+html.dark [class*="AdminTh"] { color: #8b9ab5 !important; }
+html.dark [class*="AdminTr"] {
+  border-bottom-color: #2a3347 !important;
+}
+html.dark [class*="AdminTr"]:hover { background: #252e42 !important; }
+html.dark [class*="AdminTd"] { color: #c4cfe0 !important; }
+
+/* ── Styled table rows (ProductsPage, OtherAdminPages) ── */
+html.dark [class*="TR"],
+html.dark [class*="Tbl"] tr {
+  border-bottom-color: #2a3347 !important;
+}
+html.dark [class*="TR"]:hover,
+html.dark [class*="Tbl"] tr:hover { background: #252e42 !important; }
+html.dark [class*="TH"],
+html.dark [class*="Tbl"] th {
+  background: #252e42 !important;
+  color: #8b9ab5 !important;
+  border-bottom-color: #2a3347 !important;
+}
+html.dark [class*="TD"],
+html.dark [class*="Tbl"] td { color: #c4cfe0 !important; }
+html.dark [class*="THead"],
+html.dark [class*="Tbl"] thead {
+  background: #252e42 !important;
+  border-bottom-color: #2a3347 !important;
+}
+
+/* ── Pagination ── */
+html.dark [class*="PaginationWrapper"] {
+  border-top-color: #2a3347 !important;
+  color: #8b9ab5 !important;
+}
+html.dark [class*="PageBtn"]:not([class*="active"]) {
+  background: #252e42 !important;
+  border-color: #2a3347 !important;
+  color: #c4cfe0 !important;
+}
+html.dark [class*="PageBtn"]:hover:not(:disabled) {
+  border-color: #465fff !important;
+  color: #465fff !important;
+}
+
+/* ── Buttons ── */
+html.dark [class*="AdminBtn"][class*="ghost"],
+html.dark [class*="AdminBtn"]:not([class*="primary"]):not([class*="danger"]):not([class*="success"]):not([class*="warning"]) {
+  background: #252e42 !important;
+  color: #c4cfe0 !important;
+  border-color: #2a3347 !important;
+}
+html.dark [class*="IconBtn"] {
+  background: transparent !important;
+  color: #8b9ab5 !important;
+}
+html.dark [class*="IconBtn"]:hover {
+  background: #252e42 !important;
+  color: #f0f4fa !important;
+}
+
+/* ── Status pills — darken background, keep hue ── */
+html.dark [class*="StatusPill"] {
+  filter: brightness(0.8) saturate(1.2);
+}
+
+/* ── Neutral status pill ── */
+html.dark [class*="StatusPill"][style*="background:#f2f4f7"],
+html.dark [class*="StatusPill"][style*="background: #f2f4f7"] {
+  background: #2a3347 !important;
+  color: #a8b5cc !important;
+}
+
+/* ── SectionTitle, FormLabel, BodyText ── */
+html.dark [class*="SectionTitle"] { color: #f0f4fa !important; }
+html.dark [class*="FormLabel"] { color: #a8b5cc !important; }
+html.dark [class*="BodyText"] { color: #c4cfe0 !important; }
+html.dark [class*="AdminDivider"] { border-top-color: #2a3347 !important; }
+
+/* ── EmptyState ── */
+html.dark [class*="EmptyState"] {
+  color: #6b7a99 !important;
+}
+html.dark [class*="EmptyState"] h3 { color: #8b9ab5 !important; }
+
+/* ── SearchBar ── */
+html.dark [class*="SearchBar"] svg { color: #6b7a99 !important; }
+html.dark [class*="FilterBtn"],
+html.dark [class*="FilterRow"] button {
+  background: #252e42 !important;
+  border-color: #2a3347 !important;
+  color: #c4cfe0 !important;
+}
+
+/* ── Upload box (image upload dashed area) ── */
+html.dark [class*="UploadBox"],
+html.dark [class*="ImageUpload"],
+html.dark [style*="border: 2px dashed"],
+html.dark [style*="border:2px dashed"] {
+  background: #252e42 !important;
+  border-color: #3d4f6e !important;
+}
+
+/* ── Cover preview / image thumbnails ── */
+html.dark [class*="CoverPreview"],
+html.dark [class*="ProductThumbPh"],
+html.dark [class*="SliderCell"] {
+  background: #252e42 !important;
+  border-color: #2a3347 !important;
+}
+
+/* ── Toolbar inside TableWrap ── */
+html.dark [style*="padding: '16px 20px'"],
+html.dark [style*="borderBottom"],
+html.dark [style*="border-bottom: 1px solid"] {
+  border-bottom-color: #2a3347 !important;
+}
+
+/* ── Page header area ── */
+html.dark [class*="PageHeader"] h1,
+html.dark [class*="PageTitle"] { color: #f0f4fa !important; }
+html.dark [class*="PageSub"],
+html.dark [class*="PageHeader"] p { color: #8b9ab5 !important; }
+
+/* ── PortalDropdown (action menus) ── */
+html.dark [class*="Menu"],
+html.dark [class*="DropMenu"] {
+  background: #1e2533 !important;
+  border-color: #2a3347 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+}
+html.dark [class*="MenuItem"],
+html.dark [class*="DropItem"] {
+  color: #c4cfe0 !important;
+}
+html.dark [class*="MenuItem"]:hover,
+html.dark [class*="DropItem"]:hover {
+  background: #252e42 !important;
+}
+
+/* ── Avatar circles ── */
+html.dark [class*="Avatar"] {
+  border: 2px solid #2a3347 !important;
+}
+
+/* ── Notification badge ── */
+html.dark [class*="NotifBadge"],
+html.dark [style*="background: #f79009"] {
+  background: #f79009 !important;
+}
+
+/* ── Settings page tabs ── */
+html.dark [class*="NavItem"]:not([class*="active"]) {
+  color: #8b9ab5 !important;
+}
+html.dark [class*="NavItem"]:hover {
+  background: #252e42 !important;
+  color: #f0f4fa !important;
+}
+html.dark [class*="NavDivider"] {
+  background: #2a3347 !important;
+}
+
+/* ── Toggle track (settings toggles) ── */
+html.dark [class*="Track"] {
+  box-shadow: 0 0 0 1px #2a3347;
+}
+
+/* ── Toolbar "showing X of Y" text ── */
+html.dark span[style*="color: #667085"],
+html.dark span[style*="color:#667085"],
+html.dark span[style*="0.8125rem"] { color: #8b9ab5 !important; }
+
+/* ── SortBadge / order badge ── */
+html.dark [class*="SortBadge"] {
+  background: #252e42 !important;
+  border-color: #2a3347 !important;
+  color: #c4cfe0 !important;
+}
+
+/* ── Inline style overrides for white/light backgrounds ── */
+html.dark [style*="background: #ffffff"],
+html.dark [style*="background:#ffffff"],
+html.dark [style*="background: white"],
+html.dark [style*="background:white"] {
+  background: #1e2533 !important;
+}
+html.dark [style*="background: #f9fafb"],
+html.dark [style*="background:#f9fafb"],
+html.dark [style*="background: #f2f4f7"],
+html.dark [style*="background: rgb(249,250,251)"] {
+  background: #252e42 !important;
+}
+html.dark [style*="background: #fff5f5"],
+html.dark [style*="background:#fff5f5"] {
+  background: rgba(240,68,56,0.15) !important;
+}
+html.dark [style*="background: #f9fdf3"],
+html.dark [style*="background:#f9fdf3"] {
+  background: rgba(18,183,106,0.1) !important;
+}
+
+/* ── Text color overrides for inline styles ── */
+html.dark [style*="color: #101828"],
+html.dark [style*="color:#101828"],
+html.dark [style*="color: rgb(16, 24, 40)"] { color: #f0f4fa !important; }
+html.dark [style*="color: #344054"],
+html.dark [style*="color:#344054"] { color: #c4cfe0 !important; }
+html.dark [style*="color: #475467"],
+html.dark [style*="color:#475467"] { color: #a8b5cc !important; }
+html.dark [style*="color: #667085"],
+html.dark [style*="color:#667085"],
+html.dark [style*="color: #98a2b3"],
+html.dark [style*="color:#98a2b3"] { color: #8b9ab5 !important; }
+
+/* ── Border color overrides ── */
+html.dark [style*="border-color: #e4e7ec"],
+html.dark [style*="border-color:#e4e7ec"],
+html.dark [style*="border: 1px solid #e4e7ec"],
+html.dark [style*="border: 1px solid rgb(228,231,236)"] {
+  border-color: #2a3347 !important;
+}
+
+/* ── Checkbox ── */
+html.dark input[type="checkbox"] {
+  accent-color: #465fff;
+  background: #252e42 !important;
+  border-color: #2a3347 !important;
+}
+
+/* ── Toast notifications ── */
+html.dark [class*="ToastItem"],
+html.dark [class*="AdminToast"] {
+  background: #1e2533 !important;
+  border-color: #2a3347 !important;
+  color: #f0f4fa !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+}

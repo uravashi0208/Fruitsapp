@@ -1,14 +1,5 @@
-# Node modules
 node_modules/
-
-# Logs
-logs/
+.env
+uploads/
 *.log
-npm-debug.log*
-
-# Environment variables
-# .env
-
-# Build folders
-dist/
-build/
+.DS_Store
