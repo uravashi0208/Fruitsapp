@@ -200,7 +200,9 @@ export const ProductsPage: React.FC = () => {
             arr.forEach((tag:string) => fd.append('tags', tag));
             return;
           }
-          fd.append(k, String(v));
+            // Booleans must be sent as "true"/"false" strings in FormData
+          // The backend Joi schema uses .truthy('true').falsy('false') to parse them correctly
+          fd.append(k, typeof v === 'boolean' ? String(v) : String(v));
         });
         // Always send badge explicitly so an empty value clears it in the database
         if (!fd.has('badge')) fd.append('badge', '');
@@ -214,7 +216,7 @@ export const ProductsPage: React.FC = () => {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: fd,
         });
-        if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
+        if (!res.ok) throw new Error((await res.json()).message || 'Upload failed');
       } else {
         // Ensure badge is always sent so an empty value clears it in the database
         const payload = { ...rest, badge: rest.badge ?? '' };

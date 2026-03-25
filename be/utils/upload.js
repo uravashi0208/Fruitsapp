@@ -1,28 +1,36 @@
 /**
- * utils/upload.js
- * Firebase Storage — persistent, CDN-backed image storage.
- * Files are saved to  <folder>/<uuid><ext>  in your Storage bucket
- * and served via a permanent public download URL (no expiry).
+ * utils/upload.js  ← REPLACED: now uses Cloudinary (free tier) instead of Firebase Storage
+ * Cloudinary — free-tier image storage (25 GB bandwidth/month).
+ * Drop-in replacement: uploadToFirebase / deleteFromFirebase signatures unchanged.
  *
- * Public URL shape:
- *   https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<encoded-path>?alt=media
+ * Required env vars (add on Render → Environment):
+ *   CLOUDINARY_CLOUD_NAME
+ *   CLOUDINARY_API_KEY
+ *   CLOUDINARY_API_SECRET
  *
- * Drop-in replacement — uploadToFirebase / deleteFromFirebase signatures
- * are identical to the old local-disk version.
+ * Get values from https://cloudinary.com → Dashboard (free account).
  */
 
 const multer         = require('multer');
 const path           = require('path');
 const { v4: uuidv4 } = require('uuid');
-const { storage }    = require('../config/firebase');   // admin.storage() instance
+const cloudinary     = require('cloudinary').v2;
 
-// ── Multer — keep memory storage (buffer passed straight to Firebase) ─────────
+// ── Configure Cloudinary ──────────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure:     true,
+});
+
+// ── Multer — keep files in memory (buffer passed straight to Cloudinary) ──────
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp|pdf/;
+  const allowed = /jpeg|jpg|png|gif|webp/;
   const extOk   = allowed.test(path.extname(file.originalname).toLowerCase());
   const mimeOk  = allowed.test(file.mimetype);
   if (extOk && mimeOk) return cb(null, true);
-  cb(new Error('Only image files (jpeg, jpg, png, gif, webp) and PDFs are allowed'));
+  cb(new Error('Only image files (jpeg, jpg, png, gif, webp) are allowed'));
 };
 
 const upload = multer({
@@ -31,45 +39,44 @@ const upload = multer({
   fileFilter,
 });
 
-// ── Upload buffer → Firebase Storage, return permanent public URL ─────────────
-const uploadToFirebase = async (buffer, originalname, mimetype, folder = 'uploads') => {
-  const ext        = path.extname(originalname) || '.jpg';
-  const filename   = `${uuidv4()}${ext}`;
-  const storagePath = `${folder}/${filename}`;           // e.g. "products/abc-123.jpg"
-
-  const bucket = storage.bucket();
-  const file   = bucket.file(storagePath);
-
-  await file.save(buffer, {
-    metadata: {
-      contentType: mimetype,
-      cacheControl: 'public, max-age=31536000',          // 1-year CDN cache
-    },
-    public: true,                                        // make object world-readable
+// ── Upload buffer → Cloudinary, return permanent public URL ──────────────────
+const uploadToCloudinary = (buffer, folder = 'uploads') => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'image',
+        folder:        folder,       // organises in Cloudinary Media Library
+        unique_filename: true,
+        overwrite:     false,
+        transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+      },
+      (error, result) => {
+        if (error) return reject(new Error(`Cloudinary upload failed: ${error.message}`));
+        resolve(result.secure_url);  // permanent HTTPS URL, no expiry
+      }
+    );
+    stream.end(buffer);
   });
-
-  // Permanent public URL — no token, no expiry
-  const encodedPath = encodeURIComponent(storagePath);
-  const publicUrl   = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media`;
-
-  return publicUrl;
 };
 
-// ── Delete file from Firebase Storage ────────────────────────────────────────
+// ── Public API — same names as before so NO other file needs to change ────────
+const uploadToFirebase = (buffer, originalname, mimetype, folder = 'uploads') =>
+  uploadToCloudinary(buffer, folder);
+
+// ── Delete image from Cloudinary ──────────────────────────────────────────────
 const deleteFromFirebase = async (url) => {
   try {
-    if (!url || !url.includes('firebasestorage.googleapis.com')) return;
-
-    // Extract the storage path from the URL
-    // URL shape: .../o/<encoded-path>?alt=media
-    const match = url.match(/\/o\/([^?]+)/);
-    if (!match) return;
-
-    const storagePath = decodeURIComponent(match[1]);
-    await storage.bucket().file(storagePath).delete({ ignoreNotFound: true });
-  } catch (_) {
-    // silently ignore — file may already be gone
-  }
+    if (!url) return;
+    if (url.includes('res.cloudinary.com')) {
+      // Extract public_id: strip version segment and file extension
+      // URL shape: https://res.cloudinary.com/<cloud>/image/upload/v123/<folder>/<id>.<ext>
+      const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-z]+$/i);
+      if (match) {
+        await cloudinary.uploader.destroy(match[1], { resource_type: 'image' });
+      }
+    }
+    // Old Firebase Storage URLs are silently skipped
+  } catch (_) { /* silently ignore */ }
 };
 
 module.exports = { upload, uploadToFirebase, deleteFromFirebase };
