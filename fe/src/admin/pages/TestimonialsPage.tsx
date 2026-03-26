@@ -3,7 +3,7 @@
  * Admin CRUD page for customer testimonials with avatar upload and star rating.
  */
 import React, { useState, useRef } from 'react';
-import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
+import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
   Plus, Trash2, RefreshCw, Search, Star, Edit2, User, Filter,
@@ -292,11 +292,11 @@ export const TestimonialsPage: React.FC = () => {
                         {item.status}
                       </StatusPill>
                     </TD>
-                    <TD $center>
+                    <TD $center onClick={e=>e.stopPropagation()}>
                       <PortalDropdown>
-                        <MenuItem onClick={() => openView(item)}><Edit2 size={13} /> View</MenuItem>
-                        <MenuItem onClick={() => openEdit(item)}><Edit2 size={13} /> Edit</MenuItem>
-                        <MenuItem $danger onClick={() => openDelete(item)}><Trash2 size={13} /> Delete</MenuItem>
+                        <MenuItem onClick={() => { closeAllDropdowns(); openView(item); }}><Edit2 size={13} /> View</MenuItem>
+                        <MenuItem onClick={() => { closeAllDropdowns(); openEdit(item); }}><Edit2 size={13} /> Edit</MenuItem>
+                        <MenuItem $danger onClick={() => { closeAllDropdowns(); openDelete(item); }}><Trash2 size={13} /> Delete</MenuItem>
                       </PortalDropdown>
                     </TD>
                   </TR>

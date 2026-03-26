@@ -3,10 +3,10 @@
 // Unified with ProductsPage visual style
 // ============================================================
 import React, { useState, useMemo, useCallback } from 'react';
-import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
+import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
-  Search, Trash2, Eye, Plus,
+  Search, Trash2, Eye, Plus, Edit2,
   Ban, CheckCircle, Mail, CreditCard,
   MessageSquare, FileText, MoreHorizontal,
   Star, BookOpen, RefreshCw, Download, Filter,
@@ -140,11 +140,11 @@ export const UsersPage: React.FC = () => {
                       <TD><StatusPill $variant={userStatusV(u.status) as any}>{u.status}</StatusPill></TD>
                       <TD style={{fontSize:'0.8rem'}}>{formatDate(u.createdAt)}</TD>
                       <TD style={{fontSize:'0.8rem'}}>{formatDate(u.lastLogin)}</TD>
-                      <TD $center>
+                      <TD $center onClick={e=>e.stopPropagation()}>
                         <PortalDropdown>
-                          <MenuItem onClick={()=>setSelected(u)}><Eye size={13}/> View</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns();setSelected(u);}}><Eye size={13}/> View</MenuItem>
                           <MenuItem onClick={()=>cycleBan(u)}>{u.status==='banned'?<><CheckCircle size={13}/> Reactivate</>:<><Ban size={13}/> Ban</>}</MenuItem>
-                          <MenuItem $danger onClick={()=>setDeleteId(u.uid)}><Trash2 size={13}/> Delete</MenuItem>
+                          <MenuItem $danger onClick={()=>{closeAllDropdowns();setDeleteId(u.uid);}}><Trash2 size={13}/> Delete</MenuItem>
                         </PortalDropdown>
                       </TD>
                     </TR>
@@ -280,9 +280,9 @@ export const OrdersPage: React.FC = () => {
                       <TD><StatusPill $variant={o.paymentStatus==='paid'?'success':'warning'}>{o.paymentStatus}</StatusPill></TD>
                       <TD style={{fontSize:'0.8rem'}}>{formatDate(o.createdAt)}</TD>
                       <TD $center><StatusPill $variant={orderStatusV(o.status) as any} style={{textTransform:'capitalize'}}>{o.status}</StatusPill></TD>
-                      <TD $center>
+                      <TD $center onClick={e=>e.stopPropagation()}>
                         <PortalDropdown>
-                          <MenuItem onClick={()=>setSelected(o)}><Eye size={13}/> View</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns();setSelected(o);}}><Eye size={13}/> View</MenuItem>
                           <MenuItem $danger onClick={()=>handleDelete(o.id)}><Trash2 size={13}/> Delete</MenuItem>
                         </PortalDropdown>
                       </TD>
@@ -504,7 +504,7 @@ export const ContactsPage: React.FC = () => {
                       <TD style={{fontSize:'0.8rem'}}>{formatDate(c.createdAt)}</TD>
                       <TD $center onClick={e=>e.stopPropagation()}>
                         <PortalDropdown>
-                          <MenuItem onClick={()=>setSelected(c)}><Eye size={13}/> View</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns();setSelected(c);}}><Eye size={13}/> View</MenuItem>
                           <MenuItem onClick={()=>changeStatus(c,'replied')}><CheckCircle size={13}/> Mark Replied</MenuItem>
                           <MenuItem onClick={()=>changeStatus(c,'archived')}><MoreHorizontal size={13}/> Archive</MenuItem>
                           <MenuItem $danger onClick={()=>handleDelete(c.id)}><Trash2 size={13}/> Delete</MenuItem>
@@ -552,7 +552,8 @@ export const ContactsPage: React.FC = () => {
 
 // ── BLOG PAGE ─────────────────────────────────────────────────────────────────
 const blogStatusV=(s:string)=>s==='published'?'success':s==='draft'?'warning':'neutral';
-const emptyBlog=()=>({title:'',slug:'',excerpt:'',content:'',author:'',category:'Nutrition',tags:[],status:'draft'});
+const BLOG_CATS = ['Nutrition','Recipes','Lifestyle','Gardening','Health','Tips'];
+const emptyBlog=()=>({title:'',slug:'',excerpt:'',content:'',author:'',category:'Nutrition',tags:[] as string[],status:'draft' as const});
 
 const UploadBox = styled.label`
   display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -563,15 +564,20 @@ const UploadBox = styled.label`
 const UploadHiddenInput = styled.input`display:none;`;
 const CoverPreview = styled.img`width:100%;max-height:140px;border-radius:8px;object-fit:cover;border:1px solid ${t.colors.border};`;
 
+type BlogModalMode = 'create' | 'edit' | 'view' | 'delete' | null;
+
 export const BlogsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const [search,      setSearch]      = useState('');
   const [statusF,     setStatusF]     = useState('all');
   const [page,        setPage]        = useState(1);
-  const [modalOpen,   setModalOpen]   = useState(false);
+  const [blogModal,   setBlogModal]   = useState<BlogModalMode>(null);
+  const [editTarget,  setEditTarget]  = useState<AdminBlogPost|null>(null);
+  const [deleteTarget,setDeleteTarget]= useState<AdminBlogPost|null>(null);
+  const [viewTarget,  setViewTarget]  = useState<AdminBlogPost|null>(null);
   const [saving,      setSaving]      = useState(false);
   const [toggling,    setToggling]    = useState<string|null>(null);
-  const [form,        setForm]        = useState<any>(emptyBlog());
+  const [form,        setForm]        = useState<ReturnType<typeof emptyBlog>>(emptyBlog());
   const [coverFile,   setCoverFile]   = useState<File|null>(null);
   const [coverPreview,setCoverPreview]= useState<string>('');
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -585,42 +591,110 @@ export const BlogsPage: React.FC = () => {
     setToggling(b.id);
     try {
       await adminBlogsApi.setStatus(b.id, next as AdminBlogPost['status']);
-      dispatch(showAdminToast({ message: '"' + b.title + '" set to ' + next, type: 'info' }));
+      dispatch(showAdminToast({ message: `"${b.title}" set to ${next}`, type: 'info' }));
       refetch();
     } catch(err) {
       dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Update failed', type: 'error' }));
     } finally { setToggling(null); }
   }, [dispatch, refetch, toggling]);
 
-  const setField=(k:string)=>(e:React.ChangeEvent<any>)=>setForm((f:any)=>({...f,[k]:e.target.value}));
-  const handleCoverChange=(e:React.ChangeEvent<HTMLInputElement>)=>{const f=e.target.files?.[0];if(!f)return;setCoverFile(f);const r=new FileReader();r.onload=ev=>setCoverPreview(ev.target?.result as string);r.readAsDataURL(f);};
-  const openModal=()=>{setForm(emptyBlog());setCoverFile(null);setCoverPreview('');setModalOpen(true);};
-  const closeModal=()=>{setModalOpen(false);setCoverFile(null);setCoverPreview('');};
+  const setField=(k:string)=>(e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>
+    setForm((f:any)=>({...f,[k]:e.target.value}));
+
+  const handleCoverChange=(e:React.ChangeEvent<HTMLInputElement>)=>{
+    const f=e.target.files?.[0];if(!f)return;
+    setCoverFile(f);
+    const r=new FileReader();r.onload=ev=>setCoverPreview(ev.target?.result as string);r.readAsDataURL(f);
+  };
+
+  const openCreate=()=>{
+    closeAllDropdowns();
+    setForm(emptyBlog());setCoverFile(null);setCoverPreview('');
+    setEditTarget(null);setBlogModal('create');
+  };
+
+  const openEdit=(b:AdminBlogPost)=>{
+    closeAllDropdowns();
+    setForm({
+      title:b.title,slug:b.slug||'',excerpt:b.excerpt||'',content:b.content||'',
+      author:b.author,category:b.category||'Nutrition',tags:b.tags||[],status:b.status as any,
+    });
+    // resolve cover image for preview
+    const coverUrl = b.cover || '';
+    setCoverPreview(coverUrl.startsWith('http') ? coverUrl : '');
+    setCoverFile(null);
+    setEditTarget(b);setBlogModal('edit');
+  };
+
+  const openView=(b:AdminBlogPost)=>{ closeAllDropdowns(); setViewTarget(b); setBlogModal('view'); };
+  const openDelete=(b:AdminBlogPost)=>{ closeAllDropdowns(); setDeleteTarget(b); setBlogModal('delete'); };
+
+  const closeModal=()=>{
+    setBlogModal(null);setEditTarget(null);setDeleteTarget(null);setViewTarget(null);
+    setCoverFile(null);setCoverPreview('');
+  };
 
   const handleSave = useCallback(async () => {
-    if (!form.title||!form.author){dispatch(showAdminToast({message:'Title and author are required',type:'error'}));return;}
+    if (!form.title||!form.author){
+      dispatch(showAdminToast({message:'Title and author are required',type:'error'}));return;
+    }
     setSaving(true);
     try {
       const fd=new FormData();
-      fd.append('title',form.title);fd.append('author',form.author);fd.append('category',form.category);
-      fd.append('status',form.status);fd.append('excerpt',form.excerpt||'');fd.append('content',form.content||'');
-      if(coverFile)fd.append('cover',coverFile);
-      await adminBlogsApi.create(fd);
-      dispatch(showAdminToast({message:`"${form.title}" created`,type:'success'}));
+      fd.append('title',form.title);
+      fd.append('author',form.author);
+      fd.append('category',form.category);
+      fd.append('status',form.status);
+      fd.append('excerpt',form.excerpt||'');
+      fd.append('content',form.content||'');
+      if(coverFile) fd.append('cover',coverFile);
+
+      if(blogModal==='edit' && editTarget){
+        await adminBlogsApi.update(editTarget.id, fd);
+        dispatch(showAdminToast({message:`"${form.title}" updated`,type:'success'}));
+      } else {
+        await adminBlogsApi.create(fd);
+        dispatch(showAdminToast({message:`"${form.title}" created`,type:'success'}));
+      }
       closeModal();refetch();
-    } catch(err){dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Failed to create post',type:'error'}));}
-    finally{setSaving(false);}
-  },[dispatch,form,coverFile,refetch]);
+    } catch(err){
+      dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Failed to save post',type:'error'}));
+    } finally{setSaving(false);}
+  },[dispatch,form,coverFile,blogModal,editTarget,refetch]);
 
-  const publish=useCallback(async(b:AdminBlogPost)=>{
-    try{await adminBlogsApi.setStatus(b.id,'published');dispatch(showAdminToast({message:`"${b.title}" published`,type:'success'}));refetch();}
-    catch(err){dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Failed to publish',type:'error'}));}
-  },[dispatch,refetch]);
+  const handleDelete = useCallback(async () => {
+    if(!deleteTarget) return;
+    setSaving(true);
+    try{
+      await adminBlogsApi.delete(deleteTarget.id);
+      dispatch(showAdminToast({message:`"${deleteTarget.title}" deleted`,type:'warning'}));
+      closeModal();refetch();
+    } catch(err){
+      dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Delete failed',type:'error'}));
+    } finally{setSaving(false);}
+  },[dispatch,deleteTarget,refetch]);
 
-  const remove=useCallback(async(b:AdminBlogPost)=>{
-    try{await adminBlogsApi.delete(b.id);dispatch(showAdminToast({message:`"${b.title}" deleted`,type:'warning'}));refetch();}
-    catch(err){dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Delete failed',type:'error'}));}
-  },[dispatch,refetch]);
+  const removeCover=()=>{setCoverFile(null);setCoverPreview('');if(fileRef.current)fileRef.current.value='';};
+
+  /* ── shared cover upload UI ── */
+  const CoverUploadUI = (
+    <FormGroup>
+      <FormLabel>Cover Image</FormLabel>
+      {coverPreview?(
+        <div style={{position:'relative'}}>
+          <CoverPreview src={coverPreview} alt="preview"/>
+          <button onClick={removeCover} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.55)',border:'none',borderRadius:5,color:'white',cursor:'pointer',padding:'2px 8px',fontSize:11}}>Remove</button>
+        </div>
+      ):(
+        <UploadBox>
+          <UploadHiddenInput ref={fileRef} type="file" accept="image/*" onChange={handleCoverChange}/>
+          <FileText size={22} color={t.colors.textMuted}/>
+          <span style={{fontSize:'0.8rem',color:t.colors.textMuted}}>Click to upload cover image</span>
+          <span style={{fontSize:'0.72rem',color:t.colors.textMuted}}>PNG, JPG, WEBP up to 5MB</span>
+        </UploadBox>
+      )}
+    </FormGroup>
+  );
 
   return (
     <>
@@ -631,7 +705,7 @@ export const BlogsPage: React.FC = () => {
         </div>
         <HeaderBtns>
           <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16}/></IconBtn>
-          <AdminBtn $variant="primary" onClick={openModal}><Plus size={15}/> New Post</AdminBtn>
+          <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15}/> New Post</AdminBtn>
         </HeaderBtns>
       </PageHeader>
 
@@ -647,85 +721,204 @@ export const BlogsPage: React.FC = () => {
               <Filter size={14}/>
               <select style={{border:'none',outline:'none',background:'transparent',fontSize:'0.875rem',cursor:'pointer',color:t.colors.textSecondary}} value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}}>
                 <option value="all">All Statuses</option>
-                <option value="published">Published</option><option value="draft">Draft</option><option value="archived">Archived</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
               </select>
             </FilterBtn>
           </div>
         </div>
+
         {error&&<div style={{color:t.colors.danger,padding:'12px 16px',background:'#fff5f5'}}>{error}</div>}
+
         {loading
           ? <div style={{padding:40,textAlign:'center',color:t.colors.textMuted}}>Loading posts…</div>
           : (blogs??[]).length===0
             ? <EmptyState><BookOpen size={40} strokeWidth={1} color={t.colors.textMuted}/><p style={{margin:'8px 0 0',color:t.colors.textMuted,fontSize:'0.875rem'}}>No posts found</p></EmptyState>
             : <TableInner><Tbl>
                 <THead><tr>
-                  <TH>Title</TH><TH>Author</TH><TH>Category</TH>
-                  <TH $center>Status</TH><TH $center>Views</TH><TH>Updated</TH><TH $right>Actions</TH>
+                  <TH style={{width:56}}>Cover</TH><TH>Title</TH><TH>Author</TH><TH>Category</TH>
+                  <TH $center>Status</TH><TH $center>Views</TH><TH>Updated</TH><TH $center style={{width:60}}></TH>
                 </tr></THead>
                 <tbody>
                   {(blogs??[]).map(b=>(
                     <TR key={b.id}>
-                      <TD style={{maxWidth:280}}><div style={{fontWeight:600,color:t.colors.textPrimary,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.title}</div><div style={{fontSize:'0.75rem',color:t.colors.textMuted,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.excerpt}</div></TD>
+                      <TD style={{padding:'10px 8px 10px 16px'}}>
+                        {b.cover && b.cover.startsWith('http')
+                          ? <img src={b.cover} alt={b.title} style={{width:44,height:44,borderRadius:8,objectFit:'cover',border:`1px solid ${t.colors.border}`,display:'block'}} onError={e=>{(e.target as HTMLImageElement).style.display='none';}}/>
+                          : <div style={{width:44,height:44,borderRadius:8,background:t.colors.surfaceAlt,border:`1px solid ${t.colors.border}`,display:'flex',alignItems:'center',justifyContent:'center'}}><BookOpen size={18} color={t.colors.textMuted}/></div>
+                        }
+                      </TD>
+                      <TD style={{maxWidth:260}}>
+                        <div style={{fontWeight:600,color:t.colors.textPrimary,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.title}</div>
+                        <div style={{fontSize:'0.75rem',color:t.colors.textMuted,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.excerpt}</div>
+                      </TD>
                       <TD style={{fontWeight:500,color:t.colors.textPrimary}}>{b.author}</TD>
                       <TD>{b.category}</TD>
-                      <TD $center><StatusPill
-                        $variant={blogStatusV(b.status) as any}
-                        style={{ cursor: toggling===b.id?'wait':'pointer', userSelect:'none', opacity: toggling===b.id?0.6:1 }}
-                        title="Click to toggle published / draft"
-                        onClick={()=>toggleBlogStatus(b)}
-                      >{b.status}</StatusPill></TD>
-                      <TD $center><div style={{display:'flex',alignItems:'center',gap:4,justifyContent:'center'}}><Star size={12} style={{color:'#FFC107'}}/>{b.views?.toLocaleString()}</div></TD>
-                      <TD style={{fontSize:'0.8rem'}}>{formatDate(b.updatedAt)}</TD>
-                      <TD $right>
-                        <div style={{display:'flex',gap:6,justifyContent:'flex-end'}}>
-                          {b.status!=='published'&&<AdminBtn $variant="success" $size="sm" onClick={()=>publish(b)}>Publish</AdminBtn>}
-                          <IconBtn $variant="danger" title="Delete" onClick={()=>remove(b)}><Trash2 size={14}/></IconBtn>
+                      <TD $center>
+                        <StatusPill
+                          $variant={blogStatusV(b.status) as any}
+                          style={{cursor:toggling===b.id?'wait':'pointer',userSelect:'none',opacity:toggling===b.id?0.6:1}}
+                          title="Click to toggle published / draft"
+                          onClick={()=>toggleBlogStatus(b)}
+                        >{b.status}</StatusPill>
+                      </TD>
+                      <TD $center>
+                        <div style={{display:'flex',alignItems:'center',gap:4,justifyContent:'center'}}>
+                          <Star size={12} style={{color:'#FFC107'}}/>{b.views?.toLocaleString()||0}
                         </div>
+                      </TD>
+                      <TD style={{fontSize:'0.8rem'}}>{formatDate(b.updatedAt)}</TD>
+                      <TD $center onClick={e=>e.stopPropagation()}>
+                        <PortalDropdown>
+                          <MenuItem onClick={()=>openView(b)}><Eye size={13}/> View</MenuItem>
+                          <MenuItem onClick={()=>openEdit(b)}><Edit2 size={13}/> Edit</MenuItem>
+                          <MenuItem $danger onClick={()=>openDelete(b)}><Trash2 size={13}/> Delete</MenuItem>
+                        </PortalDropdown>
                       </TD>
                     </TR>
                   ))}
                 </tbody>
               </Tbl></TableInner>
         }
+
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderTop:`1px solid ${t.colors.border}`,flexWrap:'wrap',gap:8}}>
-            <span style={{fontSize:'0.8125rem',color:t.colors.textMuted}}>{pagination?.total??0} posts</span>
-            <PageBtns>
-              <PageBtn disabled={page===1} onClick={()=>setPage(p=>p-1)}>‹</PageBtn>
-              {Array.from({length:pagination?.totalPages??1},(_,i)=><PageBtn key={i+1} $active={page===i+1} onClick={()=>setPage(i+1)}>{i+1}</PageBtn>)}
-              <PageBtn disabled={page===(pagination?.totalPages??1)} onClick={()=>setPage(p=>p+1)}>›</PageBtn>
-            </PageBtns>
-          </div>
+          <span style={{fontSize:'0.8125rem',color:t.colors.textMuted}}>{pagination?.total??0} posts</span>
+          <PageBtns>
+            <PageBtn disabled={page===1} onClick={()=>setPage(p=>p-1)}>‹</PageBtn>
+            {Array.from({length:pagination?.totalPages??1},(_,i)=><PageBtn key={i+1} $active={page===i+1} onClick={()=>setPage(i+1)}>{i+1}</PageBtn>)}
+            <PageBtn disabled={page===(pagination?.totalPages??1)} onClick={()=>setPage(p=>p+1)}>›</PageBtn>
+          </PageBtns>
+        </div>
       </TableWrap>
-      {modalOpen&&<ModalBackdrop onClick={closeModal}><ModalBox $width="660px" onClick={e=>e.stopPropagation()}>
-        <ModalHeader><span style={{fontWeight:700,fontSize:'1rem',color:t.colors.textPrimary}}>New Blog Post</span><IconBtn onClick={closeModal}>✕</IconBtn></ModalHeader>
-        <ModalBody>
-          <FormGrid $cols={2}>
-            <FormGroup $span={2}><FormLabel>Title *</FormLabel><AdminInput value={form.title} onChange={setField('title')} placeholder="Post title"/></FormGroup>
-            <FormGroup><FormLabel>Author *</FormLabel><AdminInput value={form.author} onChange={setField('author')} placeholder="Author name"/></FormGroup>
-            <FormGroup><FormLabel>Category</FormLabel><AdminSelect value={form.category} onChange={setField('category')}>{['Nutrition','Recipes','Lifestyle','Gardening','Health','Tips'].map(c=><option key={c}>{c}</option>)}</AdminSelect></FormGroup>
-            <FormGroup><FormLabel>Status</FormLabel><AdminSelect value={form.status} onChange={setField('status')}><option value="draft">Draft</option><option value="published">Published</option></AdminSelect></FormGroup>
-            <FormGroup>
-              <FormLabel>Cover Image</FormLabel>
-              {coverPreview?(
-                <div style={{position:'relative'}}>
-                  <CoverPreview src={coverPreview} alt="preview"/>
-                  <button onClick={()=>{setCoverFile(null);setCoverPreview('');if(fileRef.current)fileRef.current.value='';}} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.55)',border:'none',borderRadius:5,color:'white',cursor:'pointer',padding:'2px 8px',fontSize:11}}>Remove</button>
-                </div>
-              ):(
-                <UploadBox>
-                  <UploadHiddenInput ref={fileRef} type="file" accept="image/*" onChange={handleCoverChange}/>
-                  <FileText size={22} color={t.colors.textMuted}/>
-                  <span style={{fontSize:'0.8rem',color:t.colors.textMuted}}>Click to upload cover image</span>
-                  <span style={{fontSize:'0.72rem',color:t.colors.textMuted}}>PNG, JPG, WEBP up to 5MB</span>
-                </UploadBox>
+
+      {/* ── Create / Edit Modal ── */}
+      {(blogModal==='create'||blogModal==='edit')&&(
+        <ModalBackdrop onClick={closeModal}>
+          <ModalBox $width="680px" onClick={e=>e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{fontWeight:700,fontSize:'1rem',color:t.colors.textPrimary}}>
+                {blogModal==='edit'?`Edit "${editTarget?.title}"`:'New Blog Post'}
+              </span>
+              <IconBtn onClick={closeModal}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <FormGrid $cols={2}>
+                <FormGroup $span={2}>
+                  <FormLabel>Title *</FormLabel>
+                  <AdminInput value={form.title} onChange={setField('title')} placeholder="Post title" autoFocus/>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Author *</FormLabel>
+                  <AdminInput value={form.author} onChange={setField('author')} placeholder="Author name"/>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Category</FormLabel>
+                  <AdminSelect value={form.category} onChange={setField('category')}>
+                    {BLOG_CATS.map(c=><option key={c}>{c}</option>)}
+                  </AdminSelect>
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Status</FormLabel>
+                  <AdminSelect value={form.status} onChange={setField('status')}>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </AdminSelect>
+                </FormGroup>
+                {CoverUploadUI}
+                <FormGroup $span={2}>
+                  <FormLabel>Excerpt</FormLabel>
+                  <AdminTextarea style={{minHeight:70}} value={form.excerpt} onChange={setField('excerpt')} placeholder="Short summary…"/>
+                </FormGroup>
+                <FormGroup $span={2}>
+                  <FormLabel>Content</FormLabel>
+                  <AdminTextarea style={{minHeight:140}} value={form.content} onChange={setField('content')} placeholder="Full article content…"/>
+                </FormGroup>
+              </FormGrid>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>Cancel</AdminBtn>
+              <AdminBtn $variant="primary" onClick={handleSave} disabled={saving}>
+                {saving?'Saving…':blogModal==='edit'?'Save Changes':'Create Post'}
+              </AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
+
+      {/* ── View Modal ── */}
+      {blogModal==='view'&&viewTarget&&(
+        <ModalBackdrop onClick={closeModal}>
+          <ModalBox $width="600px" onClick={e=>e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{fontWeight:700,fontSize:'1rem',color:t.colors.textPrimary}}>Blog Post Details</span>
+              <IconBtn onClick={closeModal}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody style={{display:'flex',flexDirection:'column',gap:14}}>
+              {viewTarget.cover&&viewTarget.cover.startsWith('http')&&(
+                <img src={viewTarget.cover} alt={viewTarget.title}
+                  style={{width:'100%',maxHeight:160,objectFit:'cover',borderRadius:8,border:`1px solid ${t.colors.border}`}}/>
               )}
-            </FormGroup>
-            <FormGroup $span={2}><FormLabel>Excerpt</FormLabel><AdminTextarea style={{minHeight:70}} value={form.excerpt} onChange={setField('excerpt')} placeholder="Short summary…"/></FormGroup>
-            <FormGroup $span={2}><FormLabel>Content</FormLabel><AdminTextarea style={{minHeight:120}} value={form.content} onChange={setField('content')} placeholder="Full article content…"/></FormGroup>
-          </FormGrid>
-        </ModalBody>
-        <ModalFooter><AdminBtn $variant="ghost" onClick={closeModal}>Cancel</AdminBtn><AdminBtn $variant="primary" onClick={handleSave} disabled={saving}>{saving?'Saving…':'Create Post'}</AdminBtn></ModalFooter>
-      </ModalBox></ModalBackdrop>}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                {([
+                  ['Title',    viewTarget.title],
+                  ['Author',   viewTarget.author],
+                  ['Category', viewTarget.category||'—'],
+                  ['Status',   viewTarget.status],
+                  ['Views',    String(viewTarget.views||0)],
+                  ['Updated',  formatDate(viewTarget.updatedAt)],
+                ] as [string,string][]).map(([label,val])=>(
+                  <div key={label}>
+                    <div style={{fontSize:'0.75rem',color:t.colors.textMuted,marginBottom:2}}>{label}</div>
+                    <div style={{fontSize:'0.875rem',fontWeight:500,color:t.colors.textPrimary,textTransform:'capitalize'}}>{val}</div>
+                  </div>
+                ))}
+              </div>
+              {viewTarget.excerpt&&(
+                <div>
+                  <div style={{fontSize:'0.75rem',color:t.colors.textMuted,marginBottom:4}}>Excerpt</div>
+                  <div style={{fontSize:'0.875rem',color:t.colors.textSecondary,lineHeight:1.6}}>{viewTarget.excerpt}</div>
+                </div>
+              )}
+              {viewTarget.content&&(
+                <div>
+                  <div style={{fontSize:'0.75rem',color:t.colors.textMuted,marginBottom:4}}>Content Preview</div>
+                  <div style={{fontSize:'0.875rem',color:t.colors.textSecondary,lineHeight:1.6,maxHeight:120,overflow:'hidden',maskImage:'linear-gradient(to bottom,black 60%,transparent 100%)',WebkitMaskImage:'linear-gradient(to bottom,black 60%,transparent 100%)'}}>{viewTarget.content}</div>
+                </div>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={closeModal}>Close</AdminBtn>
+              <AdminBtn $variant="primary" onClick={()=>{closeModal();openEdit(viewTarget);}}>Edit Post</AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
+
+      {/* ── Delete Confirm ── */}
+      {blogModal==='delete'&&deleteTarget&&(
+        <ModalBackdrop onClick={closeModal}>
+          <ModalBox $width="420px" onClick={e=>e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{fontWeight:700,fontSize:'1rem',color:t.colors.danger}}>Delete Post</span>
+              <IconBtn onClick={closeModal}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{color:t.colors.textSecondary,fontSize:'0.875rem',lineHeight:1.6}}>
+                Are you sure you want to delete <strong>"{deleteTarget.title}"</strong>? This cannot be undone.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>Cancel</AdminBtn>
+              <AdminBtn $variant="danger" onClick={handleDelete} disabled={saving}
+                style={{background:t.colors.danger,color:'white'}}>
+                {saving?'Deleting…':'Delete Post'}
+              </AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
     </>
   );
 };

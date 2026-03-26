@@ -14,10 +14,15 @@ import { MoreHorizontal } from 'lucide-react';
 /* ── Global singleton event ──────────────────────────────────
    When any dropdown opens, it fires 'dropdown:open' with its id.
    All other dropdowns listen and close themselves.              */
-const OPEN_EVENT = 'vf:dropdown:open';
+const OPEN_EVENT  = 'vf:dropdown:open';
+const CLOSE_EVENT = 'vf:dropdown:closeall';
 
 const broadcastOpen = (id: string) =>
   document.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: id }));
+
+/** Call this whenever a modal opens so every open dropdown closes. */
+export const closeAllDropdowns = () =>
+  document.dispatchEvent(new CustomEvent(CLOSE_EVENT));
 
 /* ── Styled ─────────────────────────────────────────────────── */
 const TriggerBtn = styled.button`
@@ -58,13 +63,18 @@ export const PortalDropdown: React.FC<PortalDropdownProps> = ({ children }) => {
   const [pos,  setPos]  = useState({ top: 0, right: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  /* Close when another dropdown broadcasts its open event */
+  /* Close when another dropdown broadcasts its open event OR a global close-all fires */
   useEffect(() => {
     const onOtherOpen = (e: Event) => {
       if ((e as CustomEvent).detail !== id) setOpen(false);
     };
+    const onCloseAll = () => setOpen(false);
     document.addEventListener(OPEN_EVENT, onOtherOpen);
-    return () => document.removeEventListener(OPEN_EVENT, onOtherOpen);
+    document.addEventListener(CLOSE_EVENT, onCloseAll);
+    return () => {
+      document.removeEventListener(OPEN_EVENT, onOtherOpen);
+      document.removeEventListener(CLOSE_EVENT, onCloseAll);
+    };
   }, [id]);
 
   /* Close on outside click or scroll */

@@ -12,7 +12,8 @@ import { adminAuthApi } from '../api/admin';
 
 // ── Lazy pages ────────────────────────────────────────────────
 const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const ProductsPage     = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const ProductsPage           = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const AdminProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then(m => ({ default: m.AdminProductDetailPage })));
 const CategoriesPage   = lazy(() => import('./pages/CategoriesPage').then(m => ({ default: m.CategoriesPage })));
 const SlidersPage      = lazy(() => import('./pages/SlidersPage').then(m => ({ default: m.SlidersPage })));
 const TestimonialsPage = lazy(() => import('./pages/TestimonialsPage').then(m => ({ default: m.TestimonialsPage })));
@@ -156,6 +157,7 @@ const AdminRouterInner: React.FC = () => {
       <Route path="/" element={<RequireAuth><AdminLayout /></RequireAuth>}>
         <Route index           element={<Suspense fallback={<AdminLoader />}><DashboardPage /></Suspense>} />
         <Route path="products"      element={<Suspense fallback={<AdminLoader />}><ProductsPage /></Suspense>} />
+        <Route path="products/:id"  element={<Suspense fallback={<AdminLoader />}><AdminProductDetailPage /></Suspense>} />
         <Route path="categories"    element={<Suspense fallback={<AdminLoader />}><CategoriesPage /></Suspense>} />
         <Route path="sliders"       element={<Suspense fallback={<AdminLoader />}><SlidersPage /></Suspense>} />
         <Route path="testimonials"  element={<Suspense fallback={<AdminLoader />}><TestimonialsPage /></Suspense>} />

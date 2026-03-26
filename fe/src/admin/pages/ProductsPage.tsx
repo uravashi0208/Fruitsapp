@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
+import { useNavigate } from 'react-router-dom';
+import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
   Plus, Search, Trash2, Package, RefreshCw, Edit2, Eye, Download, Filter, Upload,
@@ -114,6 +115,7 @@ const emptyForm = (): Partial<AdminProduct> & { imageFile?: File | null } => ({
 
 export const ProductsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+  const navigate = useNavigate();
   const { data: categoriesData, loading: catsLoading, refetch: refetchCats } = useAdminCategories();
   // Only show active categories in filters and form dropdowns
   const categories = (categoriesData ?? []).filter(c => c.status === 'active');
@@ -151,12 +153,14 @@ export const ProductsPage: React.FC = () => {
   const toggleOne = (id: string) => setSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const openAdd = () => {
+    closeAllDropdowns();
     setEditTarget(null);
     setForm({ ...emptyForm(), category: categories[0]?.name ?? '' });
     setImagePreview('');
     setModalOpen(true);
   };
   const openEdit = (p: AdminProduct) => {
+    closeAllDropdowns();
     setEditTarget(p);
     setForm({ ...p, imageFile: null });
     const rawUrl = p.image || p.thumbnail || '';
@@ -200,9 +204,7 @@ export const ProductsPage: React.FC = () => {
             arr.forEach((tag:string) => fd.append('tags', tag));
             return;
           }
-            // Booleans must be sent as "true"/"false" strings in FormData
-          // The backend Joi schema uses .truthy('true').falsy('false') to parse them correctly
-          fd.append(k, typeof v === 'boolean' ? String(v) : String(v));
+          fd.append(k, String(v));
         });
         // Always send badge explicitly so an empty value clears it in the database
         if (!fd.has('badge')) fd.append('badge', '');
@@ -216,7 +218,7 @@ export const ProductsPage: React.FC = () => {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
           body: fd,
         });
-        if (!res.ok) throw new Error((await res.json()).message || 'Upload failed');
+        if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
       } else {
         // Ensure badge is always sent so an empty value clears it in the database
         const payload = { ...rest, badge: rest.badge ?? '' };
@@ -411,7 +413,7 @@ export const ProductsPage: React.FC = () => {
                   <TD>{formatDate(p.createdAt)}</TD>
                   <TD $center onClick={e => e.stopPropagation()}>
                     <PortalDropdown>
-                      <MenuItem onClick={() => setViewId(p.id)}><Eye size={14} /> View More</MenuItem>
+                      <MenuItem onClick={() => { closeAllDropdowns(); navigate(`/admin/products/${p.id}`); }}><Eye size={14} /> View More</MenuItem>
                       <MenuItem onClick={() => openEdit(p)}><Edit2 size={14} /> Edit</MenuItem>
                       <MenuItem $danger onClick={() => setDeleteId(p.id)}><Trash2 size={14} /> Delete</MenuItem>
                     </PortalDropdown>

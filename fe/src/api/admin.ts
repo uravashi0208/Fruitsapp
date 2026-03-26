@@ -499,3 +499,29 @@ export const adminNewsletterApi = {
   send: (body: { subject: string; message: string }) =>
     api.post<Ok<NewsletterSendResult>>('/api/admin/newsletter/send', body),
 };
+
+// ─── Admin Reviews ────────────────────────────────────────────
+export interface AdminReview {
+  id:        string;
+  productId: string;
+  userId:    string | null;
+  userName:  string;
+  isGuest:   boolean;
+  rating:    number;
+  comment:   string;
+  status:    string;
+  createdAt: string;
+}
+
+export const adminReviewsApi = {
+  list: (productId: string, params: { page?: number; limit?: number } = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+    ).toString();
+    return api.get<{ success: boolean; data: AdminReview[]; pagination: { total: number; page: number; limit: number } }>(
+      `/api/admin/products/${productId}/reviews${qs ? `?${qs}` : ''}`
+    );
+  },
+  delete: (id: string) =>
+    api.delete<{ success: boolean; message: string }>(`/api/admin/reviews/${id}`),
+};

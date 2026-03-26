@@ -149,6 +149,39 @@ export interface ApiBlogPost {
   createdAt:   string;
 }
 
+// ─── Reviews ──────────────────────────────────────────────────
+export interface ApiReview {
+  id:        string;
+  productId: string;
+  userId:    string | null;
+  userName:  string;
+  isGuest:   boolean;
+  rating:    number;
+  comment:   string;
+  status:    string;
+  createdAt: string;
+}
+
+export interface ReviewsListResponse {
+  success: boolean;
+  data:    ApiReview[];
+  pagination: { total: number; page: number; limit: number };
+}
+
+export const reviewsApi = {
+  list: (productId: string, params: { page?: number; limit?: number } = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))
+    ).toString();
+    return api.get<ReviewsListResponse>(
+      `/api/products/${productId}/reviews${qs ? `?${qs}` : ''}`,
+      { noAuth: true }
+    );
+  },
+  submit: (productId: string, body: { rating: number; comment: string; guestName?: string }) =>
+    api.post<ApiOk<ApiReview>>(`/api/products/${productId}/reviews`, body, { noAuth: true }),
+};
+
 export const blogsApi = {
   list: (params: { page?: number; limit?: number; tag?: string; search?: string } = {}) => {
     const qs = new URLSearchParams(

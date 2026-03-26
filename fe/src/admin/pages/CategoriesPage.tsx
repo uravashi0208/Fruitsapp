@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
+import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
   Plus, Trash2, Tag, Edit2, Eye, Download, Filter, Search,
@@ -257,9 +257,9 @@ export const CategoriesPage: React.FC = () => {
                   </TD>
                   <TD $right onClick={e => e.stopPropagation()}>
                     <PortalDropdown>
-                      <MenuItem onClick={() => setViewCat(c)}><Eye size={14} /> View</MenuItem>
-                      <MenuItem onClick={() => openEdit(c)}><Edit2 size={14} /> Edit</MenuItem>
-                      <MenuItem $danger onClick={() => setDeleteId(c.id)}><Trash2 size={14} /> Delete</MenuItem>
+                      <MenuItem onClick={() => { closeAllDropdowns(); setViewCat(c); }}><Eye size={14} /> View</MenuItem>
+                      <MenuItem onClick={() => { closeAllDropdowns(); openEdit(c); }}><Edit2 size={14} /> Edit</MenuItem>
+                      <MenuItem $danger onClick={() => { closeAllDropdowns(); setDeleteId(c.id); }}><Trash2 size={14} /> Delete</MenuItem>
                     </PortalDropdown>
                   </TD>
                 </TR>

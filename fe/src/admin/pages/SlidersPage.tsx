@@ -3,7 +3,7 @@
  * Admin CRUD page for hero/banner sliders with image upload.
  */
 import React, { useState, useRef, useCallback } from 'react';
-import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
+import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
   Plus, Trash2, RefreshCw, Search, Edit2, Image as ImageIcon, Filter,
@@ -140,15 +140,17 @@ export const SlidersPage: React.FC = () => {
 
   /* ── Modal helpers ── */
   const openCreate = () => {
+    closeAllDropdowns();
     setSelected(null); setForm(emptyForm()); setImgFile(null); setImgPreview(''); setMode('create');
   };
   const openEdit = (s: AdminSlider) => {
+    closeAllDropdowns();
     setSelected(s);
     setForm({ title: s.title, subtitle: s.subtitle, buttonText: s.buttonText, buttonLink: s.buttonLink, sortOrder: String(s.sortOrder), status: s.status });
     setImgFile(null); setImgPreview(resolveImage(s.image)); setMode('edit');
   };
-  const openView   = (s: AdminSlider) => { setSelected(s); setMode('view'); };
-  const openDelete = (s: AdminSlider) => { setSelected(s); setMode('delete'); };
+  const openView   = (s: AdminSlider) => { closeAllDropdowns(); setSelected(s); setMode('view'); };
+  const openDelete = (s: AdminSlider) => { closeAllDropdowns(); setSelected(s); setMode('delete'); };
   const closeModal = () => { setMode(null); setSelected(null); };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

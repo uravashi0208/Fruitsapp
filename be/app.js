@@ -98,6 +98,7 @@ const { publicRouter: contPublic,  adminRouter: contAdmin  }   = require('./rout
 const { userRouter: orderUser,     adminRouter: orderAdmin }   = require('./routes/orders');
 const { userRouter: wishUser,      adminRouter: wishAdmin  }   = require('./routes/wishlist');
 const cardsRouter     = require('./routes/cards');
+const { publicRouter: reviewPublic, adminRouter: reviewAdmin } = require('./routes/reviews');
 const dashboardRouter = require('./routes/dashboard');
 
 const app = express();
@@ -136,6 +137,7 @@ app.use('/api/settings',     settPublic);
 app.use('/api/sliders',      sliderPublic);
 app.use('/api/categories',   catPublic);
 app.use('/api/products',     prodPublic);
+app.use('/api/products/:productId/reviews', reviewPublic);
 app.use('/api/testimonials', testPublic);
 app.use('/api/newsletter',   newsPublic);
 app.use('/api/blogs',        blogPublic);
@@ -166,6 +168,7 @@ app.use('/api/admin/users',        usersRouter);
 app.use('/api/admin/admins',       adminsRouter);
 app.use('/api/admin/cards',        cardsRouter);
 app.use('/api/admin/wishlist',     wishAdmin);
+app.use('/api/admin',             reviewAdmin);
 
 // ── Error handling ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);
