@@ -16,7 +16,7 @@
  *   przelewy24 | blik | cod
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import {
@@ -40,7 +40,7 @@ import {
 } from '../styles/shared';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 import {
-  ordersApi, stripeApi, OrderPayment, PlaceOrderBilling,
+  ordersApi, stripeApi, OrderPayment,
 } from '../api/storefront';
 import { ApiError } from '../api/client';
 
@@ -51,15 +51,6 @@ const stripePromise = loadStripe(
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 const spin        = keyframes`to { transform: rotate(360deg); }`;
-const fadeSlideIn = keyframes`
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-const pulseGlow = keyframes`
-  0%   { box-shadow: 0 0 0 0 rgba(130,174,70,0.45); }
-  60%  { box-shadow: 0 0 0 8px rgba(130,174,70,0); }
-  100% { box-shadow: 0 0 0 0 rgba(130,174,70,0); }
-`;
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 const Layout = styled.div`
@@ -160,14 +151,6 @@ const InfoBox       = styled.div`
 const PayGroupTitle = styled.p`
   font-size: 10px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .7px; color: #bbb; margin: 14px 0 6px;
-`;
-const ExtraFields = styled.div`
-  margin-top: 4px; margin-bottom: 10px;
-  padding: 16px;
-  background: #f9fbf7;
-  border: 2px solid ${theme.colors.primary};
-  border-radius: 6px;
-  animation: ${fadeSlideIn} 0.25s ease, ${pulseGlow} 0.7s ease 0.1s;
 `;
 const SpinIcon = styled(Loader)`animation: ${spin} 0.8s linear infinite;`;
 
@@ -365,6 +348,7 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
         method:        payMethod,
         status:        (isCod ? 'pending' : 'paid') as any,
         transactionId: stripePaymentIntentId,
+        orderPaymentStatus:stripeStatus
       };
 
       const res = await ordersApi.place({

@@ -33,6 +33,7 @@ export interface CardDetails {
 export interface OrderPayment {
   method:           PaymentMethod;
   status?:          PaymentStatus;
+  orderPaymentStatus?:string;
 
   // Card / Apple Pay / Google Pay
   cardDetails?:     CardDetails;
