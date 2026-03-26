@@ -205,7 +205,6 @@ export const OrdersPage: React.FC = () => {
   const [statusF,  setStatusF]  = useState('all');
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<Order|null>(null);
-  const [openDrop, setOpenDrop] = useState<string|null>(null);
 
   const query = useMemo(()=>({page, limit:PAGE_SIZE, search, status: statusF==='all'?'':statusF}), [page,search,statusF]);
   const { data:orders, pagination, loading, error, refetch } = useAdminOrders(query);
@@ -223,7 +222,7 @@ export const OrdersPage: React.FC = () => {
     try {
       await adminOrdersApi.delete(id);
       dispatch(showAdminToast({message:'Order deleted', type:'warning'}));
-      setOpenDrop(null); refetch();
+      refetch();
     } catch(err) { dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Delete failed', type:'error'})); }
   }, [dispatch, refetch]);
 
