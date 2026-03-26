@@ -100,6 +100,7 @@ const { userRouter: wishUser,      adminRouter: wishAdmin  }   = require('./rout
 const cardsRouter     = require('./routes/cards');
 const { publicRouter: reviewPublic, adminRouter: reviewAdmin } = require('./routes/reviews');
 const dashboardRouter = require('./routes/dashboard');
+const stripeRouter    = require('./routes/stripe');
 
 const app = express();
 
@@ -145,6 +146,9 @@ app.use('/api/contact',      contPublic);
 
 // ── User Auth ─────────────────────────────────────────────────────────────────
 app.use('/api/auth', userAuthRouter);
+
+// ── Stripe ────────────────────────────────────────────────────────────────────
+app.use('/api/stripe', stripeRouter);
 
 // ── User Protected ────────────────────────────────────────────────────────────
 app.use('/api/wishlist', wishUser);

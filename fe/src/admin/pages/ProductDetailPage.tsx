@@ -11,7 +11,7 @@ import styled from 'styled-components';
 import { ArrowLeft, Star, Trash2, Package, Tag, BarChart2, Calendar, MessageSquare } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill, PageBtns, PageBtn, SectionTitle, EmptyState,
+  AdminCard, IconBtn, StatusPill, PageBtns, PageBtn, SectionTitle, EmptyState,
 } from '../styles/adminShared';
 import { adminProductsApi, adminReviewsApi, AdminReview } from '../../api/admin';
 import { AdminProduct } from '../types';
@@ -324,7 +324,12 @@ export const AdminProductDetailPage: React.FC = () => {
             : <HeroThumbPh><Package size={24} color={t.colors.textMuted} /></HeroThumbPh>
           }
           <div>
-            <HeroName>{product.name}</HeroName>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <HeroName>{product.name}</HeroName>
+                <StatusPill $variant={product.status === 'active' ? 'success' : product.status === 'draft' ? 'warning' : 'neutral'}>
+                    {product.status}
+                </StatusPill>
+            </div>
             <HeroSku>SKU: {product.sku} &nbsp;</HeroSku>
           </div>
         </ProductHero>
@@ -332,9 +337,6 @@ export const AdminProductDetailPage: React.FC = () => {
           <StatusPill $variant={product.status === 'active' ? 'success' : product.status === 'draft' ? 'warning' : 'neutral'}>
             {product.status}
           </StatusPill>
-          <AdminBtn $variant="primary" $size="sm" onClick={() => navigate('/admin/products', { state: { editId: product.id } })}>
-            Edit Product
-          </AdminBtn>
         </div>
       </PageHeader>
 

@@ -25,4 +25,7 @@ module.exports = {
   MAIL_USER:  process.env.MAIL_USER  || '',
   MAIL_PASS:  process.env.MAIL_PASS  || '',
   MAIL_FROM:  process.env.MAIL_FROM  || '',
+  // Stripe
+  STRIPE_SECRET_KEY:      process.env.STRIPE_SECRET_KEY      || '',
+  STRIPE_WEBHOOK_SECRET:  process.env.STRIPE_WEBHOOK_SECRET  || '',
 };

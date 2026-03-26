@@ -60,24 +60,36 @@ export interface AdminProduct {
   updatedAt:     string;
 }
 
+export interface CardPaymentDetails {
+  cardholderName: string;
+  last4:          string;
+  expiryMonth:    string;
+  expiryYear:     string;
+  cardType:       string;
+  brand:          string;
+}
+
 export interface Order {
-  id:            string;
-  orderNumber?:  string;
-  sessionId:     string;
-  paid:          boolean;
-  status:        'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
-  paymentMethod: string;
-  items:         OrderItem[];
-  userName:      string;
-  userEmail:     string;
-  subtotal:      number;
-  shipping:      number;
-  total:         number;
-  address:       Record<string, string>;
-  statusHistory: Array<{ status: string; note: string; timestamp: string }>;
-  createdAt:     string;
-  updatedAt:     string;
+  id:             string;
+  orderNumber?:   string;
+  sessionId:      string;
+  paid:           boolean;
+  status:         'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus:  'pending' | 'paid' | 'refunded' | 'failed';
+  paymentMethod:  string;
+  paymentDetails: CardPaymentDetails | null;
+  transactionId?: string;
+  ibanLast4?:     string;
+  items:          OrderItem[];
+  userName:       string;
+  userEmail:      string;
+  subtotal:       number;
+  shipping:       number;
+  total:          number;
+  address:        Record<string, string>;
+  statusHistory:  Array<{ status: string; note: string; timestamp: string }>;
+  createdAt:      string;
+  updatedAt:      string;
 }
 
 export interface OrderItem {
