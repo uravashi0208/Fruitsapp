@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { ArrowLeft, Star, Trash2, Package, Tag, BarChart2, Calendar, User, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Star, Trash2, Package, Tag, BarChart2, Calendar, MessageSquare } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminCard, AdminBtn, IconBtn, StatusPill, PageBtns, PageBtn, SectionTitle, EmptyState,
