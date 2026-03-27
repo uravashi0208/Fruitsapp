@@ -16,7 +16,7 @@
  *   przelewy24 | blik | cod
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import {
@@ -250,17 +250,16 @@ const GROUP_ORDER = ['digital', 'bnpl', 'bank', 'local', 'offline'] as const;
 
 // ─── Stripe Payment Form (inner — uses hooks that need <Elements>) ─────────────
 interface StripeFormProps {
-  billing:          typeof INITIAL_FORM;
-  payMethod:        PayMethod;
-  total:            number;
-  paymentIntentId:  string;
-  onSuccess:        (orderNum: string, firstName: string, email: string) => void;
-  onError:          (msg: string) => void;
-  items:            any[];
+  billing:    typeof INITIAL_FORM;
+  payMethod:  PayMethod;
+  total:      number;
+  onSuccess:  (orderNum: string, firstName: string, email: string) => void;
+  onError:    (msg: string) => void;
+  items:      any[];
 }
 
 const StripePaymentForm: React.FC<StripeFormProps> = ({
-  billing, payMethod, total, paymentIntentId, onSuccess, onError, items,
+  billing, payMethod, total, onSuccess, onError, items,
 }) => {
   const stripe   = useStripe();
   const elements = useElements();
@@ -273,7 +272,6 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
       return;
     }
 
-    // Validate shipping fields
     if (!billing.firstName || !billing.email || !billing.address || !billing.city) {
       onError('Please fill in all required shipping fields.');
       return;
@@ -287,9 +285,43 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
     setLoading(true);
 
     try {
-      // 1. Confirm payment using the already-created PaymentIntent (no duplicate creation)
+      // 1. Submit the Elements form (validates card fields)
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        onError(submitError.message || 'Please check your card details.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Create PaymentIntent on backend (only on Place Order click)
+      const piRes = await stripeApi.createPaymentIntent({
+        amount:        total,
+        payMethod,
+        customerEmail: billing.email,
+        billing: {
+          firstName: billing.firstName,
+          lastName:  billing.lastName,
+          email:     billing.email,
+          phone:     billing.phone,
+          address:   billing.address,
+          city:      billing.city,
+          state:     billing.state,
+          zip:       billing.zip,
+          country:   billing.country,
+        },
+      });
+
+      const { clientSecret } = piRes.data;
+      if (!clientSecret) {
+        onError('Payment setup failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Confirm payment with the fresh clientSecret
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
+        clientSecret,
         confirmParams: {
           return_url: window.location.origin + '/checkout?stripe_return=1',
           payment_method_data: {
@@ -316,10 +348,10 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
         return;
       }
 
-      const stripePaymentIntentId = paymentIntent?.id || paymentIntentId;
+      const stripePaymentIntentId = paymentIntent?.id || '';
       const stripeStatus          = paymentIntent?.status || 'succeeded';
 
-      // 2. Place order on backend with the confirmed paymentIntentId
+      // 4. Place order on backend with confirmed paymentIntentId
       const orderPayment: OrderPayment = {
         method:             payMethod,
         status:             'paid' as any,
@@ -415,61 +447,24 @@ const CheckoutPage: React.FC = () => {
 
   const [form, setForm] = useState(INITIAL_FORM);
 
-  // Stripe Elements options — recreated when payMethod or total changes
-  const [elementsOptions, setElementsOptions]       = useState<StripeElementsOptions | null>(null);
-  const [currentPaymentIntentId, setCurrentPaymentIntentId] = useState<string>('');
-  const [piLoading, setPiLoading]                   = useState(false);
-
-  // Load a PaymentIntent when payMethod or total changes (but not for COD)
-  useEffect(() => {
-    if (total <= 0 || payMethod === 'cod') {
-      setElementsOptions(null);
-      setCurrentPaymentIntentId('');
-      return;
-    }
-
-    let cancelled = false;
-    setPiLoading(true);
-
-    stripeApi.createPaymentIntent({
-      amount:    total,
-      payMethod,
-      customerEmail: form.email || undefined,
-    })
-      .then(res => {
-        if (cancelled) return;
-        const { clientSecret, paymentIntentId } = res.data;
-        if (clientSecret) {
-          setCurrentPaymentIntentId(paymentIntentId || '');
-          setElementsOptions({
-            clientSecret,
-            appearance: {
-              theme: 'stripe',
-              variables: {
-                colorPrimary:       '#82ae46',
-                colorBackground:    '#ffffff',
-                colorText:          '#000000',
-                colorDanger:        '#e53e3e',
-                fontFamily:         'Poppins, sans-serif',
-                borderRadius:       '4px',
-              },
-            },
-          });
-        }
-      })
-      .catch(err => {
-        if (cancelled) return;
-        console.warn('PaymentIntent creation skipped:', err.message);
-        // If Stripe key not configured, fall back gracefully
-        setElementsOptions(null);
-      })
-      .finally(() => {
-        if (!cancelled) setPiLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payMethod, total]);
+  // Stripe Elements options — deferred intent pattern (no clientSecret at mount time)
+  // ✅ Must NOT specify payment_method_types here — backend uses automatic_payment_methods
+  const elementsOptions: StripeElementsOptions = {
+    mode:     'payment',
+    amount:   Math.round(total * 100),
+    currency: 'usd',
+    appearance: {
+      theme: 'stripe',
+      variables: {
+        colorPrimary:    '#82ae46',
+        colorBackground: '#ffffff',
+        colorText:       '#000000',
+        colorDanger:     '#e53e3e',
+        fontFamily:      'Poppins, sans-serif',
+        borderRadius:    '4px',
+      },
+    },
+  };
 
   const upd = (k: keyof typeof INITIAL_FORM) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -684,29 +679,17 @@ const CheckoutPage: React.FC = () => {
                     <ShoppingBag size={16} /> Place Order (Cash on Delivery)
                   </Button>
                 </div>
-              ) : piLoading ? (
-                <div style={{ textAlign: 'center', padding: '30px 0', color: theme.colors.text }}>
-                  <SpinIcon size={22} style={{ display: 'inline-block', marginBottom: 8 }} />
-                  <p style={{ fontSize: 13 }}>Loading payment form…</p>
-                </div>
-              ) : elementsOptions ? (
+              ) : (
                 <Elements stripe={stripePromise} options={elementsOptions}>
                   <StripePaymentForm
                     billing={form}
                     payMethod={payMethod}
                     total={total}
                     items={items}
-                    paymentIntentId={currentPaymentIntentId}
                     onSuccess={handleSuccess}
                     onError={handleError}
                   />
                 </Elements>
-              ) : (
-                <InfoBox>
-                  ⚠️ Stripe is not configured. Add{' '}
-                  <code>REACT_APP_STRIPE_PUBLISHABLE_KEY</code> to your frontend{' '}
-                  <code>.env</code> and restart the app.
-                </InfoBox>
               )}
             </FormCard>
           </div>

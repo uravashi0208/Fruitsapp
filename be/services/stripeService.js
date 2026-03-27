@@ -18,40 +18,21 @@
 
 const Stripe = require('stripe');
 const { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } = require('../config/env');
-
-// Lazily initialised so the app still boots without a key (CI/test env)
+ 
 let _stripe = null;
 const stripe = () => {
   if (!_stripe) {
     if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY.startsWith('sk_test_YOUR')) {
       throw new Error(
         'STRIPE_SECRET_KEY is not configured. ' +
-        'Add it to your .env file (get it from https://dashboard.stripe.com/test/apikeys).'
+        'Add it to your .env file (https://dashboard.stripe.com/test/apikeys).'
       );
     }
     _stripe = Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' });
   }
   return _stripe;
 };
-
-// ─── Stripe payment_method_types per our PayMethod ───────────────────────────
-const STRIPE_PM_MAP = {
-  card:        ['card'],
-  apple_pay:   ['card'],   // Apple Pay comes through Stripe's card object
-  google_pay:  ['card'],   // Same — tokenised card
-  paypal:      ['paypal'],
-  klarna:      ['klarna'],
-  revolut:     ['revolut_pay'],
-  sepa_debit:  ['sepa_debit'],
-  ideal:       ['ideal'],
-  bancontact:  ['bancontact'],
-  sofort:      ['sofort'],
-  giropay:     ['giropay'],
-  eps:         ['eps'],
-  przelewy24:  ['p24'],
-  blik:        ['blik'],
-};
-
+ 
 // ─── Currency (your store uses USD display; Stripe amounts are in cents) ──────
 const CURRENCY = 'usd';
 
@@ -66,34 +47,27 @@ const CURRENCY = 'usd';
  * @param {object}   [opts.billing]     — billing address from order
  * @returns {Promise<{clientSecret: string, paymentIntentId: string}>}
  */
-const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId, billing }) => {
-  const pmTypes = STRIPE_PM_MAP[payMethod] || ['card'];
+const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId }) => {
   const amountCents = Math.round(amount * 100);
-
+ 
   const intentParams = {
-    amount:                 amountCents,
-    currency:               CURRENCY,
-    payment_method_types:   pmTypes,
-    metadata: {
-      payMethod,
-      orderId: orderId || '',
+    amount:   amountCents,
+    currency: CURRENCY,
+    // ✅ Must use automatic_payment_methods when frontend uses Elements deferred pattern
+    automatic_payment_methods: {
+      enabled: true,
     },
-    description: `Order — ${payMethod}`,
+    metadata: {
+      payMethod: payMethod || 'card',
+      orderId:   orderId   || '',
+    },
+    description: `Order — ${payMethod || 'card'}`,
   };
-
+ 
   if (customerEmail) {
     intentParams.receipt_email = customerEmail;
   }
-
-  // Attach billing address for card payments (helps with fraud detection)
-  if (billing && pmTypes.includes('card')) {
-    intentParams.payment_method_options = {
-      card: {
-        request_three_d_secure: 'automatic',
-      },
-    };
-  }
-
+ 
   const intent = await stripe().paymentIntents.create(intentParams);
   return {
     clientSecret:    intent.client_secret,
@@ -118,11 +92,9 @@ const constructWebhookEvent = (rawBody, signature) => {
   }
   return stripe().webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
 };
-
 module.exports = {
   createPaymentIntent,
   retrievePaymentIntent,
   constructWebhookEvent,
-  STRIPE_PM_MAP,
   CURRENCY,
 };
