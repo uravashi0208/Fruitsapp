@@ -201,6 +201,10 @@ export const UsersPage: React.FC = () => {
 // ── ORDERS PAGE ───────────────────────────────────────────────────────────────
 const orderStatusV=(s:string)=>{const m:Record<string,any>={delivered:'success',shipped:'info',processing:'warning',pending:'neutral',cancelled:'danger'};return m[s]??'neutral';};
 const payStatusV=(s:string)=>{const m:Record<string,any>={paid:'success',failed:'danger',refunded:'warning',pending:'neutral',processing:'info',cancelled:'danger'};return m[s]??'neutral';};
+const addDays = (iso: string, n: number) => {
+  const d = new Date(iso); d.setDate(d.getDate() + n);
+  return d.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+};
 
 /* Inline select for order status — pill-styled native dropdown */
 const OrderStatusSelect = styled.select<{$variant:string}>`
@@ -275,13 +279,6 @@ export const OrdersPage: React.FC = () => {
     blik:'BLIK', cod:'Cash on Delivery', bank:'Bank Transfer',
   };
   const pmLabel = (m:string) => `${PM_ICONS[m]??'💰'} ${PM_LABELS[m]??m}`;
-  const cardBrandIcon = (brand:string) => {
-    const b = brand.toLowerCase();
-    if (b==='visa')       return '💙';
-    if (b==='mastercard') return '🔴';
-    if (b==='amex')       return '🟩';
-    return '💳';
-  };
 
   return (
     <>
@@ -324,10 +321,11 @@ export const OrdersPage: React.FC = () => {
             ? <EmptyState><BookOpen size={40} strokeWidth={1} color={t.colors.textMuted}/><p style={{margin:'8px 0 0',color:t.colors.textMuted,fontSize:'0.875rem'}}>No orders found</p></EmptyState>
             : <TableInner><Tbl>
                 <THead><tr>
-                  <TH>Order</TH>
                   <TH>Customer</TH>
+                  <TH>Order</TH>
                   <TH>Payment Method</TH>
-                  <TH>Card / Details</TH>
+                  <TH>Creation Date</TH>
+                  <TH>Due Date</TH>
                   <TH $right>Total</TH>
                   <TH $center>Pay Status</TH>
                   <TH $center>Order Status</TH>
@@ -336,12 +334,6 @@ export const OrdersPage: React.FC = () => {
                 <tbody>
                   {(orders??[]).map(o=>(
                     <TR key={o.id}>
-                      <TD>
-                        <div style={{fontFamily:t.fonts.mono,fontSize:'0.78rem',fontWeight:700,color:t.colors.textPrimary}}>
-                          #{o.orderNumber||o.id?.slice(0,8)||'—'}
-                        </div>
-                        <div style={{fontSize:'0.7rem',color:t.colors.textMuted,marginTop:2}}>{formatDate(o.createdAt)}</div>
-                      </TD>
                       <TD>
                         <PersonCell>
                           <Avatar style={{width:30,height:30,fontSize:'0.7rem'}}>{(o.userName||'?').charAt(0)}</Avatar>
@@ -352,26 +344,19 @@ export const OrdersPage: React.FC = () => {
                         </PersonCell>
                       </TD>
                       <TD>
+                        <div>
+                          #{o.orderNumber||o.id?.slice(0,8)||'—'}
+                        </div>
+                        <div style={{fontSize:'0.7rem',color:t.colors.textMuted,marginTop:2}}>{formatDate(o.createdAt)}</div>
+                      </TD>
+                      <TD>
                         <span style={{fontSize:'0.8rem',fontWeight:500}}>{pmLabel(o.paymentMethod||'')}</span>
                       </TD>
                       <TD>
-                        {o.paymentDetails?.last4 ? (
-                          <div>
-                            <div style={{display:'flex',alignItems:'center',gap:5}}>
-                              <span style={{fontSize:15}}>{cardBrandIcon(o.paymentDetails.brand||o.paymentDetails.cardType)}</span>
-                              <span style={{fontFamily:t.fonts.mono,fontSize:'0.8rem',fontWeight:600}}>•••• {o.paymentDetails.last4}</span>
-                            </div>
-                            <div style={{fontSize:'0.7rem',color:t.colors.textMuted,marginTop:2}}>
-                              {o.paymentDetails.cardholderName} · {o.paymentDetails.expiryMonth}/{o.paymentDetails.expiryYear}
-                            </div>
-                          </div>
-                        ) : o.ibanLast4 ? (
-                          <span style={{fontFamily:t.fonts.mono,fontSize:'0.8rem'}}>IBAN •••• {o.ibanLast4}</span>
-                        ) : o.transactionId ? (
-                          <span style={{fontFamily:t.fonts.mono,fontSize:'0.75rem',color:t.colors.textMuted}}>{o.transactionId}</span>
-                        ) : (
-                          <span style={{color:t.colors.textMuted,fontSize:'0.8rem'}}>—</span>
-                        )}
+                        {formatDate(o.createdAt)}
+                      </TD>
+                      <TD>
+                        {addDays(o.createdAt, 5)}
                       </TD>
                       <TD $right style={{fontWeight:700,color:t.colors.textPrimary}}>${(o.total||0).toFixed(2)}</TD>
                       <TD $center onClick={e=>e.stopPropagation()}>
