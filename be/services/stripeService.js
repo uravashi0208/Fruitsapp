@@ -78,7 +78,7 @@ const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId, 
       payMethod,
       orderId: orderId || '',
     },
-    description: `Order ${orderId || ''} — ${payMethod}`,
+    description: `Order — ${payMethod}`,
   };
 
   if (customerEmail) {

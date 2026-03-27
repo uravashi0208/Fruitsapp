@@ -250,16 +250,17 @@ const GROUP_ORDER = ['digital', 'bnpl', 'bank', 'local', 'offline'] as const;
 
 // ─── Stripe Payment Form (inner — uses hooks that need <Elements>) ─────────────
 interface StripeFormProps {
-  billing:    typeof INITIAL_FORM;
-  payMethod:  PayMethod;
-  total:      number;
-  onSuccess:  (orderNum: string, firstName: string, email: string) => void;
-  onError:    (msg: string) => void;
-  items:      any[];
+  billing:          typeof INITIAL_FORM;
+  payMethod:        PayMethod;
+  total:            number;
+  paymentIntentId:  string;
+  onSuccess:        (orderNum: string, firstName: string, email: string) => void;
+  onError:          (msg: string) => void;
+  items:            any[];
 }
 
 const StripePaymentForm: React.FC<StripeFormProps> = ({
-  billing, payMethod, total, onSuccess, onError, items,
+  billing, payMethod, total, paymentIntentId, onSuccess, onError, items,
 }) => {
   const stripe   = useStripe();
   const elements = useElements();
@@ -286,69 +287,44 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
     setLoading(true);
 
     try {
-      // 1. Create PaymentIntent on backend
-      const piRes = await stripeApi.createPaymentIntent({
-        amount:        total,
-        payMethod,
-        customerEmail: billing.email,
-        billing: {
-          firstName: billing.firstName,
-          lastName:  billing.lastName,
-          email:     billing.email,
-          phone:     billing.phone,
-          address:   billing.address,
-          city:      billing.city,
-          state:     billing.state,
-          zip:       billing.zip,
-          country:   billing.country,
-        },
-      });
-
-      const { clientSecret, isCod } = piRes.data;
-
-      let stripePaymentIntentId = '';
-      let stripeStatus = 'succeeded';
-
-      if (!isCod && clientSecret) {
-        // 2. Confirm payment via Stripe Elements
-        const { error, paymentIntent } = await stripe.confirmPayment({
-          elements,
-          confirmParams: {
-            return_url: window.location.origin + '/checkout?stripe_return=1',
-            payment_method_data: {
-              billing_details: {
-                name:  `${billing.firstName} ${billing.lastName}`.trim(),
-                email: billing.email,
-                phone: billing.phone || undefined,
-                address: {
-                  line1:       billing.address,
-                  city:        billing.city,
-                  state:       billing.state || undefined,
-                  postal_code: billing.zip   || undefined,
-                  country:     billing.country || 'PL',
-                },
+      // 1. Confirm payment using the already-created PaymentIntent (no duplicate creation)
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/checkout?stripe_return=1',
+          payment_method_data: {
+            billing_details: {
+              name:  `${billing.firstName} ${billing.lastName}`.trim(),
+              email: billing.email,
+              phone: billing.phone || undefined,
+              address: {
+                line1:       billing.address,
+                city:        billing.city,
+                state:       billing.state || undefined,
+                postal_code: billing.zip   || undefined,
+                country:     billing.country || 'PL',
               },
             },
           },
-          redirect: 'if_required',
-        });
+        },
+        redirect: 'if_required',
+      });
 
-        if (error) {
-          onError(error.message || 'Payment failed. Please try again.');
-          setLoading(false);
-          return;
-        }
-
-        stripePaymentIntentId = paymentIntent?.id || '';
-        stripeStatus          = paymentIntent?.status || 'succeeded';
+      if (error) {
+        onError(error.message || 'Payment failed. Please try again.');
+        setLoading(false);
+        return;
       }
 
-      // 3. Place order on backend
+      const stripePaymentIntentId = paymentIntent?.id || paymentIntentId;
+      const stripeStatus          = paymentIntent?.status || 'succeeded';
+
+      // 2. Place order on backend with the confirmed paymentIntentId
       const orderPayment: OrderPayment = {
-        method:        payMethod,
-        status:        (isCod ? 'pending' : 'paid') as any,
-        transactionId: stripePaymentIntentId,
-        orderPaymentStatus:stripeStatus
+        method:             payMethod,
+        status:             'paid' as any,
+        transactionId:      stripePaymentIntentId,
+        orderPaymentStatus: stripeStatus,
       };
 
       const res = await ordersApi.place({
@@ -440,13 +416,15 @@ const CheckoutPage: React.FC = () => {
   const [form, setForm] = useState(INITIAL_FORM);
 
   // Stripe Elements options — recreated when payMethod or total changes
-  const [elementsOptions, setElementsOptions] = useState<StripeElementsOptions | null>(null);
-  const [piLoading, setPiLoading]             = useState(false);
+  const [elementsOptions, setElementsOptions]       = useState<StripeElementsOptions | null>(null);
+  const [currentPaymentIntentId, setCurrentPaymentIntentId] = useState<string>('');
+  const [piLoading, setPiLoading]                   = useState(false);
 
   // Load a PaymentIntent when payMethod or total changes (but not for COD)
   useEffect(() => {
     if (total <= 0 || payMethod === 'cod') {
       setElementsOptions(null);
+      setCurrentPaymentIntentId('');
       return;
     }
 
@@ -460,8 +438,9 @@ const CheckoutPage: React.FC = () => {
     })
       .then(res => {
         if (cancelled) return;
-        const { clientSecret } = res.data;
+        const { clientSecret, paymentIntentId } = res.data;
         if (clientSecret) {
+          setCurrentPaymentIntentId(paymentIntentId || '');
           setElementsOptions({
             clientSecret,
             appearance: {
@@ -717,6 +696,7 @@ const CheckoutPage: React.FC = () => {
                     payMethod={payMethod}
                     total={total}
                     items={items}
+                    paymentIntentId={currentPaymentIntentId}
                     onSuccess={handleSuccess}
                     onError={handleError}
                   />
