@@ -298,7 +298,7 @@ const updateOrderStatusSchema = Joi.object({
 
 // ── Update payment status (admin manual / webhook) ────────────────────────────
 const updatePaymentStatusSchema = Joi.object({
-  paymentStatus: Joi.string().valid('pending', 'paid', 'failed', 'refunded').required(),
+  paymentStatus: Joi.string().valid('processing','pending', 'paid', 'failed', 'refunded','cancelled').required(),
   transactionId: Joi.string().allow('').optional(),
   note:          Joi.string().max(500).allow('').optional(),
 });

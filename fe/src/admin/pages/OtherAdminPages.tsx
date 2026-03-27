@@ -4,6 +4,7 @@
 // ============================================================
 import React, { useState, useMemo, useCallback } from 'react';
 import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   Search, Trash2, Eye, Plus, Edit2,
@@ -198,25 +199,110 @@ export const UsersPage: React.FC = () => {
 
 // ── ORDERS PAGE ───────────────────────────────────────────────────────────────
 const orderStatusV=(s:string)=>{const m:Record<string,any>={delivered:'success',shipped:'info',processing:'warning',pending:'neutral',cancelled:'danger'};return m[s]??'neutral';};
+const payStatusV=(s:string)=>{const m:Record<string,any>={paid:'success',failed:'danger',refunded:'warning',pending:'neutral',processing:'info',cancelled:'danger'};return m[s]??'neutral';};
+
+const PAY_STATUS_OPTIONS: Array<{value: string; label: string; color: string}> = [
+  { value: 'paid',       label: 'Paid',        color: '#12b76a' },
+  { value: 'processing', label: 'Processing',  color: '#0ba5ec' },
+  { value: 'pending',    label: 'Pending',     color: '#98a2b3' },
+  { value: 'refunded',   label: 'Refunded',    color: '#f79009' },
+  { value: 'failed',     label: 'Failed',      color: '#f04438' },
+  { value: 'cancelled',  label: 'Cancelled',   color: '#f04438' },
+];
+
+const PayStatusPopover = styled.div`
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(16,24,40,0.14);
+  z-index: 999;
+  min-width: 170px;
+  overflow: hidden;
+  padding: 4px;
+`;
+const PayMenuLabel = styled.div`
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #98a2b3;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 6px 10px 4px;
+`;
+const PayMenuItem = styled.button<{$color?:string;$active?:boolean}>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  background: ${({$active})=>$active?'#f0f9ff':'none'};
+  border: none;
+  border-radius: 7px;
+  font-size: 0.8125rem;
+  font-weight: ${({$active})=>$active?600:400};
+  color: ${({$color})=>$color||'#101828'};
+  cursor: pointer;
+  text-align: left;
+  &:hover { background: #f9fafb; }
+`;
+const PayDot = styled.span<{$color:string}>`
+  width: 7px; height: 7px; border-radius: 50%;
+  background: ${({$color})=>$color};
+  flex-shrink: 0;
+`;
+const ClickableStatus = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+`;
 
 export const OrdersPage: React.FC = () => {
   const dispatch = useAdminDispatch();
-  const [search,   setSearch]   = useState('');
-  const [statusF,  setStatusF]  = useState('all');
-  const [page,     setPage]     = useState(1);
-  const [selected, setSelected] = useState<Order|null>(null);
+  const navigate = useNavigate();
+  const [search,        setSearch]        = useState('');
+  const [statusF,       setStatusF]       = useState('all');
+  const [page,          setPage]          = useState(1);
+  const [payMenuOrder,  setPayMenuOrder]  = useState<string|null>(null);
+  const [updatingPay,   setUpdatingPay]   = useState<string|null>(null);
 
   const query = useMemo(()=>({page, limit:PAGE_SIZE, search, status: statusF==='all'?'':statusF}), [page,search,statusF]);
   const { data:orders, pagination, loading, error, refetch } = useAdminOrders(query);
 
-  const changeStatus = useCallback(async (id:string, status:Order['status']) => {
+  // Close pay menu on outside click
+  React.useEffect(()=>{
+    if(!payMenuOrder) return;
+    const close = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('[data-pay-menu]')) setPayMenuOrder(null);
+    };
+    document.addEventListener('mousedown', close);
+    return ()=>document.removeEventListener('mousedown', close);
+  },[payMenuOrder]);
+
+  const handleUpdatePayStatus = useCallback(async (orderId:string, paymentStatus: Order['paymentStatus']) => {
+    setUpdatingPay(orderId);
+    setPayMenuOrder(null);
     try {
-      await adminOrdersApi.updateStatus(id, status);
-      dispatch(showAdminToast({message:`Order updated to ${status}`, type:'success'}));
-      if (selected?.id===id) setSelected(prev=>prev?{...prev,status}:null);
+      await adminOrdersApi.updatePaymentStatus(orderId, paymentStatus);
+      dispatch(showAdminToast({message:`Payment marked as "${paymentStatus}"`, type:'success'}));
       refetch();
-    } catch(err) { dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Update failed', type:'error'})); }
-  }, [dispatch, refetch, selected]);
+    } catch(err) {
+      dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Update failed', type:'error'}));
+    } finally { setUpdatingPay(null); }
+  }, [dispatch, refetch]);
+
+  const handleUpdateOrderStatus = useCallback(async (orderId:string, status: Order['status']) => {
+    try {
+      await adminOrdersApi.updateStatus(orderId, status);
+      dispatch(showAdminToast({message:`Order status → "${status}"`, type:'success'}));
+      refetch();
+    } catch(err) {
+      dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Update failed', type:'error'}));
+    }
+  }, [dispatch, refetch]);
 
   const handleDelete = useCallback(async (id:string) => {
     try {
@@ -341,10 +427,41 @@ export const OrdersPage: React.FC = () => {
                         )}
                       </TD>
                       <TD $right style={{fontWeight:700,color:t.colors.textPrimary}}>${(o.total||0).toFixed(2)}</TD>
-                      <TD $center>
-                        <StatusPill $variant={o.paymentStatus==='paid'?'success':o.paymentStatus==='failed'?'danger':'warning'} style={{textTransform:'capitalize'}}>
-                          {o.paymentStatus}
-                        </StatusPill>
+                      <TD $center onClick={e=>e.stopPropagation()}>
+                        <ClickableStatus data-pay-menu>
+                          <StatusPill
+                            $variant={payStatusV(o.paymentStatus) as any}
+                            style={{
+                              textTransform:'capitalize',
+                              cursor: updatingPay===o.id ? 'wait' : 'pointer',
+                              opacity: updatingPay===o.id ? 0.6 : 1,
+                              userSelect:'none',
+                              position:'relative',
+                            }}
+                            title="Click to change payment status"
+                            onClick={()=>setPayMenuOrder(payMenuOrder===o.id ? null : o.id)}
+                          >
+                            {updatingPay===o.id ? '…' : o.paymentStatus}
+                            {updatingPay!==o.id && <span style={{marginLeft:4,fontSize:'0.65rem',opacity:0.7}}>▾</span>}
+                          </StatusPill>
+                          {payMenuOrder===o.id && (
+                            <PayStatusPopover>
+                              <PayMenuLabel>Set Pay Status</PayMenuLabel>
+                              {PAY_STATUS_OPTIONS.map(opt=>(
+                                <PayMenuItem
+                                  key={opt.value}
+                                  $color={opt.color}
+                                  $active={o.paymentStatus===opt.value}
+                                  onClick={()=>handleUpdatePayStatus(o.id, opt.value as Order['paymentStatus'])}
+                                >
+                                  <PayDot $color={opt.color}/>
+                                  {opt.label}
+                                  {o.paymentStatus===opt.value && <span style={{marginLeft:'auto',fontSize:'0.7rem'}}>✓</span>}
+                                </PayMenuItem>
+                              ))}
+                            </PayStatusPopover>
+                          )}
+                        </ClickableStatus>
                       </TD>
                       <TD $center>
                         <StatusPill $variant={orderStatusV(o.status) as any} style={{textTransform:'capitalize'}}>
@@ -353,8 +470,12 @@ export const OrdersPage: React.FC = () => {
                       </TD>
                       <TD $center onClick={e=>e.stopPropagation()}>
                         <PortalDropdown>
-                          <MenuItem onClick={()=>{closeAllDropdowns();setSelected(o);}}><Eye size={13}/> View Details</MenuItem>
-                          <MenuItem $danger onClick={()=>handleDelete(o.id)}><Trash2 size={13}/> Delete</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns(); navigate(`/admin/orders/${o.id}/invoice`);}}><Eye size={13}/> View Invoice</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'processing');}}><CheckCircle size={13}/> Mark Processing</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'shipped');}}><CheckCircle size={13}/> Mark Shipped</MenuItem>
+                          <MenuItem onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'delivered');}}><CheckCircle size={13}/> Mark Delivered</MenuItem>
+                          <MenuItem $danger onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'cancelled');}}><Ban size={13}/> Cancel Order</MenuItem>
+                          <MenuItem $danger onClick={()=>{closeAllDropdowns(); handleDelete(o.id);}}><Trash2 size={13}/> Delete</MenuItem>
                         </PortalDropdown>
                       </TD>
                     </TR>
@@ -375,156 +496,6 @@ export const OrdersPage: React.FC = () => {
           </PageBtns>
         </div>
       </TableWrap>
-
-      {/* ── Order Detail Modal ── */}
-      {selected && (
-        <ModalBackdrop onClick={()=>setSelected(null)}>
-          <ModalBox $width="640px" onClick={e=>e.stopPropagation()}>
-            <ModalHeader>
-              <div>
-                <div style={{fontWeight:700,fontSize:'1rem',color:t.colors.textPrimary}}>
-                  Order #{selected.orderNumber||selected.id?.slice(0,8)}
-                </div>
-                <div style={{fontSize:'0.8rem',color:t.colors.textMuted,marginTop:2}}>{formatDate(selected.createdAt)}</div>
-              </div>
-              <AdminFlex as="div" $gap="8px">
-                <StatusPill $variant={orderStatusV(selected.status) as any}>{selected.status}</StatusPill>
-                <IconBtn onClick={()=>setSelected(null)}>✕</IconBtn>
-              </AdminFlex>
-            </ModalHeader>
-
-            <ModalBody>
-              {/* Customer info */}
-              <FormGrid $cols={2}>
-                <FormGroup>
-                  <FormLabel>Customer</FormLabel>
-                  <div style={{fontWeight:600,color:t.colors.textPrimary}}>{selected.userName||'—'}</div>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Email</FormLabel>
-                  <div style={{color:t.colors.textSecondary}}>{selected.userEmail||'—'}</div>
-                </FormGroup>
-                <FormGroup $span={2}>
-                  <FormLabel>Ship To</FormLabel>
-                  <div style={{color:t.colors.textSecondary}}>{Object.values(selected.address||{}).filter(Boolean).join(', ')||'—'}</div>
-                </FormGroup>
-              </FormGrid>
-
-              <AdminDivider/>
-
-              {/* Payment section */}
-              <div style={{background:'#f7fbff',border:'1px solid #d0e8ff',borderRadius:8,padding:'16px',marginBottom:16}}>
-                <div style={{fontWeight:700,fontSize:'0.875rem',color:t.colors.textPrimary,marginBottom:12,display:'flex',alignItems:'center',gap:6}}>
-                  <CreditCard size={15}/> Payment Details
-                </div>
-                <FormGrid $cols={2}>
-                  <FormGroup>
-                    <FormLabel>Method</FormLabel>
-                    <div style={{fontWeight:600,fontSize:'0.9rem'}}>{pmLabel(selected.paymentMethod||'')}</div>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Payment Status</FormLabel>
-                    <StatusPill $variant={selected.paymentStatus==='paid'?'success':selected.paymentStatus==='failed'?'danger':'warning'}>
-                      {selected.paymentStatus}
-                    </StatusPill>
-                  </FormGroup>
-
-                  {/* Card details */}
-                  {selected.paymentDetails?.last4 && (
-                    <>
-                      <FormGroup>
-                        <FormLabel>Cardholder</FormLabel>
-                        <div style={{fontWeight:600}}>{selected.paymentDetails.cardholderName||'—'}</div>
-                      </FormGroup>
-                      <FormGroup>
-                        <FormLabel>Card Number</FormLabel>
-                        <div style={{display:'flex',alignItems:'center',gap:6,fontFamily:t.fonts.mono,fontWeight:700}}>
-                          <span style={{fontSize:18}}>{cardBrandIcon(selected.paymentDetails.brand||selected.paymentDetails.cardType)}</span>
-                          •••• •••• •••• {selected.paymentDetails.last4}
-                        </div>
-                      </FormGroup>
-                      <FormGroup>
-                        <FormLabel>Card Type</FormLabel>
-                        <div style={{textTransform:'capitalize',fontWeight:600}}>{selected.paymentDetails.brand||selected.paymentDetails.cardType||'—'}</div>
-                      </FormGroup>
-                      <FormGroup>
-                        <FormLabel>Expiry</FormLabel>
-                        <div style={{fontFamily:t.fonts.mono,fontWeight:600}}>{selected.paymentDetails.expiryMonth}/{selected.paymentDetails.expiryYear}</div>
-                      </FormGroup>
-                    </>
-                  )}
-
-                  {/* SEPA IBAN */}
-                  {selected.ibanLast4 && (
-                    <FormGroup $span={2}>
-                      <FormLabel>IBAN (masked)</FormLabel>
-                      <div style={{fontFamily:t.fonts.mono,fontWeight:600}}>•••• •••• •••• {selected.ibanLast4}</div>
-                    </FormGroup>
-                  )}
-
-                  {/* Transaction ID */}
-                  {selected.transactionId && (
-                    <FormGroup $span={2}>
-                      <FormLabel>Transaction ID</FormLabel>
-                      <div style={{fontFamily:t.fonts.mono,fontSize:'0.8rem',color:t.colors.textSecondary}}>{selected.transactionId}</div>
-                    </FormGroup>
-                  )}
-                </FormGrid>
-              </div>
-
-              {/* Update status */}
-              <FormGrid $cols={2} style={{marginBottom:16}}>
-                <FormGroup $span={2}>
-                  <FormLabel>Update Order Status</FormLabel>
-                  <AdminSelect value={selected.status} onChange={e=>changeStatus(selected.id, e.target.value as Order['status'])}>
-                    {['pending','processing','shipped','delivered','cancelled'].map(s=>(
-                      <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>
-                    ))}
-                  </AdminSelect>
-                </FormGroup>
-              </FormGrid>
-
-              <AdminDivider/>
-
-              {/* Order items */}
-              <FormLabel style={{marginBottom:8,display:'block'}}>Order Items</FormLabel>
-              {(selected.items||[]).map((item:any,i:number)=>(
-                <AdminFlex key={i} as="div" $gap="12px" style={{padding:'10px 0',borderBottom:`1px solid ${t.colors.border}`}}>
-                  <img src={item.image||''} alt={item.name||''} style={{width:40,height:40,borderRadius:8,objectFit:'cover'}}
-                    onError={e=>{(e.target as HTMLImageElement).src='https://placehold.co/40x40/e8f5e9/4CAF50?text=P';}}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:600,color:t.colors.textPrimary}}>{item.name}</div>
-                    <div style={{fontSize:'0.75rem',color:t.colors.textMuted}}>× {item.quantity||1} · ${(item.price||0).toFixed(2)} each</div>
-                  </div>
-                  <div style={{fontWeight:700,color:t.colors.textPrimary}}>${((item.price||0)*(item.quantity||1)).toFixed(2)}</div>
-                </AdminFlex>
-              ))}
-
-              {/* Totals */}
-              <div style={{marginTop:14,padding:'12px 0',borderTop:`1px solid ${t.colors.border}`}}>
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.875rem',marginBottom:6}}>
-                  <span style={{color:t.colors.textMuted}}>Subtotal</span>
-                  <span>${(selected.subtotal||0).toFixed(2)}</span>
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.875rem',marginBottom:8}}>
-                  <span style={{color:t.colors.textMuted}}>Shipping</span>
-                  <span style={{color:(selected.shipping||0)===0?'#4caf50':undefined}}>
-                    {(selected.shipping||0)===0?'Free':`$${(selected.shipping||0).toFixed(2)}`}
-                  </span>
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:'1.05rem',paddingTop:8,borderTop:`1px solid ${t.colors.border}`}}>
-                  <span>Total</span>
-                  <span style={{color:t.colors.textPrimary}}>${(selected.total||0).toFixed(2)}</span>
-                </div>
-              </div>
-            </ModalBody>
-
-            <ModalFooter>
-              <AdminBtn $variant="ghost" onClick={()=>setSelected(null)}>Close</AdminBtn>
-            </ModalFooter>
-          </ModalBox>
-        </ModalBackdrop>
-      )}
     </>
   );
 };

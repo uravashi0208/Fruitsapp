@@ -243,6 +243,9 @@ export const adminOrdersApi = {
   updateStatus: (id: string, status: Order['status'], note?: string) =>
     api.patch<Ok<{ id: string; status: string }>>(`/api/admin/orders/${id}/status`, { status, note }),
 
+  updatePaymentStatus: (id: string, paymentStatus: Order['paymentStatus']) =>
+    api.patch<Ok<{ id: string; paymentStatus: string }>>(`/api/admin/orders/${id}/payment`, { paymentStatus }),
+
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/orders/${id}`),
 };
