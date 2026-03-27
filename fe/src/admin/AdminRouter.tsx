@@ -189,7 +189,7 @@ const AdminRouterInner: React.FC = () => {
   );
 };
 
-// ── Root export — wraps everything in the admin Redux Provider ─
+// ── Root export — wraps everything in the admin Redux Provider
 export const AdminRouter: React.FC = () => (
   <Provider store={adminStore}>
     <AdminRouterInner />

@@ -356,7 +356,7 @@ export const InvoicePage: React.FC = () => {
             </Table>
           </TableSection>
 
-          {/* Order summary */}
+          {/* Order summary*/}
           <SummarySection>
             <SummaryBox>
               <SummaryTitle>Order summary</SummaryTitle>
