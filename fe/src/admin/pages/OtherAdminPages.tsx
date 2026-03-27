@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   Search, Trash2, Eye, Plus, Edit2,
-  Ban, CheckCircle, Mail, CreditCard,
+  Mail, CreditCard,CheckCircle,Ban,
   MessageSquare, FileText, MoreHorizontal,
   Star, BookOpen, RefreshCw, Download, Filter,
 } from 'lucide-react';
@@ -201,62 +201,33 @@ export const UsersPage: React.FC = () => {
 const orderStatusV=(s:string)=>{const m:Record<string,any>={delivered:'success',shipped:'info',processing:'warning',pending:'neutral',cancelled:'danger'};return m[s]??'neutral';};
 const payStatusV=(s:string)=>{const m:Record<string,any>={paid:'success',failed:'danger',refunded:'warning',pending:'neutral',processing:'info',cancelled:'danger'};return m[s]??'neutral';};
 
-const PAY_STATUS_OPTIONS: Array<{value: string; label: string; color: string}> = [
-  { value: 'paid',       label: 'Paid',        color: '#12b76a' },
-  { value: 'processing', label: 'Processing',  color: '#0ba5ec' },
-  { value: 'pending',    label: 'Pending',     color: '#98a2b3' },
-  { value: 'refunded',   label: 'Refunded',    color: '#f79009' },
-  { value: 'failed',     label: 'Failed',      color: '#f04438' },
-  { value: 'cancelled',  label: 'Cancelled',   color: '#f04438' },
-];
-
-const PayStatusPopover = styled.div`
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  border: 1px solid #e4e7ec;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(16,24,40,0.14);
-  z-index: 999;
-  min-width: 170px;
-  overflow: hidden;
-  padding: 4px;
-`;
-const PayMenuLabel = styled.div`
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: #98a2b3;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 6px 10px 4px;
-`;
-const PayMenuItem = styled.button<{$color?:string;$active?:boolean}>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  background: ${({$active})=>$active?'#f0f9ff':'none'};
+/* Inline select for order status — pill-styled native dropdown */
+const OrderStatusSelect = styled.select<{$variant:string}>`
+  appearance: none;
+  -webkit-appearance: none;
   border: none;
-  border-radius: 7px;
-  font-size: 0.8125rem;
-  font-weight: ${({$active})=>$active?600:400};
-  color: ${({$color})=>$color||'#101828'};
+  outline: none;
   cursor: pointer;
-  text-align: left;
-  &:hover { background: #f9fafb; }
-`;
-const PayDot = styled.span<{$color:string}>`
-  width: 7px; height: 7px; border-radius: 50%;
-  background: ${({$color})=>$color};
-  flex-shrink: 0;
-`;
-const ClickableStatus = styled.div`
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 4px 22px 4px 10px;
+  border-radius: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  ${({$variant})=>{
+    const styles:Record<string,string>={
+      success:'background-color:#ecfdf3;color:#027a48;',
+      info:'background-color:#eff8ff;color:#175cd3;',
+      warning:'background-color:#fffaeb;color:#b54708;',
+      neutral:'background-color:#f2f4f7;color:#344054;',
+      danger:'background-color:#fef3f2;color:#b42318;',
+    };
+    return styles[$variant]||styles.neutral;
+  }}
+  &:hover { filter: brightness(0.96); }
 `;
 
 export const OrdersPage: React.FC = () => {
@@ -265,34 +236,9 @@ export const OrdersPage: React.FC = () => {
   const [search,        setSearch]        = useState('');
   const [statusF,       setStatusF]       = useState('all');
   const [page,          setPage]          = useState(1);
-  const [payMenuOrder,  setPayMenuOrder]  = useState<string|null>(null);
-  const [updatingPay,   setUpdatingPay]   = useState<string|null>(null);
 
   const query = useMemo(()=>({page, limit:PAGE_SIZE, search, status: statusF==='all'?'':statusF}), [page,search,statusF]);
   const { data:orders, pagination, loading, error, refetch } = useAdminOrders(query);
-
-  // Close pay menu on outside click
-  React.useEffect(()=>{
-    if(!payMenuOrder) return;
-    const close = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest('[data-pay-menu]')) setPayMenuOrder(null);
-    };
-    document.addEventListener('mousedown', close);
-    return ()=>document.removeEventListener('mousedown', close);
-  },[payMenuOrder]);
-
-  const handleUpdatePayStatus = useCallback(async (orderId:string, paymentStatus: Order['paymentStatus']) => {
-    setUpdatingPay(orderId);
-    setPayMenuOrder(null);
-    try {
-      await adminOrdersApi.updatePaymentStatus(orderId, paymentStatus);
-      dispatch(showAdminToast({message:`Payment marked as "${paymentStatus}"`, type:'success'}));
-      refetch();
-    } catch(err) {
-      dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Update failed', type:'error'}));
-    } finally { setUpdatingPay(null); }
-  }, [dispatch, refetch]);
 
   const handleUpdateOrderStatus = useCallback(async (orderId:string, status: Order['status']) => {
     try {
@@ -428,53 +374,28 @@ export const OrdersPage: React.FC = () => {
                       </TD>
                       <TD $right style={{fontWeight:700,color:t.colors.textPrimary}}>${(o.total||0).toFixed(2)}</TD>
                       <TD $center onClick={e=>e.stopPropagation()}>
-                        <ClickableStatus data-pay-menu>
-                          <StatusPill
-                            $variant={payStatusV(o.paymentStatus) as any}
-                            style={{
-                              textTransform:'capitalize',
-                              cursor: updatingPay===o.id ? 'wait' : 'pointer',
-                              opacity: updatingPay===o.id ? 0.6 : 1,
-                              userSelect:'none',
-                              position:'relative',
-                            }}
-                            title="Click to change payment status"
-                            onClick={()=>setPayMenuOrder(payMenuOrder===o.id ? null : o.id)}
-                          >
-                            {updatingPay===o.id ? '…' : o.paymentStatus}
-                            {updatingPay!==o.id && <span style={{marginLeft:4,fontSize:'0.65rem',opacity:0.7}}>▾</span>}
-                          </StatusPill>
-                          {payMenuOrder===o.id && (
-                            <PayStatusPopover>
-                              <PayMenuLabel>Set Pay Status</PayMenuLabel>
-                              {PAY_STATUS_OPTIONS.map(opt=>(
-                                <PayMenuItem
-                                  key={opt.value}
-                                  $color={opt.color}
-                                  $active={o.paymentStatus===opt.value}
-                                  onClick={()=>handleUpdatePayStatus(o.id, opt.value as Order['paymentStatus'])}
-                                >
-                                  <PayDot $color={opt.color}/>
-                                  {opt.label}
-                                  {o.paymentStatus===opt.value && <span style={{marginLeft:'auto',fontSize:'0.7rem'}}>✓</span>}
-                                </PayMenuItem>
-                              ))}
-                            </PayStatusPopover>
-                          )}
-                        </ClickableStatus>
-                      </TD>
-                      <TD $center>
-                        <StatusPill $variant={orderStatusV(o.status) as any} style={{textTransform:'capitalize'}}>
-                          {o.status}
+                        <StatusPill
+                          $variant={payStatusV(o.paymentStatus) as any}
+                          style={{textTransform:'capitalize'}}
+                        >
+                          {o.paymentStatus}
                         </StatusPill>
+                      </TD>
+                      <TD $center onClick={e=>e.stopPropagation()}>
+                        <OrderStatusSelect
+                          $variant={orderStatusV(o.status)}
+                          value={o.status}
+                          onChange={e=>handleUpdateOrderStatus(o.id, e.target.value as Order['status'])}
+                          title="Change order status"
+                        >
+                          {['pending','processing','shipped','delivered','cancelled'].map(s=>(
+                            <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>
+                          ))}
+                        </OrderStatusSelect>
                       </TD>
                       <TD $center onClick={e=>e.stopPropagation()}>
                         <PortalDropdown>
                           <MenuItem onClick={()=>{closeAllDropdowns(); navigate(`/admin/orders/${o.id}/invoice`);}}><Eye size={13}/> View Invoice</MenuItem>
-                          <MenuItem onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'processing');}}><CheckCircle size={13}/> Mark Processing</MenuItem>
-                          <MenuItem onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'shipped');}}><CheckCircle size={13}/> Mark Shipped</MenuItem>
-                          <MenuItem onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'delivered');}}><CheckCircle size={13}/> Mark Delivered</MenuItem>
-                          <MenuItem $danger onClick={()=>{closeAllDropdowns(); handleUpdateOrderStatus(o.id,'cancelled');}}><Ban size={13}/> Cancel Order</MenuItem>
                           <MenuItem $danger onClick={()=>{closeAllDropdowns(); handleDelete(o.id);}}><Trash2 size={13}/> Delete</MenuItem>
                         </PortalDropdown>
                       </TD>

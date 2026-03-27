@@ -154,6 +154,16 @@ const AdminRouterInner: React.FC = () => {
         }
       />
 
+      {/* Invoice — protected but rendered WITHOUT the AdminLayout (no sidebar/topbar) so print is clean */}
+      <Route
+        path="orders/:id/invoice"
+        element={
+          <RequireAuth>
+            <Suspense fallback={<AdminLoader />}><InvoicePage /></Suspense>
+          </RequireAuth>
+        }
+      />
+
       {/* Protected — redirect to login if NOT authenticated */}
       <Route path="/" element={<RequireAuth><AdminLayout /></RequireAuth>}>
         <Route index           element={<Suspense fallback={<AdminLoader />}><DashboardPage /></Suspense>} />
@@ -164,7 +174,6 @@ const AdminRouterInner: React.FC = () => {
         <Route path="testimonials"  element={<Suspense fallback={<AdminLoader />}><TestimonialsPage /></Suspense>} />
         <Route path="newsletter"    element={<Suspense fallback={<AdminLoader />}><NewsletterPage /></Suspense>} />
         <Route path="orders"        element={<Suspense fallback={<AdminLoader />}><OrdersPage /></Suspense>} />
-         <Route path="orders/:id/invoice" element={<Suspense fallback={<AdminLoader />}><InvoicePage /></Suspense>} />
         <Route path="users"    element={<Suspense fallback={<AdminLoader />}><UsersPage /></Suspense>} />
         <Route path="cards"    element={<Suspense fallback={<AdminLoader />}><CardsPage /></Suspense>} />
         <Route path="contacts" element={<Suspense fallback={<AdminLoader />}><ContactsPage /></Suspense>} />
