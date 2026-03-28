@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { ShoppingCart, Heart, Share2, CheckCircle, Truck, RefreshCw, Star, Send, User } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, CheckCircle, Truck, RefreshCw, Star, Send, User, AlertCircle, Package } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { ProductCard } from '../components/ui/ProductCard';
 import { useProduct, useProducts } from '../hooks/useApi';
 import { ApiProduct, reviewsApi, ApiReview } from '../api/storefront';
 import { getAccessToken } from '../api/client';
 import { useCart, useWishlist } from '../hooks/useCart';
+import { isInStock } from '../store/cartSlice';
 import { theme } from '../styles/theme';
 import {
   Container, Section, Flex, Button, Divider,
@@ -35,7 +36,13 @@ const MainImage = styled.div`
 `;
 const BadgeSpan = styled.span`
   position: absolute; top: 12px; left: 12px; padding: 4px 12px;
-  background: ${theme.colors.primary}; color: white; font-size: 12px;
+  background: ${theme.colors.primary}; color: white; font-size: 14px;
+  font-weight: ${theme.fontWeights.light}; border-radius: 2px; z-index: 2;
+`;
+
+const BadgeStockSpan = styled.span`
+  position: absolute; top: 0px; left: 0px; padding: 6px 16px;
+  background: ${theme.colors.danger}; color: white; font-size: 15px;
   font-weight: ${theme.fontWeights.light}; border-radius: 2px; z-index: 2;
 `;
 const ThumbnailRow = styled(Flex)`gap: 8px; flex-wrap: wrap; margin-top: 12px;`;
@@ -151,6 +158,7 @@ const toCartProduct = (p: ApiProduct) => ({
   originalPrice: p.originalPrice, discount: p.discount, image: p.image,
   description: p.description, stock: p.stock, sku: p.sku, badge: p.badge,
   isNew: p.isNew, rating: p.rating, reviews: p.reviews,
+  status: p.status as any,
 });
 
 /* ── ReviewForm ── */
@@ -354,6 +362,10 @@ const ProductDetailPage: React.FC = () => {
   const cartProduct  = toCartProduct(product);
   const mainImageUrl = resolveImg(product.image);
   const wishlisted   = isWishlisted(product.id as any);
+  const productInStock = isInStock(cartProduct as any);
+  const stockNum     = product.stock ?? 0;
+  const LOW_STOCK    = 5;
+  const isLowStock   = productInStock && stockNum <= LOW_STOCK;
   const related = (allProducts ?? [])
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4).map(toCartProduct);
@@ -374,7 +386,7 @@ const ProductDetailPage: React.FC = () => {
               <MainImage>
                 <img src={mainImageUrl} alt={product.name}
                   onError={e => { (e.target as HTMLImageElement).src = `https://placehold.co/600x450/f1f8f1/82ae46?text=${encodeURIComponent(product.name)}`; }} />
-                {product.badge && <BadgeSpan>{product.badge}</BadgeSpan>}
+                {(product.stock ?? 0) > 0 ? product.badge && <BadgeSpan>{product.badge}</BadgeSpan> : <BadgeStockSpan>Out of Stock</BadgeStockSpan>}
               </MainImage>
               <ThumbnailRow as="div">
                 <Thumb $active={activeImg === 0} onClick={() => setActiveImg(0)}>
@@ -400,18 +412,70 @@ const ProductDetailPage: React.FC = () => {
                 )}
               </PriceBlock>
               <Desc>{product.description || 'No description available.'}</Desc>
+
+              {/* ── Stock Status Banner ── */}
+              {product.stock !== undefined && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 14px', borderRadius: 6, marginBottom: 16,
+                  background: !productInStock ? '#fef2f2' : isLowStock ? '#fff7ed' : '#f0fdf4',
+                  border: `1px solid ${!productInStock ? '#fecaca' : isLowStock ? '#fed7aa' : '#bbf7d0'}`,
+                }}>
+                  {!productInStock
+                    ? <AlertCircle size={16} color="#dc2626" />
+                    : isLowStock
+                      ? <AlertCircle size={16} color="#ea580c" />
+                      : <Package size={16} color="#16a34a" />}
+                  <span style={{
+                    fontSize: 13, fontWeight: 600,
+                    color: !productInStock ? '#dc2626' : isLowStock ? '#ea580c' : '#15803d',
+                  }}>
+                    {!productInStock
+                      ? 'Out of Stock — Currently unavailable'
+                      : isLowStock
+                        ? `Low Stock — Only ${stockNum} unit${stockNum !== 1 ? 's' : ''} remaining`
+                        : `In Stock — ${stockNum} unit${stockNum !== 1 ? 's' : ''} available`}
+                  </span>
+                </div>
+              )}
+
               <Divider $my="20px" />
               <Flex as="div" $align="center" $gap="16px" style={{ marginBottom: 20 }}>
                 <span style={{ fontSize: 14, fontWeight: theme.fontWeights.medium, color: theme.colors.text }}>Quantity:</span>
                 <QuantityWrapper as="div">
-                  <QuantityBtn onClick={() => setQty(q => Math.max(1, q - 1))}>−</QuantityBtn>
+                  <QuantityBtn
+                    onClick={() => setQty(q => Math.max(1, q - 1))}
+                    disabled={!productInStock}
+                  >−</QuantityBtn>
                   <QuantityNum>{qty}</QuantityNum>
-                  <QuantityBtn onClick={() => setQty(q => q + 1)}>+</QuantityBtn>
+                  <QuantityBtn
+                    onClick={() => setQty(q => Math.min(q + 1, productInStock ? (product.stock ?? 99) : 1))}
+                    disabled={!productInStock || qty >= (product.stock ?? 99)}
+                  >+</QuantityBtn>
                 </QuantityWrapper>
+                {productInStock && product.stock !== undefined && (
+                  <span style={{ fontSize: 12, color: theme.colors.textLight }}>
+                    max {product.stock}
+                  </span>
+                )}
               </Flex>
               <ActionRow as="div">
-                <Button onClick={() => { for (let i = 0; i < qty; i++) addItem(cartProduct); }} style={{ flex: 1 }}>
-                  <ShoppingCart size={16} /> Add to Cart
+                <Button
+                  onClick={() => {
+                    if (!productInStock) return;
+                    for (let i = 0; i < qty; i++) addItem(cartProduct);
+                  }}
+                  disabled={!productInStock}
+                  style={{
+                    flex: 1,
+                    opacity: productInStock ? 1 : 0.6,
+                    cursor: productInStock ? 'pointer' : 'not-allowed',
+                    background: !productInStock ? '#9ca3af' : undefined,
+                  }}
+                >
+                  {productInStock
+                    ? <><ShoppingCart size={16} /> Add to Cart</>
+                    : <><AlertCircle size={16} /> Out of Stock</>}
                 </Button>
                 <WishBtn $active={wishlisted} onClick={() => toggle(cartProduct)} aria-label="Wishlist">
                   <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />

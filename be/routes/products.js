@@ -110,10 +110,30 @@ adminRouter.put(
 // Change status only
 adminRouter.patch('/:id/status', asyncHandler(async (req, res) => {
   const { status } = req.body;
-  if (!['active', 'inactive', 'draft'].includes(status))
+  if (!['active', 'inactive', 'draft', 'out_of_stock'].includes(status))
     return res.status(422).json({ success: false, message: 'Invalid status value.' });
   const product = await productService.updateProduct(req.params.id, { status });
   success(res, product, 'Status updated');
+}));
+
+// ── Adjust stock (restock / manual deduction) ────────────────────────────────
+adminRouter.patch('/:id/stock', asyncHandler(async (req, res) => {
+  const { delta, stock } = req.body;
+
+  if (stock !== undefined) {
+    // Absolute set
+    const product = await productService.updateProduct(req.params.id, { stock: Number(stock) });
+    return success(res, product, 'Stock updated');
+  }
+
+  if (delta !== undefined) {
+    // Relative adjustment
+    const { newStock } = await productService.adjustStock(req.params.id, Number(delta));
+    const product      = await productService.getProduct(req.params.id);
+    return success(res, { ...product, newStock }, 'Stock adjusted');
+  }
+
+  return res.status(422).json({ success: false, message: 'Provide `stock` (absolute) or `delta` (relative).' });
 }));
 
 // Remove single image

@@ -8,7 +8,8 @@
 const { v4: uuidv4 }     = require('uuid');
 const { db, FieldValue } = require('../config/firebase');
 const { AppError }       = require('../middleware/errorHandler');
-const { sendMail } = require('../utils/mailer');
+const { sendMail }       = require('../utils/mailer');
+const { adjustStock }    = require('./productService');
 
 const COL  = 'orders';
 const toMs = (v) => v?.toMillis ? v.toMillis() : new Date(v || 0).getTime();
@@ -245,32 +246,21 @@ const createOrder = async (data, userId = null) => {
 
   await db.collection(COL).doc(id).set(doc);
 
+  // ── Deduct stock for every item (atomic per product, sends admin emails) ───
+  const stockErrors = [];
   for (const item of doc.items) {
-    const productRef = db.collection('products').doc(item.productId);
-    
-    await db.runTransaction(async (transaction) => {
-      const productDoc = await transaction.get(productRef);
-      if (!productDoc.exists) throw new Error("Product not found");
-
-      const newStock = productDoc.data().stock - item.quantity;
-      
-      // Update the stock
-      transaction.update(productRef, { stock: Math.max(0, newStock) });
-
-      // 3. Check if out of stock and notify admin
-      if (newStock <= 0) {
-        const adminEmail = process.env.MAIL_USER;
-        await sendMail({
-          to:      adminEmail,
-          subject: `OUT OF STOCK: ${productDoc.data().name}`,
-          text:    `The product "${productDoc.data().name}" is now out of stock.`,
-        });
-      }
-    });
+    if (!item.productId) continue;
+    try {
+      await adjustStock(item.productId, -item.quantity);
+    } catch (err) {
+      console.error(`[orderService] Stock adjust failed for ${item.productId}:`, err.message);
+      stockErrors.push({ productId: item.productId, error: err.message });
+    }
   }
 
-
-  return { ...doc, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const result = { ...doc, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  if (stockErrors.length) result._stockErrors = stockErrors;
+  return result;
 };
 
 // ─── List orders (admin) ──────────────────────────────────────────────────────
