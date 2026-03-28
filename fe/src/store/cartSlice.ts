@@ -7,27 +7,16 @@ interface CartState {
 
 const initialState: CartState = { items: [] };
 
-/** Returns true when a product is purchasable */
-export const isInStock = (p: Pick<Product, 'stock' | 'status'>): boolean => {
-  if (p.status === 'out_of_stock' || p.status === 'inactive' || p.status === 'draft') return false;
-  return (p.stock ?? 1) > 0;
-};
-
 const cartSlice = createSlice({
   name: 'cart',
   initialState,
   reducers: {
     addToCart(state, action: PayloadAction<Product>) {
-      const product = action.payload;
-      if (!isInStock(product)) return; // silently reject out-of-stock
-
-      const existing = state.items.find((i) => i.id === product.id);
+      const existing = state.items.find((i) => i.id === action.payload.id);
       if (existing) {
-        // Cap at available stock
-        const maxStock = product.stock ?? Infinity;
-        existing.quantity = Math.min(existing.quantity + 1, maxStock);
+        existing.quantity += 1;
       } else {
-        state.items.push({ ...product, quantity: 1 });
+        state.items.push({ ...action.payload, quantity: 1 });
       }
     },
     removeFromCart(state, action: PayloadAction<number>) {
@@ -36,8 +25,7 @@ const cartSlice = createSlice({
     updateQuantity(state, action: PayloadAction<{ id: number; quantity: number }>) {
       const item = state.items.find((i) => i.id === action.payload.id);
       if (item) {
-        const maxStock = (item as CartItem & Product).stock ?? Infinity;
-        item.quantity = Math.min(Math.max(1, action.payload.quantity), maxStock);
+        item.quantity = Math.max(1, action.payload.quantity);
       }
     },
     clearCart(state) {

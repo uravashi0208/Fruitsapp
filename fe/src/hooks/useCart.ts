@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from '../store';
-import { addToCart, removeFromCart, updateQuantity, isInStock } from '../store/cartSlice';
+import { addToCart, removeFromCart, updateQuantity } from '../store/cartSlice';
 import { toggleWishlist } from '../store/wishlistSlice';
 import { showToast } from '../store/uiSlice';
 import { Product } from '../types';
@@ -17,25 +17,10 @@ export const useCart = () => {
 
   const addItem = useCallback(
     (product: Product) => {
-      if (!isInStock(product)) {
-        dispatch(showToast({ message: `${product.name} is out of stock`, type: 'error' }));
-        return;
-      }
-      // Check if adding would exceed available stock
-      const inCart = items.find((i) => i.id === product.id);
-      const currentQty = inCart?.quantity ?? 0;
-      const maxStock = product.stock ?? Infinity;
-      if (currentQty >= maxStock) {
-        dispatch(showToast({
-          message: `Only ${maxStock} unit${maxStock === 1 ? '' : 's'} available for ${product.name}`,
-          type: 'error',
-        }));
-        return;
-      }
       dispatch(addToCart(product));
       dispatch(showToast({ message: `${product.name} added to cart!`, type: 'success' }));
     },
-    [dispatch, items]
+    [dispatch]
   );
 
   const removeItem = useCallback(

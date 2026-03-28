@@ -1,10 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Trash2, ShoppingBag, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { useCart } from '../hooks/useCart';
-import { isInStock } from '../store/cartSlice';
 import { theme } from '../styles/theme';
 import { Container, Section, Flex, Button, Divider, QuantityWrapper, QuantityBtn, QuantityNum } from '../styles/shared';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
@@ -38,7 +37,7 @@ const TableHead = styled.div`
   @media (max-width: ${theme.breakpoints.md}) { display: none; }
 `;
 
-const CartRow = styled.div<{ $unavailable?: boolean }>`
+const CartRow = styled.div`
   display: grid;
   grid-template-columns: 2.5fr 1fr 1fr 1fr 40px;
   gap: 16px;
@@ -48,11 +47,6 @@ const CartRow = styled.div<{ $unavailable?: boolean }>`
   transition: ${theme.transitions.base};
   &:last-child { border-bottom: none; }
   &:hover { background: #f8f9fa; }
-  ${({ $unavailable }) => $unavailable && `
-    opacity: 0.7;
-    background: #fff8f8;
-    &:hover { background: #fff5f5; }
-  `}
   @media (max-width: ${theme.breakpoints.md}) {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -79,29 +73,6 @@ const ProductCat = styled.span`
   font-size: 12px;
   color: ${theme.colors.primary};
   text-transform: capitalize;
-`;
-
-const OutOfStockTag = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #dc2626;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 4px;
-  padding: 2px 8px;
-  margin-top: 4px;
-`;
-
-const StockWarning = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #ea580c;
-  font-weight: 500;
 `;
 
 const PriceCell = styled.span`
@@ -166,26 +137,8 @@ const EmptyCart = styled.div`
   border: 1px solid #f0f0f0;
 `;
 
-const UnavailableBanner = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 6px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: #92400e;
-`;
-
 const CartPage: React.FC = () => {
   const { items, subtotal, shipping, total, removeItem, changeQty } = useCart();
-
-  // Separate available vs unavailable items
-  const unavailableItems = items.filter(i => !isInStock(i as any));
-  const availableItems   = items.filter(i => isInStock(i as any));
-  const hasUnavailable   = unavailableItems.length > 0;
 
   if (items.length === 0) {
     return (
@@ -215,18 +168,6 @@ const CartPage: React.FC = () => {
 
       <Section>
         <Container>
-          {/* Out-of-stock warning banner */}
-          {hasUnavailable && (
-            <UnavailableBanner>
-              <AlertTriangle size={16} color="#ea580c" style={{ flexShrink: 0 }} />
-              <span>
-                <strong>{unavailableItems.length} item{unavailableItems.length > 1 ? 's' : ''} in your cart
-                {unavailableItems.length > 1 ? ' are' : ' is'} out of stock</strong> and cannot be checked out.
-                Please remove {unavailableItems.length > 1 ? 'them' : 'it'} to proceed.
-              </span>
-            </UnavailableBanner>
-          )}
-
           <CartLayout>
             <div>
               <CartTable>
@@ -238,80 +179,44 @@ const CartPage: React.FC = () => {
                   <span />
                 </TableHead>
 
-                {items.map((item) => {
-                  const inStock  = isInStock(item as any);
-                  const maxStock = (item as any).stock as number | undefined;
-                  const isLow    = inStock && maxStock !== undefined && maxStock <= 5;
+                {items.map((item) => (
+                  <CartRow key={item.id}>
+                    <ProductCol as="div">
+                      <ProductThumb
+                        src={item.image}
+                        alt={item.name}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            `https://placehold.co/72x72/f1f8f1/82ae46?text=${item.name[0]}`;
+                        }}
+                      />
+                      <div>
+                        <ProductName>{item.name}</ProductName>
+                        <ProductCat>{item.category}</ProductCat>
+                      </div>
+                    </ProductCol>
 
-                  return (
-                    <CartRow key={item.id} $unavailable={!inStock}>
-                      <ProductCol as="div">
-                        <ProductThumb
-                          src={item.image?.startsWith('http') ? item.image : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${item.image}`}
-                          alt={item.name}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              `https://placehold.co/72x72/f1f8f1/82ae46?text=${item.name[0]}`;
-                          }}
-                          style={{ filter: inStock ? 'none' : 'grayscale(60%)' }}
-                        />
-                        <div>
-                          <ProductName>{item.name}</ProductName>
-                          <ProductCat>{item.category}</ProductCat>
-                          {!inStock && (
-                            <OutOfStockTag>
-                              <AlertTriangle size={10} /> Out of Stock
-                            </OutOfStockTag>
-                          )}
-                          {inStock && isLow && (
-                            <StockWarning>
-                              <AlertTriangle size={11} /> Only {maxStock} left
-                            </StockWarning>
-                          )}
-                        </div>
-                      </ProductCol>
+                    <PriceCell>${item.price.toFixed(2)}</PriceCell>
 
-                      <PriceCell>${item.price.toFixed(2)}</PriceCell>
+                    <QuantityWrapper as="div">
+                      <QuantityBtn onClick={() => changeQty(item.id, item.quantity - 1)}>−</QuantityBtn>
+                      <QuantityNum>{item.quantity}</QuantityNum>
+                      <QuantityBtn onClick={() => changeQty(item.id, item.quantity + 1)}>+</QuantityBtn>
+                    </QuantityWrapper>
 
-                      <QuantityWrapper as="div">
-                        <QuantityBtn
-                          onClick={() => changeQty(item.id, item.quantity - 1)}
-                          disabled={!inStock}
-                        >−</QuantityBtn>
-                        <QuantityNum style={{ color: inStock ? undefined : '#9ca3af' }}>
-                          {item.quantity}
-                        </QuantityNum>
-                        <QuantityBtn
-                          onClick={() => changeQty(item.id, item.quantity + 1)}
-                          disabled={!inStock || (maxStock !== undefined && item.quantity >= maxStock)}
-                        >+</QuantityBtn>
-                      </QuantityWrapper>
+                    <TotalCell>${(item.price * item.quantity).toFixed(2)}</TotalCell>
 
-                      <TotalCell style={{ color: inStock ? undefined : '#9ca3af' }}>
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </TotalCell>
-
-                      <RemoveBtn onClick={() => removeItem(item.id)} aria-label="Remove item">
-                        <Trash2 size={14} />
-                      </RemoveBtn>
-                    </CartRow>
-                  );
-                })}
+                    <RemoveBtn onClick={() => removeItem(item.id)} aria-label="Remove item">
+                      <Trash2 size={14} />
+                    </RemoveBtn>
+                  </CartRow>
+                ))}
               </CartTable>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20, flexWrap: 'wrap', gap: 12 }}>
                 <Button $variant="outline" as={Link as any} to="/shop">
                   ← Continue Shopping
                 </Button>
-                {hasUnavailable && (
-                  <Button
-                    $variant="outline"
-                    style={{ borderColor: '#dc2626', color: '#dc2626' }}
-                    onClick={() => unavailableItems.forEach(i => removeItem(i.id))}
-                  >
-                    <Trash2 size={14} /> Remove Out-of-Stock Items
-                  </Button>
-                )}
               </div>
             </div>
 
@@ -320,7 +225,7 @@ const CartPage: React.FC = () => {
               <SummaryTitle>Order Summary</SummaryTitle>
 
               <SummaryRow as="div">
-                <span>Subtotal ({availableItems.reduce((a, i) => a + i.quantity, 0)} items)</span>
+                <span>Subtotal ({items.reduce((a, i) => a + i.quantity, 0)} items)</span>
                 <span>${subtotal.toFixed(2)}</span>
               </SummaryRow>
               <SummaryRow as="div">
@@ -367,22 +272,10 @@ const CartPage: React.FC = () => {
               <Button
                 as={Link as any}
                 to="/checkout"
-                style={{
-                  width: '100%', marginTop: 20, justifyContent: 'center',
-                  opacity: hasUnavailable ? 0.6 : 1,
-                  pointerEvents: hasUnavailable ? 'none' : 'auto',
-                  background: hasUnavailable ? '#9ca3af' : undefined,
-                }}
-                title={hasUnavailable ? 'Remove out-of-stock items to proceed' : undefined}
+                style={{ width: '100%', marginTop: 20, justifyContent: 'center' }}
               >
                 Proceed to Checkout <ArrowRight size={16} />
               </Button>
-
-              {hasUnavailable && (
-                <p style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', marginTop: 8 }}>
-                  Remove out-of-stock items to checkout
-                </p>
-              )}
             </SummaryBox>
           </CartLayout>
         </Container>

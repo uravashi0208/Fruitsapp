@@ -4,7 +4,6 @@ import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/Porta
 import styled from 'styled-components';
 import {
   Plus, Search, Trash2, Package, RefreshCw, Edit2, Eye, Download, Filter, Upload,
-  AlertTriangle, TrendingDown, CheckCircle,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
@@ -71,19 +70,16 @@ const ProductThumbPh = styled.div`
 const ProductName = styled.div`font-weight: 600; color: ${t.colors.textPrimary}; font-size: 0.875rem;`;
 const ProductSku  = styled.div`font-size: 0.75rem; color: ${t.colors.textMuted}; margin-top: 2px;`;
 
-let LOW_STOCK_THRESHOLD = 5;
-
-const StockBadge = styled.span<{ $out: boolean; $low?: boolean }>`
+const StockBadge = styled.span<{ $out: boolean }>`
   font-size: 0.75rem; font-weight: 600;
-  color: ${({ $out, $low }) => $out ? t.colors.danger : $low ? '#ea580c' : t.colors.success};
+  color: ${({ $out }) => $out ? t.colors.danger : t.colors.success};
   cursor: pointer;
   padding: 4px 10px;
   border-radius: 20px;
-  background: ${({ $out, $low }) => $out ? t.colors.dangerBg : $low ? '#fff7ed' : t.colors.successBg};
-  border: 1px solid ${({ $out, $low }) => $out ? t.colors.danger : $low ? '#fb923c' : t.colors.success};
+  background: ${({ $out }) => $out ? t.colors.dangerBg : t.colors.successBg};
+  border: 1px solid ${({ $out }) => $out ? t.colors.danger : t.colors.success};
   transition: opacity 0.15s;
   user-select: none;
-  display: inline-flex; align-items: center; gap: 4px;
   &:hover { opacity: 0.75; }
   &:active { opacity: 0.55; }
 `;
@@ -251,10 +247,7 @@ export const ProductsPage: React.FC = () => {
 
   const toggleStatus = useCallback(async (p: AdminProduct) => {
     if (toggling) return;
-    const next = p.status === 'active' ? 'inactive'
-               : p.status === 'inactive' ? 'active'
-               : p.status === 'out_of_stock' ? 'active'
-               : 'active';
+    const next = p.status === 'active' ? 'inactive' : 'active';
     setToggling(p.id);
     try {
       await adminProductsApi.updateStatus(p.id, next as AdminProduct['status']);
@@ -265,40 +258,18 @@ export const ProductsPage: React.FC = () => {
     } finally { setToggling(null); }
   }, [dispatch, refetch, toggling]);
 
-  // ── Restock modal ────────────────────────────────────────
-  const [restockTarget, setRestockTarget] = useState<AdminProduct | null>(null);
-  const [restockQty,    setRestockQty]    = useState('');
-  const [restocking,    setRestocking]    = useState(false);
-
-  const openRestock  = (p: AdminProduct) => { setRestockTarget(p); setRestockQty(String(p.stock ?? 0)); };
-  const closeRestock = () => { setRestockTarget(null); setRestockQty(''); };
-
-  const handleRestock = useCallback(async () => {
-    if (!restockTarget) return;
-    const qty = parseInt(restockQty, 10);
-    if (isNaN(qty) || qty < 0) {
-      dispatch(showAdminToast({ message: 'Enter a valid stock quantity (≥ 0)', type: 'error' }));
-      return;
-    }
-    setRestocking(true);
+  const toggleStock = useCallback(async (p: AdminProduct) => {
+    if (toggling) return;
+    const nextStock = (p.stock ?? 0) === 0 ? 1 : 0;
+    setToggling(p.id + '_stock');
     try {
-      await adminProductsApi.update(restockTarget.id, { stock: qty } as Partial<AdminProduct>);
-      dispatch(showAdminToast({
-        message: qty === 0
-          ? `"${restockTarget.name}" marked Out of Stock`
-          : `"${restockTarget.name}" stock updated to ${qty} units`,
-        type: qty === 0 ? 'warning' : 'success',
-      }));
-      closeRestock();
+      await adminProductsApi.update(p.id, { stock: nextStock } as Partial<AdminProduct>);
+      dispatch(showAdminToast({ message: `"${p.name}" marked as ${nextStock === 0 ? 'Out of Stock' : 'In Stock'}`, type: 'info' }));
       refetch();
     } catch (err) {
-      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Restock failed', type: 'error' }));
-    } finally { setRestocking(false); }
-  }, [restockTarget, restockQty, dispatch, refetch]);
-
-  const toggleStock = useCallback(async (p: AdminProduct) => {
-    openRestock(p);
-  }, []);
+      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Update failed', type: 'error' }));
+    } finally { setToggling(null); }
+  }, [dispatch, refetch, toggling]);
 
   const viewProduct = (products ?? []).find(p => p.id === viewId);
 
@@ -421,32 +392,22 @@ export const ProductsPage: React.FC = () => {
                   <TD style={{ fontWeight: 700, color: t.colors.textPrimary }}>${p.price}</TD>
                   <TD $center>
                     <StatusPill
-                      $variant={
-                        p.status === 'active' ? 'success' :
-                        p.status === 'out_of_stock' ? 'danger' :
-                        p.status === 'draft' ? 'warning' : 'neutral'
-                      }
+                      $variant={p.status === 'active' ? 'success' : p.status === 'draft' ? 'warning' : 'neutral'}
                       style={{ cursor: toggling === p.id ? 'wait' : 'pointer', userSelect: 'none', opacity: toggling === p.id ? 0.6 : 1 }}
                       title="Click to toggle status"
                       onClick={e => { e.stopPropagation(); toggleStatus(p); }}
                     >
-                      {p.status === 'out_of_stock' ? 'out of stock' : p.status}
+                      {p.status}
                     </StatusPill>
                   </TD>
                   <TD $center>
                     <StockBadge
-                      $out={(p.stock ?? 0) === 0 || p.status === 'out_of_stock'}
-                      $low={(p.stock ?? 0) > 0 && (p.stock ?? 0) <= LOW_STOCK_THRESHOLD}
-                      title="Click to update stock"
+                      $out={(p.stock ?? 0) === 0}
+                      title="Click to toggle stock"
+                      style={{ opacity: toggling === p.id + '_stock' ? 0.6 : 1, cursor: toggling === p.id + '_stock' ? 'wait' : 'pointer' }}
                       onClick={e => { e.stopPropagation(); toggleStock(p); }}
                     >
-                      {(p.stock ?? 0) === 0 || p.status === 'out_of_stock' ? (
-                        <><AlertTriangle size={11} /> Out of Stock</>
-                      ) : (p.stock ?? 0) <= LOW_STOCK_THRESHOLD ? (
-                        <><TrendingDown size={11} /> {p.stock} left</>
-                      ) : (
-                        <><CheckCircle size={11} /> {p.stock} in stock</>
-                      )}
+                      {(p.stock ?? 0) === 0 ? 'Out of Stock' : 'In Stock'}
                     </StockBadge>
                   </TD>
                   <TD>{formatDate(p.createdAt)}</TD>
@@ -638,86 +599,6 @@ export const ProductsPage: React.FC = () => {
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={() => setViewId(null)}>Close</AdminBtn>
               <AdminBtn $variant="primary" onClick={() => { setViewId(null); openEdit(viewProduct); }}>Edit Product</AdminBtn>
-            </ModalFooter>
-          </ModalBox>
-        </ModalBackdrop>
-      )}
-
-      {/* ── Restock / Stock Update Modal ── */}
-      {restockTarget && (
-        <ModalBackdrop onClick={closeRestock}>
-          <ModalBox $width="460px" onClick={e => e.stopPropagation()}>
-            <ModalHeader>
-              <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Package size={18} />
-                Update Stock — {restockTarget.name}
-              </SectionTitle>
-              <IconBtn onClick={closeRestock}>✕</IconBtn>
-            </ModalHeader>
-            <ModalBody>
-              {/* Current status summary */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 16px', borderRadius: 8, marginBottom: 20,
-                background: (restockTarget.stock ?? 0) === 0 ? t.colors.dangerBg : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#fff7ed' : t.colors.successBg,
-                border: `1px solid ${(restockTarget.stock ?? 0) === 0 ? t.colors.danger : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#fb923c' : t.colors.success}`,
-              }}>
-                {(restockTarget.stock ?? 0) === 0
-                  ? <AlertTriangle size={16} color={t.colors.danger} />
-                  : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD
-                    ? <TrendingDown size={16} color="#ea580c" />
-                    : <CheckCircle size={16} color={t.colors.success} />}
-                <span style={{ fontSize: '0.875rem', fontWeight: 600,
-                  color: (restockTarget.stock ?? 0) === 0 ? t.colors.danger : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#ea580c' : t.colors.success }}>
-                  Current stock: {restockTarget.stock ?? 0} units
-                  {(restockTarget.stock ?? 0) === 0 ? ' — Out of Stock' : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? ' — Low Stock' : ' — In Stock'}
-                </span>
-              </div>
-
-              <FormGroup>
-                <FormLabel>New Stock Quantity</FormLabel>
-                <AdminInput
-                  type="number"
-                  min="0"
-                  value={restockQty}
-                  onChange={e => setRestockQty(e.target.value)}
-                  placeholder="Enter new stock level"
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleRestock()}
-                  style={{ fontSize: '1.1rem', padding: '10px 14px' }}
-                />
-                <p style={{ fontSize: '0.75rem', color: t.colors.textMuted, marginTop: 6 }}>
-                  Set to <strong>0</strong> to mark as out of stock. Setting a positive value will mark the product as active.
-                </p>
-              </FormGroup>
-
-              {/* Quick presets */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                {[0, 10, 25, 50, 100].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setRestockQty(String(n))}
-                    style={{
-                      padding: '4px 12px', borderRadius: 20, border: `1px solid ${t.colors.border}`,
-                      background: restockQty === String(n) ? t.colors.primary : 'white',
-                      color: restockQty === String(n) ? 'white' : t.colors.textSecondary,
-                      fontSize: '0.8125rem', cursor: 'pointer', fontWeight: 500,
-                    }}
-                  >
-                    {n === 0 ? 'Out of Stock' : `+${n}`}
-                  </button>
-                ))}
-              </div>
-            </ModalBody>
-            <ModalFooter>
-              <AdminBtn $variant="ghost" onClick={closeRestock}>Cancel</AdminBtn>
-              <AdminBtn
-                $variant={restockQty === '0' ? 'danger' : 'primary'}
-                onClick={handleRestock}
-                disabled={restocking}
-              >
-                {restocking ? 'Saving…' : restockQty === '0' ? 'Mark Out of Stock' : 'Update Stock'}
-              </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
