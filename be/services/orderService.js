@@ -8,6 +8,7 @@
 const { v4: uuidv4 }     = require('uuid');
 const { db, FieldValue } = require('../config/firebase');
 const { AppError }       = require('../middleware/errorHandler');
+const { sendMail } = require('../utils/mailer');
 
 const COL  = 'orders';
 const toMs = (v) => v?.toMillis ? v.toMillis() : new Date(v || 0).getTime();
@@ -243,6 +244,32 @@ const createOrder = async (data, userId = null) => {
   };
 
   await db.collection(COL).doc(id).set(doc);
+
+  for (const item of doc.items) {
+    const productRef = db.collection('products').doc(item.productId);
+    
+    await db.runTransaction(async (transaction) => {
+      const productDoc = await transaction.get(productRef);
+      if (!productDoc.exists) throw new Error("Product not found");
+
+      const newStock = productDoc.data().stock - item.quantity;
+      
+      // Update the stock
+      transaction.update(productRef, { stock: Math.max(0, newStock) });
+
+      // 3. Check if out of stock and notify admin
+      if (newStock <= 0) {
+        const adminEmail = process.env.MAIL_USER;
+        await sendMail({
+          to:      adminEmail,
+          subject: `OUT OF STOCK: ${productDoc.data().name}`,
+          text:    `The product "${productDoc.data().name}" is now out of stock.`,
+        });
+      }
+    });
+  }
+
+
   return { ...doc, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
 };
 
