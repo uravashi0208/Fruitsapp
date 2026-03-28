@@ -239,7 +239,6 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const lowStock    = state === 'low';
   const stockNum    = product.stock ?? 0;
   const inCartQty   = items.find(i => i.id === product.id)?.quantity ?? 0;
-  const maxStock    = product.stock ?? 100;
   const pct         = Math.min(100, Math.max(0, (stockNum / Math.max(stockNum + inCartQty, 20)) * 100));
 
   const handleAddToCart = () => {
