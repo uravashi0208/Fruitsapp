@@ -240,10 +240,6 @@ export const FaqPage: React.FC = () => {
               onChange={e => setSearch(e.target.value)}
             />
           </SearchBar>
-          <AdminSelect value={catFilter} onChange={e => setCatFilter(e.target.value)} style={{ width: 160 }}>
-            <option value="">All Categories</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </AdminSelect>
           <AdminSelect value={statFilter} onChange={e => setStatFilter(e.target.value)} style={{ width: 130 }}>
             <option value="">All Status</option>
             <option value="active">Active</option>
@@ -252,10 +248,10 @@ export const FaqPage: React.FC = () => {
         </AdminFlex>
 
         {/* Category pills */}
-        {categories.length > 0 && (
+        {FAQ_CATEGORIES.length > 0 && (
           <AdminFlex $gap="8px" $wrap style={{ marginTop: 12 }}>
             <CategoryBadge $active={catFilter === ''} onClick={() => setCatFilter('')}>All</CategoryBadge>
-            {categories.map(c => (
+            {FAQ_CATEGORIES.map(c => (
               <CategoryBadge key={c} $active={catFilter === c} onClick={() => setCatFilter(catFilter === c ? '' : c)}>
                 {c}
               </CategoryBadge>
