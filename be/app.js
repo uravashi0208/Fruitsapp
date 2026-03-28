@@ -19,6 +19,8 @@
  *  GET  /api/blogs/tags
  *  GET  /api/blogs/:idOrSlug
  *  POST /api/contact
+ *  GET  /api/faqs                  ?category
+ *  GET  /api/faqs/categories
  *
  * ══════════════════════════════════════════════════════════════════
  *  USER AUTH
@@ -71,6 +73,7 @@
  *  GET/PATCH/DEL      /api/admin/users             (storefront users)
  *  GET/PATCH/DEL      /api/admin/admins            (admin accounts)
  *  GET                /api/admin/wishlist          (all user wishlists)
+ *  GET/POST/PUT/DEL   /api/admin/faqs
  * ══════════════════════════════════════════════════════════════════
  */
 
@@ -98,6 +101,7 @@ const { publicRouter: contPublic,  adminRouter: contAdmin  }   = require('./rout
 const { userRouter: orderUser,     adminRouter: orderAdmin }   = require('./routes/orders');
 const { userRouter: wishUser,      adminRouter: wishAdmin  }   = require('./routes/wishlist');
 const cardsRouter     = require('./routes/cards');
+const { publicRouter: faqPublic,   adminRouter: faqAdmin   }   = require('./routes/faqs');
 const { publicRouter: reviewPublic, adminRouter: reviewAdmin } = require('./routes/reviews');
 const dashboardRouter = require('./routes/dashboard');
 const stripeRouter    = require('./routes/stripe');
@@ -143,6 +147,7 @@ app.use('/api/testimonials', testPublic);
 app.use('/api/newsletter',   newsPublic);
 app.use('/api/blogs',        blogPublic);
 app.use('/api/contact',      contPublic);
+app.use('/api/faqs',         faqPublic);
 
 // ── User Auth ─────────────────────────────────────────────────────────────────
 app.use('/api/auth', userAuthRouter);
@@ -171,6 +176,7 @@ app.use('/api/admin/orders',       orderAdmin);
 app.use('/api/admin/users',        usersRouter);
 app.use('/api/admin/admins',       adminsRouter);
 app.use('/api/admin/cards',        cardsRouter);
+app.use('/api/admin/faqs',         faqAdmin);
 app.use('/api/admin/wishlist',     wishAdmin);
 app.use('/api/admin',             reviewAdmin);
 

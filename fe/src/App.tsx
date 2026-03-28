@@ -16,6 +16,7 @@ const CartPage          = lazy(() => import('./pages/CartPage'));
 const CheckoutPage      = lazy(() => import('./pages/CheckoutPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const BlogDetailPage    = lazy(() => import('./pages/BlogDetailPage'));
+const FaqPage           = lazy(() => import('./pages/FaqPage'));
 
 const PageLoader = styled.div`
   min-height: 60vh;
@@ -69,6 +70,7 @@ const App: React.FC = () => (
                 <Route path="/blog"        element={<BlogPage />} />
                 <Route path="/blog/:id"    element={<Suspense fallback={<PageLoader />}><BlogDetailPage /></Suspense>} />
                 <Route path="/contact"     element={<ContactPage />} />
+                <Route path="/faq"         element={<Suspense fallback={<PageLoader />}><FaqPage /></Suspense>} />
                 <Route path="/product/:id" element={<ProductDetailPage />} />
                 <Route path="*"            element={<HomePage />} />
               </Routes>

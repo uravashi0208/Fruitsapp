@@ -171,8 +171,8 @@ export const Footer: React.FC = () => {
                 <li><span style={{cursor:"pointer"}}>Privacy Policy</span></li>
               </FooterList>
               <FooterList>
-                <li><span style={{cursor:"pointer"}}>FAQs</span></li>
-                <li><Link to="/contact">Contact</Link></li>
+                <li><span><Link to="/faq">FAQs</Link></span></li>
+                <li><span><Link to="/contact">Contact</Link></span></li>
               </FooterList>
             </div>
           </div>

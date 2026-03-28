@@ -13,6 +13,9 @@ import {
   ChevronDownIcon,
   EnvelopeIcon,
 } from '../icons';
+import {
+  HelpCircle,
+} from 'lucide-react';
 
 type NavItem = {
   name: string;
@@ -55,6 +58,7 @@ const navItems: NavItem[] = [
   { icon: <TestimonialNavIcon />, name: 'Testimonials',  path: '/admin/testimonials' },
   { icon: <EnvelopeIcon />,       name: 'Newsletter',    path: '/admin/newsletter' },
   { icon: <PageIcon />,           name: 'Contacts',      path: '/admin/contacts' },
+  { icon: <HelpCircle />,           name: 'FAQs',      path: '/admin/FAQs' },
 ];
 
 const othersItems: NavItem[] = [

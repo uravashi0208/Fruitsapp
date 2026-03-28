@@ -540,3 +540,42 @@ export const adminReviewsApi = {
   delete: (id: string) =>
     api.delete<{ success: boolean; message: string }>(`/api/admin/reviews/${id}`),
 };
+// ─── FAQs ─────────────────────────────────────────────────────────────────────
+export interface AdminFaq {
+  id:        string;
+  question:  string;
+  answer:    string;
+  category:  string;
+  sortOrder: number;
+  status:    'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const adminFaqsApi = {
+  list: (params: { status?: string; category?: string } = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params)
+          .filter(([, v]) => v != null && v !== '')
+          .map(([k, v]) => [k, String(v)])
+      )
+    ).toString();
+    return api.get<Ok<AdminFaq[]>>(`/api/admin/faqs${qs ? `?${qs}` : ''}`);
+  },
+
+  getOne: (id: string) =>
+    api.get<Ok<AdminFaq>>(`/api/admin/faqs/${id}`),
+
+  create: (body: Omit<AdminFaq, 'id' | 'createdAt' | 'updatedAt'>) =>
+    api.post<Ok<AdminFaq>>('/api/admin/faqs', body),
+
+  update: (id: string, body: Partial<Omit<AdminFaq, 'id' | 'createdAt' | 'updatedAt'>>) =>
+    api.put<Ok<AdminFaq>>(`/api/admin/faqs/${id}`, body),
+
+  setStatus: (id: string, status: AdminFaq['status']) =>
+    api.patch<Ok<AdminFaq>>(`/api/admin/faqs/${id}`, { status }),
+
+  delete: (id: string) =>
+    api.delete<Ok<{ message: string }>>(`/api/admin/faqs/${id}`),
+};

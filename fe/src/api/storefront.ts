@@ -337,3 +337,23 @@ export const reviewsApi = {
       `/api/products/${productId}/reviews`, body, { noAuth: true }
     ),
 };
+// ─── FAQs ─────────────────────────────────────────────────────────────────────
+export interface ApiFaq {
+  id:        string;
+  question:  string;
+  answer:    string;
+  category:  string;
+  sortOrder: number;
+  status:    'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const faqApi = {
+  list: (category?: string) => {
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    return api.get<ApiOk<ApiFaq[]>>(`/api/faqs${qs}`, { noAuth: true });
+  },
+  categories: () =>
+    api.get<ApiOk<string[]>>('/api/faqs/categories', { noAuth: true }),
+};
