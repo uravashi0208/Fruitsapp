@@ -53,7 +53,7 @@ export interface AdminProduct {
   sku:           string;
   badge?:        string;
   isNew?:        boolean;
-  status:        'active' | 'inactive' | 'draft';
+  status:        'active' | 'inactive' | 'draft' | 'out_of_stock';
   rating:        number;
   reviews:       number;
   createdAt:     string;

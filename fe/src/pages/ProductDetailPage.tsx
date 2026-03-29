@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import styled from 'styled-components';
-import { ShoppingCart, Heart, Share2, CheckCircle, Truck, RefreshCw, Star, Send, User } from 'lucide-react';
+import styled, { keyframes } from 'styled-components';
+import { ShoppingCart, Heart, Share2, CheckCircle, Truck, RefreshCw, Star, Send, User, AlertCircle } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { ProductCard } from '../components/ui/ProductCard';
 import { useProduct, useProducts } from '../hooks/useApi';
 import { ApiProduct, reviewsApi, ApiReview } from '../api/storefront';
 import { getAccessToken } from '../api/client';
 import { useCart, useWishlist } from '../hooks/useCart';
+import { isInStock } from '../store/cartSlice';
 import { theme } from '../styles/theme';
 import {
   Container, Section, Flex, Button, Divider,
@@ -25,6 +26,14 @@ const decodeToken = (token: string): { name?: string; id?: string } | null => {
   try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
 };
 
+const LOW_STOCK = 5;
+
+// ── Styled ─────────────────────────────────────────────────
+const badgePop = keyframes`
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+`;
+
 const DetailLayout = styled.div`
   display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start;
   @media (max-width: ${theme.breakpoints.md}) { grid-template-columns: 1fr; gap: 30px; }
@@ -33,17 +42,28 @@ const MainImage = styled.div`
   position: relative; overflow: hidden;
   img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; transition: transform 0.4s ease; &:hover { transform: scale(1.04); } }
 `;
+
 const BadgeSpan = styled.span`
-  position: absolute; top: 12px; left: 12px; padding: 4px 12px;
+  position: absolute; top: 0px; left: 0px; padding: 4px 12px;
   background: ${theme.colors.primary}; color: white; font-size: 14px;
   font-weight: ${theme.fontWeights.light}; border-radius: 2px; z-index: 2;
+  animation: ${badgePop} 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
 `;
 
-const BadgeStockSpan = styled.span`
-  position: absolute; top: 0px; left: 0px; padding: 6px 16px;
-  background: ${theme.colors.danger}; color: white; font-size: 15px;
-  font-weight: ${theme.fontWeights.light}; border-radius: 2px; z-index: 2;
+const OutOfStockBadge = styled.span`
+  position: absolute; top: 0px; left: 0px; padding: 4px 12px;
+  background: #dc2626; color: white; font-size: 14px;
+  font-weight: 600; border-radius: 2px; z-index: 2;
+  animation: ${badgePop} 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
 `;
+
+const LowStockBadge = styled.span`
+  position: absolute; top: 0px; left: 0px; padding: 4px 12px;
+  background: #f97316; color: white; font-size: 14px;
+  font-weight: 600; border-radius: 2px; z-index: 2;
+  animation: ${badgePop} 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+`;
+
 const ThumbnailRow = styled(Flex)`gap: 8px; flex-wrap: wrap; margin-top: 12px;`;
 const Thumb = styled.button<{ $active: boolean }>`
   width: 72px; height: 72px;
@@ -152,11 +172,13 @@ const PageBtn             = styled.button<{ $active?: boolean }>`
 `;
 const NoReviews = styled.div`text-align: center; padding: 40px 20px; color: ${theme.colors.textLight}; font-size: 15px;`;
 
+// ── Helpers ─────────────────────────────────────────────────
 const toCartProduct = (p: ApiProduct) => ({
   id: p.id as any, name: p.name, category: p.category as any, price: p.price,
   originalPrice: p.originalPrice, discount: p.discount, image: p.image,
   description: p.description, stock: p.stock, sku: p.sku, badge: p.badge,
   isNew: p.isNew, rating: p.rating, reviews: p.reviews,
+  status: p.status as any,
 });
 
 /* ── ReviewForm ── */
@@ -197,7 +219,6 @@ const ReviewForm: React.FC<{ productId: string; onSubmitted: () => void }> = ({ 
         Write a Review
         {isLoggedIn && <GuestLabel>Logged in as {userData?.name || 'User'}</GuestLabel>}
       </FormTitle>
-
       <div style={{ marginBottom: 8 }}>
         <label style={{ fontSize: 13, color: theme.colors.text, marginBottom: 6, display: 'block' }}>
           Your Rating <span style={{ color: '#dc3545' }}>*</span>
@@ -210,7 +231,6 @@ const ReviewForm: React.FC<{ productId: string; onSubmitted: () => void }> = ({ 
           ))}
         </StarRatingInput>
       </div>
-
       {!isLoggedIn && (
         <>
           <label style={{ fontSize: 13, color: theme.colors.text, marginBottom: 6, display: 'block' }}>
@@ -219,14 +239,11 @@ const ReviewForm: React.FC<{ productId: string; onSubmitted: () => void }> = ({ 
           <FormInput placeholder="Enter your name" value={guestName} onChange={e => setGuestName(e.target.value)} />
         </>
       )}
-
       <label style={{ fontSize: 13, color: theme.colors.text, marginBottom: 6, display: 'block' }}>
         Your Review <span style={{ color: '#adb5bd' }}>(optional)</span>
       </label>
       <FormTextarea placeholder="Share your experience with this product…" value={comment} onChange={e => setComment(e.target.value)} />
-
       {error && <FormError>{error}</FormError>}
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <Button onClick={handleSubmit} disabled={submitting} style={{ minWidth: 140, opacity: submitting ? 0.7 : 1 }}>
           <Send size={15} /> {submitting ? 'Submitting…' : 'Submit Review'}
@@ -320,11 +337,11 @@ const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: product, loading, error } = useProduct(id ?? null);
   const { data: allProducts } = useProducts({ limit: 20 });
-  const [qty, setQty]           = useState(1);
+  const [qty, setQty]             = useState(1);
   const [activeImg, setActiveImg] = useState(0);
   const [reviewKey, setReviewKey] = useState(0);
-  const { addItem }              = useCart();
-  const { isWishlisted, toggle } = useWishlist();
+  const { addItem }               = useCart();
+  const { isWishlisted, toggle }  = useWishlist();
 
   if (loading) return (
     <main>
@@ -357,12 +374,25 @@ const ProductDetailPage: React.FC = () => {
     </main>
   );
 
-  const cartProduct  = toCartProduct(product);
-  const mainImageUrl = resolveImg(product.image);
-  const wishlisted   = isWishlisted(product.id as any);
+  // ── Derived stock state (all based on cartProduct which is typed correctly) ──
+  const cartProduct    = toCartProduct(product);
+  const mainImageUrl   = resolveImg(product.image);
+  const wishlisted     = isWishlisted(product.id as any);
+  const productInStock = isInStock(cartProduct as any);
+  const stockNum       = product.stock ?? 0;
+  const isLowStock     = productInStock && stockNum > 0 && stockNum <= LOW_STOCK;
   const related = (allProducts ?? [])
     .filter(p => p.category === product.category && p.id !== product.id)
     .slice(0, 4).map(toCartProduct);
+
+  // ── Image badge — pick exactly one ──────────────────────
+  const imageBadge = !productInStock
+    ? <OutOfStockBadge>Out of Stock</OutOfStockBadge>
+    : isLowStock
+      ? <LowStockBadge>Only {stockNum} left!</LowStockBadge>
+      : product.badge
+        ? <BadgeSpan>{product.badge}</BadgeSpan>
+        : null;
 
   return (
     <main>
@@ -380,7 +410,7 @@ const ProductDetailPage: React.FC = () => {
               <MainImage>
                 <img src={mainImageUrl} alt={product.name}
                   onError={e => { (e.target as HTMLImageElement).src = `https://placehold.co/600x450/f1f8f1/82ae46?text=${encodeURIComponent(product.name)}`; }} />
-                {(product.stock ?? 0) > 0 ? product.badge && <BadgeSpan>{product.badge}</BadgeSpan> : <BadgeStockSpan>Out of Stock</BadgeStockSpan>}
+                {imageBadge}
               </MainImage>
               <ThumbnailRow as="div">
                 <Thumb $active={activeImg === 0} onClick={() => setActiveImg(0)}>
@@ -406,18 +436,44 @@ const ProductDetailPage: React.FC = () => {
                 )}
               </PriceBlock>
               <Desc>{product.description || 'No description available.'}</Desc>
+
               <Divider $my="20px" />
               <Flex as="div" $align="center" $gap="16px" style={{ marginBottom: 20 }}>
                 <span style={{ fontSize: 14, fontWeight: theme.fontWeights.medium, color: theme.colors.text }}>Quantity:</span>
                 <QuantityWrapper as="div">
-                  <QuantityBtn onClick={() => setQty(q => Math.max(1, q - 1))}>−</QuantityBtn>
+                  <QuantityBtn
+                    onClick={() => setQty(q => Math.max(1, q - 1))}
+                    disabled={!productInStock}
+                  >−</QuantityBtn>
                   <QuantityNum>{qty}</QuantityNum>
-                  <QuantityBtn onClick={() => setQty(q => q + 1)}>+</QuantityBtn>
+                  <QuantityBtn
+                    onClick={() => setQty(q => Math.min(q + 1, productInStock ? (product.stock ?? 99) : 1))}
+                    disabled={!productInStock || qty >= (product.stock ?? 99)}
+                  >+</QuantityBtn>
                 </QuantityWrapper>
+                {productInStock && product.stock !== undefined && (
+                  <span style={{ fontSize: 12, color: theme.colors.textLight }}>
+                    max {product.stock}
+                  </span>
+                )}
               </Flex>
               <ActionRow as="div">
-                <Button onClick={() => { for (let i = 0; i < qty; i++) addItem(cartProduct); }} style={{ flex: 1 }}>
-                  <ShoppingCart size={16} /> Add to Cart
+                <Button
+                  onClick={() => {
+                    if (!productInStock) return;
+                    for (let i = 0; i < qty; i++) addItem(cartProduct);
+                  }}
+                  disabled={!productInStock}
+                  style={{
+                    flex: 1,
+                    opacity: productInStock ? 1 : 0.6,
+                    cursor: productInStock ? 'pointer' : 'not-allowed',
+                    background: !productInStock ? '#9ca3af' : undefined,
+                  }}
+                >
+                  {productInStock
+                    ? <><ShoppingCart size={16} /> Add to Cart</>
+                    : <><AlertCircle size={16} /> Out of Stock</>}
                 </Button>
                 <WishBtn $active={wishlisted} onClick={() => toggle(cartProduct)} aria-label="Wishlist">
                   <Heart size={18} fill={wishlisted ? 'currentColor' : 'none'} />

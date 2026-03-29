@@ -12,6 +12,7 @@ export interface Product {
   badge?: string;
   isNew?: boolean;
   stock?: number;
+  status?: 'active' | 'inactive' | 'draft' | 'out_of_stock';
 }
 
 export interface CartItem extends Product {
