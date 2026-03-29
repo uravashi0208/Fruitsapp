@@ -103,6 +103,7 @@ const { userRouter: wishUser,      adminRouter: wishAdmin  }   = require('./rout
 const cardsRouter     = require('./routes/cards');
 const { publicRouter: faqPublic,   adminRouter: faqAdmin   }   = require('./routes/faqs');
 const { publicRouter: reviewPublic, adminRouter: reviewAdmin } = require('./routes/reviews');
+const { publicRouter: calPublic, adminRouter: calAdmin } = require('./routes/calendar');
 const dashboardRouter = require('./routes/dashboard');
 const stripeRouter    = require('./routes/stripe');
 
@@ -155,6 +156,7 @@ app.use('/api/newsletter',   newsPublic);
 app.use('/api/blogs',        blogPublic);
 app.use('/api/contact',      contPublic);
 app.use('/api/faqs',         faqPublic);
+app.use('/api/calendar',     calPublic);
 
 // ── User Auth ─────────────────────────────────────────────────────────────────
 app.use('/api/auth', userAuthRouter);
@@ -186,6 +188,7 @@ app.use('/api/admin/cards',        cardsRouter);
 app.use('/api/admin/faqs',         faqAdmin);
 app.use('/api/admin/wishlist',     wishAdmin);
 app.use('/api/admin',             reviewAdmin);
+app.use('/api/admin/calendar',    calAdmin); 
 
 // ── Error handling ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);

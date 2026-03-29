@@ -28,6 +28,7 @@ const SettingsPage  = lazy(() => import('./pages/SettingsPage').then(m => ({ def
 const ProfilePage   = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 const WishlistPage  = lazy(() => import('./pages/WishlistPage').then(m => ({ default: m.AdminWishlistPage })));
 const FaqPage       = lazy(() => import('./pages/FaqPage').then(m => ({ default: m.FaqPage })));
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then(m => ({ default: m.CalendarPage })));
 
 // ── Spinner ───────────────────────────────────────────────────
 const AdminLoader: React.FC = () => (
@@ -183,6 +184,7 @@ const AdminRouterInner: React.FC = () => {
         <Route path="faqs"     element={<Suspense fallback={<AdminLoader />}><FaqPage /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<AdminLoader />}><SettingsPage /></Suspense>} />
         <Route path="profile"  element={<Suspense fallback={<AdminLoader />}><ProfilePage /></Suspense>} />
+        <Route path="calendar" element={<Suspense fallback={<AdminLoader />}><CalendarPage /></Suspense>} />
       </Route>
 
       {/* Any unknown /admin/* path → dashboard (which will redirect to login if needed) */}

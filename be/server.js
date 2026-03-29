@@ -5,6 +5,12 @@ const { PORT }   = require('./config/env');
 // Initialise Firebase on startup
 require('./config/firebase');
 
+// ── Start cron jobs ───────────────────────────────────────────
+// Event reminder cron: every night at midnight
+// Sends newsletter emails 2 days before each calendar event
+const { startEventReminderCron } = require('./cron/eventReminder');
+startEventReminderCron();
+
 const server = app.listen(PORT, () => {
   console.log(`\n🚀 Vegefoods API running on port ${PORT}`);
   console.log(`   Environment : ${process.env.NODE_ENV}`);

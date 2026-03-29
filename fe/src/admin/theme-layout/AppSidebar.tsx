@@ -12,6 +12,7 @@ import {
   HorizontaLDots,
   ChevronDownIcon,
   EnvelopeIcon,
+  CalenderIcon
 } from '../icons';
 import {
   HelpCircle,
@@ -58,7 +59,8 @@ const navItems: NavItem[] = [
   { icon: <TestimonialNavIcon />, name: 'Testimonials',  path: '/admin/testimonials' },
   { icon: <EnvelopeIcon />,       name: 'Newsletter',    path: '/admin/newsletter' },
   { icon: <PageIcon />,           name: 'Contacts',      path: '/admin/contacts' },
-  { icon: <HelpCircle />,           name: 'FAQs',      path: '/admin/FAQs' },
+  { icon: <HelpCircle />,         name: 'FAQs',          path: '/admin/FAQs' },
+  { icon: <CalenderIcon />,       name: 'Calendar',      path: '/admin/calendar' }
 ];
 
 const othersItems: NavItem[] = [
