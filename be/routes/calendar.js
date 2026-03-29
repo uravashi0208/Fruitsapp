@@ -37,6 +37,19 @@ publicRouter.get('/:id', asyncHandler(async (req, res) => {
 const adminRouter = Router();
 adminRouter.use(authenticate, requireEditor);
 
+// List events (admin — same as public but auth-gated)
+adminRouter.get('/', asyncHandler(async (req, res) => {
+  const { year, month } = req.query;
+  const events = await calendarService.listEvents({ year, month });
+  success(res, events, 'Events fetched');
+}));
+
+// Single event
+adminRouter.get('/:id', asyncHandler(async (req, res) => {
+  const event = await calendarService.getEvent(req.params.id);
+  success(res, event, 'Event fetched');
+}));
+
 // Create
 adminRouter.post('/', asyncHandler(async (req, res) => {
   const { title, description, startDate, endDate, startTime, endTime, type, color, allDay } = req.body;

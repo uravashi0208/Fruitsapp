@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Package, Users, ShoppingCart,
   CreditCard, MessageSquare, FileText, Settings,
   ChevronLeft, ChevronRight, Heart, LogOut, Tag,
-  ChevronDown, ChevronUp, List, HelpCircle,CalendarIcon
+  ChevronDown, ChevronUp, List, HelpCircle, CalendarDays,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import { useAdminDispatch, useAdminSelector, toggleSidebar, logout } from '../store';
@@ -273,14 +273,14 @@ export const AdminSidebar: React.FC = () => {
 
         <SectionLabel $c={collapsed}>SYSTEM</SectionLabel>
 
+        <Item to="/admin/calendar" $c={collapsed}>
+          <CalendarDays />
+          <NavLabel $c={collapsed}>Calendar</NavLabel>
+        </Item>
+
         <Item to="/admin/settings" $c={collapsed}>
           <Settings />
           <NavLabel $c={collapsed}>Settings</NavLabel>
-        </Item>
-
-        <Item to="/admin/calendar" $c={collapsed}>
-          <CalendarIcon />
-          <NavLabel $c={collapsed}>Calendar</NavLabel>
         </Item>
       </NavScroll>
 

@@ -1,26 +1,24 @@
 /**
- * api/calendar.ts
- *
- * Calendar API — public reads + admin CRUD
- * Add this file to src/api/
+ * src/api/calendar.ts
+ * Calendar event API — CRUD + monthly listing.
+ * Follows the same pattern as src/api/admin.ts.
  */
 
-import api from "./client";
+import api from './client';
 
-
-// ── Types ──────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────
 export type EventType = 'event' | 'meeting' | 'seminar' | 'submission' | 'other';
 
 export interface CalendarEvent {
   id:               string;
   title:            string;
   description:      string;
-  startDate:        string;   // YYYY-MM-DD
-  endDate:          string;   // YYYY-MM-DD
-  startTime:        string;   // HH:MM (24h) or ''
-  endTime:          string;
+  startDate:        string;   // 'YYYY-MM-DD'
+  endDate:          string;   // 'YYYY-MM-DD'
+  startTime:        string;   // 'HH:MM' or ''
+  endTime:          string;   // 'HH:MM' or ''
   type:             EventType;
-  color:            string;   // hex
+  color:            string;
   allDay:           boolean;
   notificationSent: boolean;
   createdAt:        string;
@@ -28,46 +26,43 @@ export interface CalendarEvent {
 }
 
 export interface CreateEventBody {
-  title:        string;
-  description?: string;
-  startDate:    string;
-  endDate?:     string;
-  startTime?:   string;
-  endTime?:     string;
-  type?:        EventType;
-  color?:       string;
-  allDay?:      boolean;
+  title:       string;
+  description: string;
+  startDate:   string;
+  endDate:     string;
+  startTime:   string;
+  endTime:     string;
+  type:        EventType;
+  color:       string;
+  allDay:      boolean;
 }
 
-interface ApiOk<T> { success: boolean; data: T; message?: string }
+interface Ok<T> { success: boolean; data: T }
 
-// ── Public API (no auth) ───────────────────────────────────────
-export const calendarPublicApi = {
-  list: (params: { year?: number; month?: number } = {}) => {
-    const qs = new URLSearchParams(
-      Object.fromEntries(
-        Object.entries(params)
-          .filter(([, v]) => v != null)
-          .map(([k, v]) => [k, String(v)])
-      )
-    ).toString();
-    return api.get<ApiOk<CalendarEvent[]>>(`/api/calendar${qs ? `?${qs}` : ''}`);
-  },
-  get: (id: string) =>
-    api.get<ApiOk<CalendarEvent>>(`/api/calendar/${id}`),
-};
-
-// ── Admin API (requires auth) ──────────────────────────────────
+// ── API ───────────────────────────────────────────────────────
 export const adminCalendarApi = {
-  list: (params: { year?: number; month?: number } = {}) =>
-    calendarPublicApi.list(params),
+  /** List events for a given year/month (1-based month). */
+  list: (params: { year: number; month: number }) => {
+    const qs = new URLSearchParams({
+      year:  String(params.year),
+      month: String(params.month),
+    }).toString();
+    return api.get<Ok<CalendarEvent[]>>(`/api/admin/calendar?${qs}`);
+  },
 
+  /** Get a single event by id. */
+  getOne: (id: string) =>
+    api.get<Ok<CalendarEvent>>(`/api/admin/calendar/${id}`),
+
+  /** Create a new event. */
   create: (body: CreateEventBody) =>
-    api.post<ApiOk<CalendarEvent>>('/api/admin/calendar', body),
+    api.post<Ok<CalendarEvent>>('/api/admin/calendar', body),
 
+  /** Full update of an existing event. */
   update: (id: string, body: Partial<CreateEventBody>) =>
-    api.put<ApiOk<CalendarEvent>>(`/api/admin/calendar/${id}`, body),
+    api.put<Ok<CalendarEvent>>(`/api/admin/calendar/${id}`, body),
 
+  /** Delete an event. */
   delete: (id: string) =>
-    api.delete<ApiOk<null>>(`/api/admin/calendar/${id}`),
+    api.delete<Ok<{ message: string }>>(`/api/admin/calendar/${id}`),
 };

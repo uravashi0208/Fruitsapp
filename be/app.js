@@ -74,6 +74,7 @@
  *  GET/PATCH/DEL      /api/admin/admins            (admin accounts)
  *  GET                /api/admin/wishlist          (all user wishlists)
  *  GET/POST/PUT/DEL   /api/admin/faqs
+ *  GET/POST/PUT/DEL   /api/admin/calendar
  * ══════════════════════════════════════════════════════════════════
  */
 
@@ -187,8 +188,8 @@ app.use('/api/admin/admins',       adminsRouter);
 app.use('/api/admin/cards',        cardsRouter);
 app.use('/api/admin/faqs',         faqAdmin);
 app.use('/api/admin/wishlist',     wishAdmin);
-app.use('/api/admin',             reviewAdmin);
-app.use('/api/admin/calendar',    calAdmin); 
+app.use('/api/admin/calendar',     calAdmin);
+app.use('/api/admin',              reviewAdmin);
 
 // ── Error handling ────────────────────────────────────────────────────────────
 app.use(notFoundHandler);
