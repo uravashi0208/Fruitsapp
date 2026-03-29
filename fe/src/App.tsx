@@ -9,6 +9,10 @@ import { ToastManager } from './components/ui/Toast';
 import styled from 'styled-components';
 import { WishlistPage, AboutPage, BlogPage, ContactPage } from './pages/OtherPages';
 import { AdminRouter } from './admin/AdminRouter';
+import ShippingPage from './pages/ShippingPage';
+import ReturnsPage from './pages/ReturnsPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
 
 const HomePage          = lazy(() => import('./pages/HomePage'));
 const ShopPage          = lazy(() => import('./pages/ShopPage'));
@@ -72,6 +76,10 @@ const App: React.FC = () => (
                 <Route path="/contact"     element={<ContactPage />} />
                 <Route path="/faq"         element={<Suspense fallback={<PageLoader />}><FaqPage /></Suspense>} />
                 <Route path="/product/:id" element={<ProductDetailPage />} />
+                <Route path="/shipping"    element={<ShippingPage />} />
+                <Route path="/returns"     element={<ReturnsPage />} />
+                <Route path="/terms"       element={<TermsPage />} />
+                <Route path="/privacy"     element={<PrivacyPage />} />
                 <Route path="*"            element={<HomePage />} />
               </Routes>
             </StorefrontShell>
