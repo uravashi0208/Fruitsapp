@@ -157,7 +157,7 @@ const deductStock = async (productId, quantity) => {
     // Determine new status
     let newStatus = data.status;
     if (newStatus !== 'inactive' && newStatus !== 'draft') {
-      newStatus = newStock <= 0 ? 'out_of_stock' : 'active';
+      newStatus =  'active';
     }
 
     tx.update(productRef, {

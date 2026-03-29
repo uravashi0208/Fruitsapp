@@ -7,57 +7,82 @@
  * DB fields used (saved via admin Settings → Email tab):
  *   smtpHost, smtpPort, smtpUser, smtpPass, mailFromName, mailFromEmail
  *
- * .env fallback (optional — only used if DB settings are empty):
- *   MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, MAIL_FROM
+ * .env fallback:
+ *   MAIL_HOST, MAIL_PORT, MAIL_USER, MAIL_PASS, MAIL_FROM_NAME
+ *
+ * Common SMTP settings:
+ *   Gmail:     host=smtp.gmail.com   port=465  (SSL) or 587 (TLS/STARTTLS)
+ *   Outlook:   host=smtp.office365.com  port=587
+ *   SendGrid:  host=smtp.sendgrid.net   port=587
+ *
+ * Gmail note: You MUST use an App Password, not your account password.
+ *   https://myaccount.google.com/apppasswords
  */
 
-const nodemailer       = require('nodemailer');
-const settingsService  = require('../services/settingsService');
+const nodemailer      = require('nodemailer');
+const settingsService = require('../services/settingsService');
 
 /**
- * Build a transporter using DB settings, falling back to .env.
- * Called fresh on every sendMail() so config changes take effect immediately.
+ * Load SMTP config from DB (live) with .env fallback.
  */
-const createTransporter = async () => {
-  // Load live settings from DB
+const loadSmtpConfig = async () => {
   let dbSettings = {};
   try {
     dbSettings = await settingsService.getSettings();
   } catch (_) {
-    // If DB unavailable, fall through to .env
+    // DB unavailable — fall through to .env
   }
 
-  const host = dbSettings.smtpHost     || process.env.MAIL_HOST || '';
-  const port = dbSettings.smtpPort     || parseInt(process.env.MAIL_PORT || '587');
-  const user = dbSettings.smtpUser     || process.env.MAIL_USER || '';
-  const pass = dbSettings.smtpPass     || process.env.MAIL_PASS || '';
-
-  if (!host || !user || !pass) {
-    throw new Error(
-      'Mail not configured. Please set SMTP credentials in Admin → Settings → Email.'
-    );
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port:   Number(port),
-    secure: Number(port) === 465,
-    auth:   { user, pass },
-  });
+  return {
+    host:     dbSettings.smtpHost     || process.env.MAIL_HOST     || '',
+    port:     Number(dbSettings.smtpPort || process.env.MAIL_PORT  || 587),
+    user:     dbSettings.smtpUser     || process.env.MAIL_USER     || '',
+    pass:     dbSettings.smtpPass     || process.env.MAIL_PASS     || '',
+    fromName: dbSettings.mailFromName  || process.env.MAIL_FROM_NAME || 'Vegefoods',
+    fromEmail:dbSettings.mailFromEmail || dbSettings.smtpUser || process.env.MAIL_USER || '',
+  };
 };
 
 /**
- * Resolve the "From" address using DB settings, falling back to .env.
+ * Build a nodemailer transporter with correct TLS settings.
+ *
+ * Port 465  → secure: true  (implicit SSL — connect encrypted)
+ * Port 587  → secure: false + requireTLS: true  (STARTTLS upgrade)
+ * Port 25   → secure: false (plain, avoid in production)
  */
-const getFromAddress = async () => {
-  let dbSettings = {};
-  try {
-    dbSettings = await settingsService.getSettings();
-  } catch (_) {}
+const createTransporter = async () => {
+  const cfg = await loadSmtpConfig();
 
-  const name  = dbSettings.mailFromName  || process.env.MAIL_FROM_NAME || 'Vegefoods';
-  const email = dbSettings.mailFromEmail || dbSettings.smtpUser || process.env.MAIL_USER || '';
-  return email ? `${name} <${email}>` : name;
+  if (!cfg.host || !cfg.user || !cfg.pass) {
+    throw new Error(
+      'SMTP not configured. Set MAIL_HOST, MAIL_USER, MAIL_PASS in .env ' +
+      'or Admin → Settings → Email.'
+    );
+  }
+
+  const use465 = cfg.port === 465;
+
+  const transporter = nodemailer.createTransport({
+    host:   cfg.host,
+    port:   cfg.port,
+    secure: use465,          // true = implicit TLS (port 465)
+    auth:   { user: cfg.user, pass: cfg.pass },
+
+    // STARTTLS for port 587 / 2525
+    requireTLS: !use465,
+
+    // Timeouts — prevent hanging forever on bad SMTP config
+    connectionTimeout: 10_000,   // 10 s to establish TCP connection
+    greetingTimeout:   10_000,   // 10 s for server greeting (220 banner)
+    socketTimeout:     15_000,   // 15 s of socket inactivity
+
+    tls: {
+      // Allow self-signed certs in dev; in prod set to true
+      rejectUnauthorized: process.env.NODE_ENV === 'production',
+    },
+  });
+
+  return { transporter, cfg };
 };
 
 /**
@@ -65,22 +90,41 @@ const getFromAddress = async () => {
  * @param {{ to: string|string[], subject: string, html: string, text?: string }} opts
  */
 const sendMail = async ({ to, subject, html, text }) => {
-  const transporter = await createTransporter();
-  const from        = await getFromAddress();
+  const { transporter, cfg } = await createTransporter();
+
+  const from = cfg.fromEmail
+    ? `${cfg.fromName} <${cfg.fromEmail}>`
+    : cfg.fromName;
 
   const info = await transporter.sendMail({
     from,
-    to:      Array.isArray(to) ? to.join(', ') : to,
+    to:   Array.isArray(to) ? to.join(', ') : to,
     subject,
     html,
-    text:    text || html.replace(/<[^>]*>/g, ''),
+    text: text || (html ? html.replace(/<[^>]*>/g, '') : ''),
   });
 
   return info;
 };
 
 /**
- * Build a branded HTML email template.
+ * Test SMTP connection — call this from a health-check or admin panel.
+ * Returns { ok: true } or { ok: false, error: string }
+ */
+const verifySmtp = async () => {
+  try {
+    const { transporter, cfg } = await createTransporter();
+    await transporter.verify();
+    console.log(`[mailer] SMTP verified OK — ${cfg.host}:${cfg.port} as ${cfg.user}`);
+    return { ok: true, host: cfg.host, port: cfg.port, user: cfg.user };
+  } catch (err) {
+    console.error('[mailer] SMTP verify failed:', err.message);
+    return { ok: false, error: err.message };
+  }
+};
+
+/**
+ * Branded HTML email template.
  * @param {{ subject: string, body: string, unsubscribeEmail?: string }} opts
  */
 const buildEmailTemplate = ({ subject, body, unsubscribeEmail = '' }) => `
@@ -123,7 +167,7 @@ const buildEmailTemplate = ({ subject, body, unsubscribeEmail = '' }) => `
           <tr>
             <td style="padding:24px 40px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#9e9e9e;line-height:1.6;">
-                You are receiving this email because you subscribed to Vegefoods newsletters.<br/>
+                You are receiving this email because you are subscribed to Vegefoods.<br/>
                 ${unsubscribeEmail
                   ? `<a href="mailto:unsubscribe@vegefoods.com?subject=Unsubscribe&body=${unsubscribeEmail}"
                        style="color:#4caf50;text-decoration:none;">Unsubscribe</a>`
@@ -143,4 +187,4 @@ const buildEmailTemplate = ({ subject, body, unsubscribeEmail = '' }) => `
 </html>
 `;
 
-module.exports = { sendMail, buildEmailTemplate };
+module.exports = { sendMail, buildEmailTemplate, verifySmtp };

@@ -108,6 +108,13 @@ const stripeRouter    = require('./routes/stripe');
 
 const app = express();
 
+// ── Trust proxy ───────────────────────────────────────────────────────────────
+// Required when running behind a reverse proxy (Render, Heroku, Nginx, etc.)
+// Without this, express-rate-limit throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// and req.ip returns the proxy IP instead of the real client IP.
+app.set('trust proxy', 1);
+
+
 // ── Security ──────────────────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
