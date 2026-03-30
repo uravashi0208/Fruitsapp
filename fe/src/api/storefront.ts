@@ -213,7 +213,14 @@ export const stripeApi = {
     api.post<ApiOk<PaymentIntentResponse>>('/api/stripe/payment-intent', body, { noAuth: true }),
 
   verifyPayment: (paymentIntentId: string) =>
-    api.get<ApiOk<{ status: string; paymentIntentId: string; amount: number }>>(`/api/stripe/verify/${paymentIntentId}`, { noAuth: true }),
+    api.get<ApiOk<{ status: string; paymentIntentId: string; amount: number; cardDetails?: CardDetails }>>(`/api/stripe/verify/${paymentIntentId}`, { noAuth: true }),
+
+  /** Fetch masked card details for a Stripe PaymentMethod ID (pm_xxx) */
+  getPaymentMethod: (pmId: string, cardholderName?: string) =>
+    api.get<ApiOk<{ paymentMethodId: string; type: string; cardDetails: CardDetails | null }>>(
+      `/api/stripe/payment-method/${pmId}${cardholderName ? `?name=${encodeURIComponent(cardholderName)}` : ''}`,
+      { noAuth: true }
+    ),
 };
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────

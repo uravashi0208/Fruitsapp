@@ -343,11 +343,19 @@ export const OrdersPage: React.FC = () => {
                           </div>
                         </PersonCell>
                       </TD>
-                      <TD>
-                        <div>
+                      <TD style={{cursor:'pointer'}} onClick={()=>navigate(`/admin/orders/${o.id}`)}>
+                        <div style={{color:'inherit',fontWeight:600}}>
                           #{o.orderNumber||o.id?.slice(0,8)||'—'}
                         </div>
-                        <div style={{fontSize:'0.7rem',color:t.colors.textMuted,marginTop:2}}>{formatDate(o.createdAt)}</div>
+                        {o.trackingCode && (
+                          <div style={{fontSize:'0.7rem',color:'#06b6d4',marginTop:2}}>🚚 {o.trackingCode}</div>
+                        )}
+                        {!o.trackingCode && o.status==='shipped' && (
+                          <div style={{fontSize:'0.7rem',color:'#f59e0b',marginTop:2}}>⚠️ No tracking</div>
+                        )}
+                        {!o.trackingCode && o.status!=='shipped' && (
+                          <div style={{fontSize:'0.7rem',color:t.colors.textMuted,marginTop:2}}>{formatDate(o.createdAt)}</div>
+                        )}
                       </TD>
                       <TD>
                         <span style={{fontSize:'0.8rem',fontWeight:500}}>{pmLabel(o.paymentMethod||'')}</span>
@@ -381,6 +389,7 @@ export const OrdersPage: React.FC = () => {
                       </TD>
                       <TD $center onClick={e=>e.stopPropagation()}>
                         <PortalDropdown>
+                          <MenuItem onClick={()=>{closeAllDropdowns(); navigate(`/admin/orders/${o.id}`);}}><Eye size={13}/> View Details & Track</MenuItem>
                           <MenuItem onClick={()=>{closeAllDropdowns(); navigate(`/admin/orders/${o.id}/invoice`);}}><Eye size={13}/> View Invoice</MenuItem>
                           <MenuItem $danger onClick={()=>{closeAllDropdowns(); handleDelete(o.id);}}><Trash2 size={13}/> Delete</MenuItem>
                         </PortalDropdown>
@@ -408,24 +417,44 @@ export const OrdersPage: React.FC = () => {
 };
 
 // ── CARDS PAGE ────────────────────────────────────────────────────────────────
-const CardBrand = styled.div<{$type:string}>`display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:6px;font-size:0.72rem;font-weight:700;background:${({$type})=>$type==='visa'?'#1a1f71':$type==='mastercard'?'#eb001b':$type==='amex'?'#007bc1':'#ff6600'};color:white;text-transform:uppercase;letter-spacing:0.5px;`;
+const BRAND_COLORS: Record<string,string> = {
+  visa:'#1a1f71', mastercard:'#eb001b', amex:'#007bc1',
+  discover:'#ff6600', diners:'#004b87', jcb:'#003087', unionpay:'#c0392b',
+};
+const CardBrand = styled.div<{$type:string}>`
+  display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+  border-radius:6px;font-size:0.72rem;font-weight:700;letter-spacing:0.5px;
+  text-transform:uppercase;color:white;
+  background:${({$type})=>BRAND_COLORS[$type]||'#4b5563'};
+`;
+const SourceBadge = styled.span<{$auto?:boolean}>`
+  display:inline-block;padding:2px 7px;border-radius:10px;font-size:0.68rem;font-weight:600;
+  background:${p=>p.$auto?'rgba(130,174,70,.15)':'rgba(59,130,246,.15)'};
+  color:${p=>p.$auto?'#82ae46':'#3b82f6'};
+`;
 
 export const CardsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [page, setPage]     = useState(1);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search}),[page,search]);
   const { data:cards, pagination, loading, error, refetch } = useAdminCards(query);
 
-  const isExpired=(m:string,y:string)=>new Date(parseInt(y),parseInt(m)-1)<new Date();
+  const isExpired = (m:string, y:string) => {
+    if (!m || !y) return false;
+    return new Date(parseInt(y), parseInt(m) - 1) < new Date();
+  };
 
   const handleDelete = async (c:CardDetail) => {
     try {
       await adminCardsApi.delete(c.id);
-      dispatch(showAdminToast({message:`Card ••••${c.last4} removed`,type:'warning'}));
+      dispatch(showAdminToast({message:`Card ••••${c.last4} removed`, type:'warning'}));
       refetch();
-    } catch(err) { dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Delete failed',type:'error'})); }
+    } catch(err) {
+      dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Delete failed', type:'error'}));
+    }
   };
 
   return (
@@ -433,7 +462,7 @@ export const CardsPage: React.FC = () => {
       <PageHeader>
         <div>
           <PageTitle>Card Details</PageTitle>
-          <PageSub>Customer payment methods</PageSub>
+          <PageSub>Customer payment methods — auto-captured from Stripe orders</PageSub>
         </div>
         <HeaderBtns><IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16}/></IconBtn></HeaderBtns>
       </PageHeader>
@@ -441,49 +470,160 @@ export const CardsPage: React.FC = () => {
       <TableWrap>
         <div style={{padding:'16px 20px',borderBottom:`1px solid ${t.colors.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
           <div>
-            <div style={{fontWeight:600,color:t.colors.textPrimary,fontSize:'0.9375rem'}}>Saved Cards</div>
-            <div style={{fontSize:'0.8rem',color:t.colors.textMuted}}>Customer payment methods</div>
+            <div style={{fontWeight:600,color:t.colors.textPrimary,fontSize:'0.9375rem'}}>
+              Saved Cards
+              {pagination?.total != null && (
+                <span style={{marginLeft:8,fontSize:'0.8rem',color:t.colors.textMuted,fontWeight:400}}>
+                  ({pagination.total} total)
+                </span>
+              )}
+            </div>
+            <div style={{fontSize:'0.8rem',color:t.colors.textMuted}}>
+              Cards are auto-saved from Stripe payments. Each physical card stored once (deduped by fingerprint).
+            </div>
           </div>
-          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
-            <SearchBar style={{minWidth:260,height:40}}><Search size={14}/><SearchInput placeholder="Name, email or last 4…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></SearchBar>
-          </div>
+          <SearchBar style={{minWidth:280,height:40}}>
+            <Search size={14}/>
+            <SearchInput
+              placeholder="Name, email, or last 4 digits…"
+              value={search}
+              onChange={e=>{setSearch(e.target.value);setPage(1);}}
+            />
+          </SearchBar>
         </div>
-        {error&&<div style={{color:t.colors.danger,padding:'12px 16px',background:'#fff5f5'}}>{error}</div>}
+
+        {error && <div style={{color:t.colors.danger,padding:'12px 16px',background:'#fff5f5'}}>{error}</div>}
+
         {loading
           ? <div style={{padding:40,textAlign:'center',color:t.colors.textMuted}}>Loading cards…</div>
           : (cards??[]).length===0
-            ? <EmptyState><CreditCard size={40} strokeWidth={1} color={t.colors.textMuted}/><p style={{margin:'8px 0 0',color:t.colors.textMuted,fontSize:'0.875rem'}}>No cards found</p></EmptyState>
+            ? <EmptyState>
+                <CreditCard size={40} strokeWidth={1} color={t.colors.textMuted}/>
+                <p style={{margin:'12px 0 4px',color:t.colors.textPrimary,fontSize:'0.9rem',fontWeight:600}}>No cards yet</p>
+                <p style={{margin:0,color:t.colors.textMuted,fontSize:'0.8rem'}}>Cards appear here automatically after customers pay via Stripe</p>
+              </EmptyState>
             : <TableInner><Tbl>
                 <THead><tr>
-                  <TH>Card</TH><TH>Cardholder</TH><TH>User</TH>
-                  <TH>Expiry</TH><TH $center>Default</TH><TH>Added</TH><TH $center>Actions</TH>
+                  <TH>Card</TH>
+                  <TH>Cardholder</TH>
+                  <TH>Customer</TH>
+                  <TH>Expiry</TH>
+                  <TH $center>Source</TH>
+                  <TH $center>Default</TH>
+                  <TH>Captured</TH>
+                  <TH $center>Actions</TH>
                 </tr></THead>
                 <tbody>
-                  {(cards??[]).map(c=>{
-                    const expired=isExpired(c.expiryMonth,c.expiryYear);
+                  {(cards??[]).map(c => {
+                    const expired = isExpired(c.expiryMonth, c.expiryYear);
+                    const isAuto  = c.source === 'stripe_order';
                     return (
                       <TR key={c.id}>
-                        <TD><div style={{display:'flex',alignItems:'center',gap:10}}><CardBrand $type={c.cardType}><CreditCard size={11}/>{c.cardType}</CardBrand><span style={{fontFamily:t.fonts.mono,fontWeight:600,color:t.colors.textPrimary}}>•••• {c.last4}</span></div></TD>
-                        <TD style={{fontWeight:500,color:t.colors.textPrimary}}>{c.cardholderName}</TD>
-                        <TD><PersonName>{c.userName}</PersonName><PersonSub>{c.userEmail}</PersonSub></TD>
-                        <TD><span style={{fontFamily:t.fonts.mono,fontSize:'0.8rem',color:expired?t.colors.danger:t.colors.textPrimary,fontWeight:600}}>{c.expiryMonth}/{c.expiryYear}</span>{expired&&<StatusPill $variant="danger" style={{marginLeft:6,fontSize:'0.7rem'}}>Expired</StatusPill>}</TD>
-                        <TD $center>{c.isDefault?<StatusPill $variant="success">Default</StatusPill>:<span style={{color:t.colors.textMuted,fontSize:'0.8rem'}}>—</span>}</TD>
-                        <TD style={{fontSize:'0.8rem'}}>{formatDate(c.createdAt)}</TD>
-                        <TD $center><IconBtn $variant="danger" title="Delete" onClick={()=>handleDelete(c)}><Trash2 size={14}/></IconBtn></TD>
+                        {/* Card number + brand */}
+                        <TD>
+                          <div style={{display:'flex',alignItems:'center',gap:10}}>
+                            <CardBrand $type={c.cardType.toLowerCase()}>
+                              <CreditCard size={11}/>
+                              {c.cardType}
+                            </CardBrand>
+                            <span style={{fontFamily:t.fonts.mono,fontWeight:700,color:t.colors.textPrimary,fontSize:'0.9rem',letterSpacing:'1px'}}>
+                              •••• {c.last4 || '????'} 
+                            </span>
+                          </div>
+                          {c.fingerprint && (
+                            <div style={{fontSize:'0.68rem',color:t.colors.textMuted,marginTop:3,fontFamily:t.fonts.mono}}>
+                              fp: {c.fingerprint.slice(0,12)}…
+                            </div>
+                          )}
+                        </TD>
+
+                        {/* Cardholder name */}
+                        <TD style={{fontWeight:500,color:t.colors.textPrimary}}>
+                          {c.cardholderName || <span style={{color:t.colors.textMuted}}>—</span>}
+                        </TD>
+
+                        {/* Customer */}
+                        <TD>
+                          <PersonName>{c.userName || 'Guest'}</PersonName>
+                          <PersonSub>{c.userEmail}</PersonSub>
+                          {!c.userId && (
+                            <div style={{fontSize:'0.68rem',color:t.colors.textMuted,marginTop:2}}>Guest checkout</div>
+                          )}
+                        </TD>
+
+                        {/* Expiry */}
+                        <TD>
+                          {c.expiryMonth && c.expiryYear ? (
+                            <>
+                              <span style={{
+                                fontFamily:t.fonts.mono,fontSize:'0.85rem',fontWeight:600,
+                                color:expired ? t.colors.danger : t.colors.textPrimary,
+                              }}>
+                                {c.expiryMonth}/{c.expiryYear}
+                              </span>
+                              {expired && (
+                                <StatusPill $variant="danger" style={{marginLeft:6,fontSize:'0.68rem'}}>Expired</StatusPill>
+                              )}
+                            </>
+                          ) : (
+                            <span style={{color:t.colors.textMuted}}>—</span>
+                          )}
+                        </TD>
+
+                        {/* Source */}
+                        <TD $center>
+                          <SourceBadge $auto={isAuto}>
+                            {isAuto ? '🔒 Stripe' : '✏️ Manual'}
+                          </SourceBadge>
+                        </TD>
+
+                        {/* Default */}
+                        <TD $center>
+                          {c.isDefault
+                            ? <StatusPill $variant="success">Default</StatusPill>
+                            : <span style={{color:t.colors.textMuted,fontSize:'0.8rem'}}>—</span>
+                          }
+                        </TD>
+
+                        {/* Date captured */}
+                        <TD style={{fontSize:'0.8rem',color:t.colors.textMuted}}>
+                          {formatDate(c.createdAt)}
+                          {c.lastOrderId && (
+                            <div
+                              style={{fontSize:'0.7rem',color:t.colors.primary,cursor:'pointer',marginTop:2}}
+                              onClick={()=>navigate(`/admin/orders/${c.lastOrderId}`)}
+                              title="Go to linked order"
+                            >
+                              #{c.lastOrderId.slice(0,8)}…
+                            </div>
+                          )}
+                        </TD>
+
+                        {/* Actions */}
+                        <TD $center>
+                          <IconBtn $variant="danger" title="Delete card" onClick={()=>handleDelete(c)}>
+                            <Trash2 size={14}/>
+                          </IconBtn>
+                        </TD>
                       </TR>
                     );
                   })}
                 </tbody>
               </Tbl></TableInner>
         }
+
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderTop:`1px solid ${t.colors.border}`,flexWrap:'wrap',gap:8}}>
-            <span style={{fontSize:'0.8125rem',color:t.colors.textMuted}}>{pagination?.total??0} total cards</span>
-            <PageBtns>
-              <PageBtn disabled={page===1} onClick={()=>setPage(p=>p-1)}>‹</PageBtn>
-              {Array.from({length:pagination?.totalPages??1},(_,i)=><PageBtn key={i+1} $active={page===i+1} onClick={()=>setPage(i+1)}>{i+1}</PageBtn>)}
-              <PageBtn disabled={page===(pagination?.totalPages??1)} onClick={()=>setPage(p=>p+1)}>›</PageBtn>
-            </PageBtns>
-          </div>
+          <span style={{fontSize:'0.8125rem',color:t.colors.textMuted}}>
+            {pagination?.total??0} card{(pagination?.total??0)!==1?'s':''} stored
+          </span>
+          <PageBtns>
+            <PageBtn disabled={page===1} onClick={()=>setPage(p=>p-1)}>‹</PageBtn>
+            {Array.from({length:pagination?.totalPages??1},(_,i)=>(
+              <PageBtn key={i+1} $active={page===i+1} onClick={()=>setPage(i+1)}>{i+1}</PageBtn>
+            ))}
+            <PageBtn disabled={page===(pagination?.totalPages??1)} onClick={()=>setPage(p=>p+1)}>›</PageBtn>
+          </PageBtns>
+        </div>
       </TableWrap>
     </>
   );

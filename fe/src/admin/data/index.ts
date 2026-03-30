@@ -3,22 +3,6 @@ import {
   Contact, AdminBlogPost, DashboardStats,
 } from '../types';
 
-// ── Products ──────────────────────────────────────────────────
-export const ADMIN_PRODUCTS: AdminProduct[] = [
-  { id: 1, name: 'Bell Pepper', category: 'vegetables', price: 80, originalPrice: 120, discount: 30, image: '/images/product-1.jpg', rating: 4.5, reviews: 24, description: 'Fresh, crisp bell peppers bursting with natural sweetness and vitamin C.', badge: '30% OFF', isNew: false, stock: 142, sku: 'VEG-001', createdAt: '2026-01-05', updatedAt: '2026-03-10', status: 'active' },
-  { id: 2, name: 'Strawberry', category: 'fruits', price: 120, image: '/images/product-2.jpg', rating: 4.8, reviews: 56, description: 'Hand-picked strawberries at peak ripeness.', isNew: true, stock: 89, sku: 'FRT-002', createdAt: '2026-01-12', updatedAt: '2026-03-11', status: 'active' },
-  { id: 3, name: 'Green Beans', category: 'vegetables', price: 120, image: '/images/product-3.jpg', rating: 4.2, reviews: 18, description: 'Tender green beans, farm-fresh and packed with nutrients.', stock: 211, sku: 'VEG-003', createdAt: '2026-01-15', updatedAt: '2026-03-09', status: 'active' },
-  { id: 4, name: 'Purple Cabbage', category: 'vegetables', price: 120, image: '/images/product-4.jpg', rating: 4.0, reviews: 12, description: 'Vibrant purple cabbage with a satisfying crunch.', stock: 67, sku: 'VEG-004', createdAt: '2026-01-20', updatedAt: '2026-03-08', status: 'active' },
-  { id: 5, name: 'Tomato', category: 'vegetables', price: 80, originalPrice: 120, discount: 30, image: '/images/product-5.jpg', rating: 4.7, reviews: 89, description: 'Vine-ripened tomatoes with rich umami flavor.', badge: 'SALE', stock: 0, sku: 'VEG-005', createdAt: '2026-02-01', updatedAt: '2026-03-12', status: 'inactive' },
-  { id: 6, name: 'Broccoli', category: 'vegetables', price: 120, image: '/images/product-6.jpg', rating: 4.3, reviews: 33, description: 'Dense, nutritious broccoli crowns.', stock: 55, sku: 'VEG-006', createdAt: '2026-02-05', updatedAt: '2026-03-07', status: 'active' },
-  { id: 7, name: 'Carrots', category: 'vegetables', price: 120, image: '/images/product-7.jpg', rating: 4.6, reviews: 45, description: 'Sweet, crunchy carrots freshly harvested.', isNew: true, stock: 300, sku: 'VEG-007', createdAt: '2026-02-10', updatedAt: '2026-03-11', status: 'active' },
-  { id: 8, name: 'Fruit Juice', category: 'juice', price: 120, image: '/images/product-8.jpg', rating: 4.4, reviews: 27, description: 'Cold-pressed, 100% natural fruit juice.', stock: 44, sku: 'JCE-008', createdAt: '2026-02-15', updatedAt: '2026-03-10', status: 'active' },
-  { id: 9, name: 'Spinach', category: 'vegetables', price: 5, originalPrice: 10, discount: 50, image: '/images/product-9.jpg', rating: 4.5, reviews: 61, description: 'Baby spinach leaves, tender and full of iron.', badge: 'DEAL', stock: 98, sku: 'VEG-009', createdAt: '2026-02-18', updatedAt: '2026-03-12', status: 'active' },
-  { id: 10, name: 'Avocado', category: 'fruits', price: 95, image: '/images/product-10.jpg', rating: 4.9, reviews: 112, description: 'Perfectly ripe, creamy avocados.', isNew: true, stock: 76, sku: 'FRT-010', createdAt: '2026-02-20', updatedAt: '2026-03-13', status: 'active' },
-  { id: 11, name: 'Mixed Dried Fruits', category: 'dried', price: 150, image: '/images/product-11.jpg', rating: 4.1, reviews: 19, description: 'A premium blend of sun-dried fruits.', stock: 33, sku: 'DRD-011', createdAt: '2026-02-25', updatedAt: '2026-03-09', status: 'draft' },
-  { id: 12, name: 'Orange Juice', category: 'juice', price: 85, image: '/images/product-12.jpg', rating: 4.6, reviews: 38, description: 'Freshly squeezed orange juice.', stock: 62, sku: 'JCE-012', createdAt: '2026-03-01', updatedAt: '2026-03-13', status: 'active' },
-];
-
 // ── Users ─────────────────────────────────────────────────────
 export const ADMIN_USERS: User[] = [
   { id: 'u1', name: 'Sarah Johnson', email: 'sarah@example.com', phone: '+1 555-0101', role: 'admin', status: 'active', joinedAt: '2025-06-01', lastLogin: '2026-03-17', totalOrders: 24, totalSpent: 1840.50, address: { street: '123 Oak Lane', city: 'San Francisco', state: 'CA', zip: '94102', country: 'USA' } },
@@ -29,15 +13,6 @@ export const ADMIN_USERS: User[] = [
   { id: 'u6', name: 'Tom Wilson', email: 'tom@example.com', phone: '+1 555-0106', role: 'viewer', status: 'banned', joinedAt: '2025-07-30', lastLogin: '2026-02-01', totalOrders: 0, totalSpent: 0, address: { street: '987 Cedar Way', city: 'Chicago', state: 'IL', zip: '60601', country: 'USA' } },
 ];
 
-// ── Orders ────────────────────────────────────────────────────
-export const ADMIN_ORDERS: Order[] = [
-  { id: 'ORD-1001', userId: 'u5', userName: 'Aisha Patel', userEmail: 'aisha@example.com', items: [{ productId: 10, productName: 'Avocado', productImage: '/images/product-10.jpg', quantity: 3, price: 95 }, { productId: 2, productName: 'Strawberry', productImage: '/images/product-2.jpg', quantity: 2, price: 120 }], subtotal: 525, shipping: 0, total: 525, status: 'delivered', paymentStatus: 'paid', paymentMethod: 'card', createdAt: '2026-03-10T09:22:00Z', updatedAt: '2026-03-14T16:00:00Z', address: { street: '654 Birch Blvd', city: 'New York', state: 'NY', zip: '10001', country: 'USA' } },
-  { id: 'ORD-1002', userId: 'u1', userName: 'Sarah Johnson', userEmail: 'sarah@example.com', items: [{ productId: 7, productName: 'Carrots', productImage: '/images/product-7.jpg', quantity: 5, price: 120 }], subtotal: 600, shipping: 0, total: 600, status: 'shipped', paymentStatus: 'paid', paymentMethod: 'paypal', createdAt: '2026-03-12T14:10:00Z', updatedAt: '2026-03-13T08:00:00Z', address: { street: '123 Oak Lane', city: 'San Francisco', state: 'CA', zip: '94102', country: 'USA' } },
-  { id: 'ORD-1003', userId: 'u3', userName: 'Emma Rodriguez', userEmail: 'emma@example.com', items: [{ productId: 1, productName: 'Bell Pepper', productImage: '/images/product-1.jpg', quantity: 2, price: 80 }, { productId: 9, productName: 'Spinach', productImage: '/images/product-9.jpg', quantity: 4, price: 5 }], subtotal: 180, shipping: 9.99, total: 189.99, status: 'processing', paymentStatus: 'paid', paymentMethod: 'card', createdAt: '2026-03-15T11:05:00Z', updatedAt: '2026-03-15T11:05:00Z', address: { street: '789 Pine Ave', city: 'Seattle', state: 'WA', zip: '98101', country: 'USA' } },
-  { id: 'ORD-1004', userId: 'u2', userName: 'Marcus Chen', userEmail: 'marcus@example.com', items: [{ productId: 12, productName: 'Orange Juice', productImage: '/images/product-12.jpg', quantity: 3, price: 85 }], subtotal: 255, shipping: 0, total: 255, status: 'pending', paymentStatus: 'pending', paymentMethod: 'cod', createdAt: '2026-03-16T18:30:00Z', updatedAt: '2026-03-16T18:30:00Z', address: { street: '456 Maple St', city: 'Los Angeles', state: 'CA', zip: '90001', country: 'USA' } },
-  { id: 'ORD-1005', userId: 'u5', userName: 'Aisha Patel', userEmail: 'aisha@example.com', items: [{ productId: 11, productName: 'Mixed Dried Fruits', productImage: '/images/product-11.jpg', quantity: 2, price: 150 }], subtotal: 300, shipping: 0, total: 300, status: 'cancelled', paymentStatus: 'refunded', paymentMethod: 'card', createdAt: '2026-03-08T07:15:00Z', updatedAt: '2026-03-09T09:00:00Z', address: { street: '654 Birch Blvd', city: 'New York', state: 'NY', zip: '10001', country: 'USA' } },
-  { id: 'ORD-1006', userId: 'u1', userName: 'Sarah Johnson', userEmail: 'sarah@example.com', items: [{ productId: 6, productName: 'Broccoli', productImage: '/images/product-6.jpg', quantity: 4, price: 120 }], subtotal: 480, shipping: 0, total: 480, status: 'delivered', paymentStatus: 'paid', paymentMethod: 'card', createdAt: '2026-03-02T10:00:00Z', updatedAt: '2026-03-06T12:00:00Z', address: { street: '123 Oak Lane', city: 'San Francisco', state: 'CA', zip: '94102', country: 'USA' } },
-];
 
 // ── Cards ─────────────────────────────────────────────────────
 export const ADMIN_CARDS: CardDetail[] = [
@@ -68,31 +43,4 @@ export const ADMIN_BLOGS: AdminBlogPost[] = [
   { id: 'b5', title: 'Top 10 Superfoods in Our Store', slug: 'top-10-superfoods', excerpt: 'Nutritional powerhouses you should be eating every week.', content: 'Full article content goes here...', image: '/images/image_2.jpg', author: 'James Carter', authorId: 'u2', category: 'Nutrition', tags: ['superfoods', 'health', 'nutrition'], status: 'archived', views: 2100, createdAt: '2025-12-01', updatedAt: '2026-02-01', publishedAt: '2025-12-05' },
 ];
 
-// ── Dashboard Stats ───────────────────────────────────────────
-export const DASHBOARD_STATS: DashboardStats = {
-  totalRevenue: 48_620.50,
-  revenueGrowth: 12.4,
-  totalOrders: 234,
-  ordersGrowth: 8.7,
-  totalUsers: ADMIN_USERS.length,
-  usersGrowth: 22.1,
-  totalProducts: ADMIN_PRODUCTS.length,
-  productsGrowth: -2.3,
-  recentOrders: ADMIN_ORDERS.slice(0, 5),
-  topProducts: [
-    { product: ADMIN_PRODUCTS[9], sold: 112, revenue: 10640 },
-    { product: ADMIN_PRODUCTS[4], sold: 89, revenue: 7120 },
-    { product: ADMIN_PRODUCTS[1], sold: 56, revenue: 6720 },
-    { product: ADMIN_PRODUCTS[6], sold: 45, revenue: 5400 },
-    { product: ADMIN_PRODUCTS[0], sold: 24, revenue: 1920 },
-  ],
-  revenueChart: [
-    { month: 'Sep', revenue: 28000, orders: 140 },
-    { month: 'Oct', revenue: 32000, orders: 162 },
-    { month: 'Nov', revenue: 38000, orders: 185 },
-    { month: 'Dec', revenue: 45000, orders: 220 },
-    { month: 'Jan', revenue: 36000, orders: 175 },
-    { month: 'Feb', revenue: 42000, orders: 205 },
-    { month: 'Mar', revenue: 48620, orders: 234 },
-  ],
-};
+

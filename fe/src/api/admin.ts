@@ -69,27 +69,64 @@ export interface CardPaymentDetails {
   brand:          string;
 }
 
+export interface CarrierInfo {
+  carrier:     string;
+  label:       string;
+  trackingUrl: string | null;
+}
+
+export interface TrackingEvent {
+  id:        string;
+  type?:     'status' | 'carrier';
+  status:    string;
+  note:      string;
+  location:  string;
+  actor:     string;
+  timestamp: string;
+}
+
+export interface TrackingTimeline {
+  orderId:           string;
+  orderNumber:       string;
+  status:            string;
+  trackingCode:      string | null;
+  carrierCode:       string | null;
+  carrierInfo:       CarrierInfo | null;
+  estimatedDelivery: string | null;
+  timeline:          TrackingEvent[];
+  statusLabels:      Record<string, { label: string; icon: string; color: string }>;
+}
+
 export interface Order {
-  id:             string;
-  orderNumber?:   string;
-  sessionId:      string;
-  paid:           boolean;
-  status:         'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  paymentStatus:  'pending' | 'paid' | 'refunded' | 'failed';
-  paymentMethod:  string;
-  paymentDetails: CardPaymentDetails | null;
-  transactionId?: string;
-  ibanLast4?:     string;
-  items:          OrderItem[];
-  userName:       string;
-  userEmail:      string;
-  subtotal:       number;
-  shipping:       number;
-  total:          number;
-  address:        Record<string, string>;
-  statusHistory:  Array<{ status: string; note: string; timestamp: string }>;
-  createdAt:      string;
-  updatedAt:      string;
+  id:                string;
+  orderNumber?:      string;
+  sessionId:         string;
+  paid:              boolean;
+  status:            'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  paymentStatus:     'pending' | 'paid' | 'refunded' | 'failed';
+  paymentMethod:     string;
+  paymentMethodLabel?: string;
+  paymentDetails:    CardPaymentDetails | null;
+  transactionId?:    string;
+  ibanLast4?:        string;
+  items:             OrderItem[];
+  userName:          string;
+  userEmail:         string;
+  subtotal:          number;
+  shipping:          number;
+  tax?:              number;
+  total:             number;
+  address:           Record<string, string>;
+  notes?:            string;
+  adminNote?:        string;
+  trackingCode?:     string;
+  carrierCode?:      string;
+  carrierInfo?:      CarrierInfo;
+  estimatedDelivery?: string;
+  statusHistory:     Array<{ status: string; note: string; timestamp: string; actor?: string }>;
+  trackingEvents?:   TrackingEvent[];
+  createdAt:         string;
+  updatedAt:         string;
 }
 
 export interface OrderItem {
@@ -102,16 +139,20 @@ export interface OrderItem {
 
 export interface CardDetail {
   id:             string;
-  userId:         string;
+  userId:         string | null;
   userName:       string;
   userEmail:      string;
-  cardType:       'visa' | 'mastercard' | 'amex' | 'discover';
+  cardType:       'visa' | 'mastercard' | 'amex' | 'discover' | 'diners' | 'jcb' | 'unionpay' | string;
   last4:          string;
   expiryMonth:    string;
   expiryYear:     string;
   cardholderName: string;
+  fingerprint?:   string;
   isDefault:      boolean;
+  source?:        'stripe_order' | 'manual' | string;
+  lastOrderId?:   string;
   createdAt:      string;
+  updatedAt?:     string;
 }
 
 export interface Contact {
@@ -250,6 +291,35 @@ export const adminOrdersApi = {
     api.delete<Ok<{ message: string }>>(`/api/admin/orders/${id}`),
 };
 
+// ─── TRACKING ─────────────────────────────────────────────────
+export const adminTrackingApi = {
+  getTimeline: (orderId: string) =>
+    api.get<Ok<TrackingTimeline>>(`/api/admin/tracking/${orderId}`),
+
+  assign: (orderId: string, body: {
+    trackingCode?: string;
+    carrierCode?: string;
+    estimatedDelivery?: string;
+    note?: string;
+  }) => api.post<Ok<Order>>(`/api/admin/tracking/${orderId}/assign`, body),
+
+  addEvent: (orderId: string, body: {
+    status?: string;
+    location?: string;
+    note: string;
+    timestamp?: string;
+  }) => api.post<Ok<TrackingEvent>>(`/api/admin/tracking/${orderId}/event`, body),
+
+  clearEvents: (orderId: string) =>
+    api.delete<Ok<null>>(`/api/admin/tracking/${orderId}/events`),
+};
+
+// ─── PUBLIC TRACKING ─────────────────────────────────────────
+export const publicTrackingApi = {
+  lookup: (code: string) =>
+    api.get<Ok<TrackingTimeline>>(`/api/tracking/${encodeURIComponent(code)}`),
+};
+
 // ─── USERS ────────────────────────────────────────────────────
 export interface UserQuery {
   page?: number; limit?: number; search?: string; status?: string; role?: string;
@@ -364,6 +434,7 @@ export const adminBlogsApi = {
 
 // ─── SETTINGS ─────────────────────────────────────────────────
 export interface SiteSettings {
+  // Store Info
   siteName:        string;
   address:         string;
   email:           string;
@@ -376,7 +447,43 @@ export interface SiteSettings {
   metaDescription: string;
   logo:            string;
   favicon:         string;
-  updatedAt:       string | null;
+  // Notifications
+  notifNewOrder?:     boolean;
+  notifLowStock?:     boolean;
+  notifOrderShipped?: boolean;
+  notifNewUser?:      boolean;
+  notifNewContact?:   boolean;
+  notifNewsletter?:   boolean;
+  // Shipping
+  shippingThreshold?: number;
+  shippingFee?:       number;
+  processingTime?:    string;
+  deliveryEstimate?:  string;
+  shippingZones?:     string;
+  // Email / SMTP
+  smtpHost?:      string;
+  smtpPort?:      number;
+  smtpUser?:      string;
+  smtpPass?:      string;
+  mailFromName?:  string;
+  mailFromEmail?: string;
+  // Analytics
+  gaId?:        string;
+  gtmId?:       string;
+  fbPixelId?:   string;
+  fbConvToken?: string;
+  // Security
+  secTwoFactor?:      boolean;
+  secSessionTimeout?: boolean;
+  secRateLimit?:      boolean;
+  // Customers
+  registrationMode?:  'open' | 'invite';
+  emailVerification?: 'required' | 'optional';
+  guestCheckout?:     'enabled' | 'disabled';
+  accountDeletion?:   'self' | 'admin';
+  // Theme
+  themeDefault?: 'light' | 'dark';
+  updatedAt?:    string | null;
 }
 
 export const adminSettingsApi = {

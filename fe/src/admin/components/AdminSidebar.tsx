@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import styled, { css, keyframes } from 'styled-components';
 import {
-  LayoutDashboard, Package, Users, ShoppingCart,
+  LayoutDashboard, Package, Users, ShoppingCart, Truck,
   CreditCard, MessageSquare, FileText, Settings,
   ChevronLeft, ChevronRight, Heart, LogOut, Tag,
   ChevronDown, ChevronUp, List, HelpCircle, CalendarDays,
@@ -237,6 +237,15 @@ export const AdminSidebar: React.FC = () => {
           <ShoppingCart />
           <NavLabel $c={collapsed}>Orders</NavLabel>
         </Item>
+
+        {/* Shipment Tracking shortcut */}
+        {!collapsed && (
+          <SubMenu $open={true}>
+            <SubItem to="/admin/orders?status=shipped" $c={collapsed}>
+              <Truck size={14}/><span>Shipments &amp; Tracking</span>
+            </SubItem>
+          </SubMenu>
+        )}
 
         {/* Users */}
         <Item to="/admin/users" $c={collapsed}>

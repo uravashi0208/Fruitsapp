@@ -10,6 +10,7 @@ import styled from 'styled-components';
 import { WishlistPage, AboutPage, BlogPage, ContactPage } from './pages/OtherPages';
 import { AdminRouter } from './admin/AdminRouter';
 import ShippingPage from './pages/ShippingPage';
+import TrackingPage from './pages/TrackingPage';
 import ReturnsPage from './pages/ReturnsPage';
 import TermsPage from './pages/TermsPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -80,6 +81,8 @@ const App: React.FC = () => (
                 <Route path="/returns"     element={<ReturnsPage />} />
                 <Route path="/terms"       element={<TermsPage />} />
                 <Route path="/privacy"     element={<PrivacyPage />} />
+                <Route path="/tracking"    element={<TrackingPage />} />
+                <Route path="/tracking/:code" element={<TrackingPage />} />
                 <Route path="*"            element={<HomePage />} />
               </Routes>
             </StorefrontShell>

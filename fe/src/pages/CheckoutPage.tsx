@@ -351,12 +351,35 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
       const stripePaymentIntentId = paymentIntent?.id || '';
       const stripeStatus          = paymentIntent?.status || 'succeeded';
 
-      // 4. Place order on backend with confirmed paymentIntentId
+      // 4. Retrieve card details from Stripe PaymentMethod (gives us last4, expiry, brand)
+      //    paymentIntent.payment_method is a string PM id after confirmPayment
+      let resolvedCardDetails: OrderPayment['cardDetails'] | undefined;
+      const pmId = typeof (paymentIntent as any)?.payment_method === 'string'
+        ? (paymentIntent as any).payment_method as string
+        : '';
+
+      if (pmId && pmId.startsWith('pm_')) {
+        try {
+          const pmRes = await stripeApi.getPaymentMethod(
+            pmId,
+            `${billing.firstName} ${billing.lastName}`.trim()
+          );
+          if (pmRes.success && pmRes.data?.cardDetails) {
+            resolvedCardDetails = pmRes.data.cardDetails;
+          }
+        } catch (_pmErr) {
+          // Non-fatal — card details can be patched by webhook later
+          console.warn('Could not retrieve payment method details:', _pmErr);
+        }
+      }
+
+      // 5. Place order on backend with confirmed paymentIntentId + card details
       const orderPayment: OrderPayment = {
         method:             payMethod,
         status:             'paid' as any,
         transactionId:      stripePaymentIntentId,
         orderPaymentStatus: stripeStatus,
+        cardDetails:        resolvedCardDetails,
       };
 
       const res = await ordersApi.place({

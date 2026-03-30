@@ -288,12 +288,14 @@ const orderSchema = Joi.object({
 
 // ── Update order status (admin) ───────────────────────────────────────────────
 const updateOrderStatusSchema = Joi.object({
-  status:       Joi.string().valid(
+  status:            Joi.string().valid(
     'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'
   ).required(),
-  note:         Joi.string().max(500).allow('').optional(),
-  trackingCode: Joi.string().allow('').optional(),
-  adminNote:    Joi.string().max(500).allow('').optional(),
+  note:              Joi.string().max(500).allow('').optional(),
+  trackingCode:      Joi.string().allow('').optional(),
+  adminNote:         Joi.string().max(1000).allow('').optional(),
+  carrierCode:       Joi.string().allow('').optional(),
+  estimatedDelivery: Joi.string().allow('').optional(),
 });
 
 // ── Update payment status (admin manual / webhook) ────────────────────────────

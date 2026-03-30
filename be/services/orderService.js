@@ -1,5 +1,6 @@
 /**
  * services/orderService.js
+ * Full order lifecycle: pending → confirmed → processing → shipped → delivered → cancelled
  * Full payment-method support:
  *   card | apple_pay | google_pay | paypal | klarna | revolut
  *   sepa_debit | ideal | bancontact | sofort | giropay | eps
@@ -10,6 +11,7 @@ const { db, FieldValue } = require('../config/firebase');
 const { AppError }       = require('../middleware/errorHandler');
 const { sendMail, buildEmailTemplate } = require('../utils/mailer');
 
+const cardService    = require('./cardService');
 const COL  = 'orders';
 const toMs = (v) => v?.toMillis ? v.toMillis() : new Date(v || 0).getTime();
 
@@ -240,6 +242,31 @@ const createOrder = async (data, userId = null) => {
   // ── 1. Save the order first ───────────────────────────────────────────────
   await db.collection(COL).doc(id).set(doc);
 
+  // ── 1b. Auto-save card to 'cards' collection if full card details present ──
+  //   This populates the admin Cards page without any extra FE call.
+  //   We only save when last4 is present (i.e. real Stripe data, not empty).
+  const pd = doc.paymentDetails;
+  if (pd?.last4 && ['card','apple_pay','google_pay'].includes(pd.method)) {
+    setImmediate(async () => {
+      try {
+        await cardService.upsertCardFromOrder({
+          userId:         userId,
+          userName:       doc.userName,
+          userEmail:      doc.userEmail,
+          cardType:       pd.cardType  || pd.brand || 'visa',
+          last4:          pd.last4,
+          expiryMonth:    pd.expiryMonth || '',
+          expiryYear:     pd.expiryYear  || '',
+          cardholderName: pd.cardholderName || doc.userName || '',
+          fingerprint:    pd.fingerprint || '',
+          orderId:        id,
+        });
+      } catch (err) {
+        console.error('[orderService] card upsert failed:', err.message);
+      }
+    });
+  }
+
   // ── 2. Deduct stock per item (each in its own transaction, non-blocking) ──
   //   - Transactions contain ONLY Firestore reads/writes (no network calls)
   //   - Email is sent AFTER the transaction commits
@@ -352,6 +379,8 @@ const updateOrderStatus = async (id, data) => {
   };
   if (data.trackingCode !== undefined) update.trackingCode = data.trackingCode;
   if (data.adminNote    !== undefined) update.adminNote    = data.adminNote;
+  if (data.carrierCode  !== undefined) update.carrierCode  = data.carrierCode;
+  if (data.estimatedDelivery !== undefined) update.estimatedDelivery = data.estimatedDelivery;
 
   await db.collection(COL).doc(id).update(update);
   return { ...old, ...update };
@@ -419,6 +448,52 @@ const getOrderStats = async () => {
   };
 };
 
+
+// ─── Enrich order with card details (called after Stripe PM retrieval) ────────
+// Safely merges card details into paymentDetails without overwriting method/status
+const enrichPaymentDetails = async (id, cardDetails) => {
+  const snap = await db.collection(COL).doc(id).get();
+  if (!snap.exists) return; // silent — don't throw, called from webhook
+
+  const data   = snap.data();
+  const merged = {
+    ...( data.paymentDetails || {}),
+    cardholderName: cardDetails.cardholderName || data.paymentDetails?.cardholderName || '',
+    last4:          cardDetails.last4          || data.paymentDetails?.last4          || '',
+    expiryMonth:    cardDetails.expiryMonth    || data.paymentDetails?.expiryMonth    || '',
+    expiryYear:     cardDetails.expiryYear     || data.paymentDetails?.expiryYear     || '',
+    cardType:       cardDetails.cardType       || data.paymentDetails?.cardType       || '',
+    brand:          cardDetails.brand          || data.paymentDetails?.brand          || '',
+    fingerprint:    cardDetails.fingerprint    || data.paymentDetails?.fingerprint    || '',
+  };
+
+  await db.collection(COL).doc(id).update({
+    paymentDetails: merged,
+    updatedAt:      FieldValue.serverTimestamp(),
+  });
+
+  console.log(`[orderService] enrichPaymentDetails: order ${id} → last4=${merged.last4}`);
+
+  // Also upsert the card into the cards collection (webhook path)
+  const orderData = snap.data();
+  if (merged.last4) {
+    setImmediate(() =>
+      cardService.upsertCardFromOrder({
+        userId:         orderData.userId,
+        userName:       orderData.userName,
+        userEmail:      orderData.userEmail,
+        cardType:       merged.cardType  || 'visa',
+        last4:          merged.last4,
+        expiryMonth:    merged.expiryMonth || '',
+        expiryYear:     merged.expiryYear  || '',
+        cardholderName: merged.cardholderName || orderData.userName || '',
+        fingerprint:    merged.fingerprint || '',
+        orderId:        id,
+      }).catch(e => console.error('[orderService] card upsert in enrich failed:', e.message))
+    );
+  }
+};
+
 module.exports = {
   createOrder,
   listOrders,
@@ -428,5 +503,6 @@ module.exports = {
   updatePaymentStatus,
   deleteOrder,
   getOrderStats,
+  enrichPaymentDetails,
   PAYMENT_LABELS,
 };

@@ -2,23 +2,16 @@
  * services/stripeService.js
  *
  * Centralises all Stripe interactions:
- *   • createPaymentIntent   — used by POST /api/stripe/payment-intent
- *   • confirmPaymentIntent  — (optional server-side confirm for redirect methods)
- *   • constructWebhookEvent — used by POST /api/stripe/webhook
- *   • PAYMENT_METHOD_TYPES  — list of Stripe payment method type strings
- *
- * Stripe payment method types supported:
- *   card | apple_pay | google_pay (via card/wallets)
- *   paypal | klarna | revolut_pay
- *   sepa_debit | ideal | bancontact | sofort | giropay | eps
- *   p24 (Przelewy24) | blik
- *
- * Cash on delivery (cod) is handled offline — no Stripe involvement.
+ *   • createPaymentIntent     — POST /api/stripe/payment-intent
+ *   • retrievePaymentIntent   — GET  /api/stripe/verify/:id
+ *   • retrievePaymentMethod   — GET  /api/stripe/payment-method/:pmId  ← NEW
+ *   • extractCardDetails      — parse Stripe PM → our CardDetails shape ← NEW
+ *   • constructWebhookEvent   — POST /api/stripe/webhook
  */
 
 const Stripe = require('stripe');
 const { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } = require('../config/env');
- 
+
 let _stripe = null;
 const stripe = () => {
   if (!_stripe) {
@@ -32,42 +25,66 @@ const stripe = () => {
   }
   return _stripe;
 };
- 
-// ─── Currency (your store uses USD display; Stripe amounts are in cents) ──────
+
 const CURRENCY = 'usd';
 
+// ─── Brand normalisation ──────────────────────────────────────────────────────
+// Stripe brands: visa, mastercard, amex, discover, diners, jcb, unionpay, unknown
+const normaliseBrand = (brand = '') => {
+  const b = brand.toLowerCase();
+  const MAP = {
+    visa: 'visa', mastercard: 'mastercard', amex: 'amex',
+    american_express: 'amex', discover: 'discover',
+    diners: 'diners', jcb: 'jcb', unionpay: 'unionpay',
+  };
+  return MAP[b] || b || 'visa';
+};
+
+// ─── Extract card details from a Stripe PaymentMethod object ──────────────────
 /**
- * Create a PaymentIntent for the given order total.
+ * Returns our internal CardDetails shape from any Stripe PM object.
+ * Works for card, apple_pay (card_present), google_pay, etc.
  *
- * @param {object} opts
- * @param {number}   opts.amount        — in dollars, e.g. 49.99
- * @param {string}   opts.payMethod     — our internal PayMethod string
- * @param {string}   [opts.customerEmail]
- * @param {string}   [opts.orderId]     — used as metadata
- * @param {object}   [opts.billing]     — billing address from order
- * @returns {Promise<{clientSecret: string, paymentIntentId: string}>}
+ * @param {import('stripe').Stripe.PaymentMethod} pm
+ * @param {string} [cardholderName]  — billing name from billing_details
+ * @returns {{ cardholderName, last4, expiryMonth, expiryYear, cardType, brand } | null}
  */
+const extractCardDetails = (pm, cardholderName = '') => {
+  if (!pm) return null;
+
+  const card = pm.card || pm.card_present;
+  if (!card) return null;
+
+  return {
+    cardholderName: cardholderName || pm.billing_details?.name || '',
+    last4:          card.last4          || '',
+    expiryMonth:    card.exp_month ? String(card.exp_month).padStart(2, '0') : '',
+    expiryYear:     card.exp_year  ? String(card.exp_year)                    : '',
+    cardType:       normaliseBrand(card.brand),
+    brand:          card.brand || '',
+    fingerprint:    card.fingerprint || '',  // for dedup in cards collection
+    funding:        card.funding || '',      // credit | debit | prepaid
+    network:        card.networks?.preferred || card.brand || '',
+  };
+};
+
+// ─── Create PaymentIntent ─────────────────────────────────────────────────────
 const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId }) => {
   const amountCents = Math.round(amount * 100);
- 
+
   const intentParams = {
     amount:   amountCents,
     currency: CURRENCY,
-    // ✅ Must use automatic_payment_methods when frontend uses Elements deferred pattern
-    automatic_payment_methods: {
-      enabled: true,
-    },
+    automatic_payment_methods: { enabled: true },
     metadata: {
       payMethod: payMethod || 'card',
       orderId:   orderId   || '',
     },
     description: `Order — ${payMethod || 'card'}`,
   };
- 
-  if (customerEmail) {
-    intentParams.receipt_email = customerEmail;
-  }
- 
+
+  if (customerEmail) intentParams.receipt_email = customerEmail;
+
   const intent = await stripe().paymentIntents.create(intentParams);
   return {
     clientSecret:    intent.client_secret,
@@ -75,26 +92,38 @@ const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId }
   };
 };
 
-/**
- * Retrieve a PaymentIntent by ID (used to verify status after redirect flows).
- */
-const retrievePaymentIntent = async (paymentIntentId) => {
-  return stripe().paymentIntents.retrieve(paymentIntentId);
+// ─── Retrieve PaymentIntent (optionally expand payment_method) ────────────────
+const retrievePaymentIntent = async (paymentIntentId, { expand = false } = {}) => {
+  const params = expand ? { expand: ['payment_method'] } : {};
+  return stripe().paymentIntents.retrieve(paymentIntentId, params);
 };
 
+// ─── Retrieve PaymentMethod with full card details ────────────────────────────
 /**
- * Construct a Stripe webhook event from the raw request body + signature header.
- * Must be called BEFORE express.json() parses the body (use raw body middleware on this route).
+ * Retrieve a Stripe PaymentMethod by ID.
+ * This is what gives us last4, exp_month, exp_year, brand.
+ *
+ * @param {string} paymentMethodId  — pm_xxx string from confirmPayment result
+ * @returns {Promise<import('stripe').Stripe.PaymentMethod>}
  */
+const retrievePaymentMethod = async (paymentMethodId) => {
+  return stripe().paymentMethods.retrieve(paymentMethodId);
+};
+
+// ─── Construct webhook event ──────────────────────────────────────────────────
 const constructWebhookEvent = (rawBody, signature) => {
   if (!STRIPE_WEBHOOK_SECRET || STRIPE_WEBHOOK_SECRET.startsWith('whsec_YOUR')) {
     throw new Error('STRIPE_WEBHOOK_SECRET is not configured.');
   }
   return stripe().webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
 };
+
 module.exports = {
   createPaymentIntent,
   retrievePaymentIntent,
+  retrievePaymentMethod,
+  extractCardDetails,
+  normaliseBrand,
   constructWebhookEvent,
   CURRENCY,
 };

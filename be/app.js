@@ -107,6 +107,7 @@ const { publicRouter: reviewPublic, adminRouter: reviewAdmin } = require('./rout
 const { publicRouter: calPublic, adminRouter: calAdmin } = require('./routes/calendar');
 const dashboardRouter = require('./routes/dashboard');
 const stripeRouter    = require('./routes/stripe');
+const { publicRouter: trackPublic, adminRouter: trackAdmin } = require('./routes/tracking');
 
 const app = express();
 
@@ -147,6 +148,7 @@ app.get('/health', (req, res) =>
 );
 
 // ── Public API ────────────────────────────────────────────────────────────────
+app.use('/api/tracking',     trackPublic);
 app.use('/api/settings',     settPublic);
 app.use('/api/sliders',      sliderPublic);
 app.use('/api/categories',   catPublic);
@@ -188,6 +190,7 @@ app.use('/api/admin/admins',       adminsRouter);
 app.use('/api/admin/cards',        cardsRouter);
 app.use('/api/admin/faqs',         faqAdmin);
 app.use('/api/admin/wishlist',     wishAdmin);
+app.use('/api/admin/tracking',   trackAdmin);
 app.use('/api/admin/calendar',     calAdmin);
 app.use('/api/admin',              reviewAdmin);
 

@@ -32,10 +32,10 @@ const productsSlice = createSlice({
       const idx = state.items.findIndex((p) => p.id === action.payload.id);
       if (idx >= 0) state.items[idx] = { ...action.payload, updatedAt: new Date().toISOString().split('T')[0] };
     },
-    deleteProduct(state, action: PayloadAction<number>) {
+    deleteProduct(state, action: PayloadAction<string>) {
       state.items = state.items.filter((p) => p.id !== action.payload);
     },
-    setProductStatus(state, action: PayloadAction<{ id: number; status: AdminProduct['status'] }>) {
+    setProductStatus(state, action: PayloadAction<{ id: string; status: AdminProduct['status'] }>) {
       const p = state.items.find((p) => p.id === action.payload.id);
       if (p) { p.status = action.payload.status; p.updatedAt = new Date().toISOString().split('T')[0]; }
     },

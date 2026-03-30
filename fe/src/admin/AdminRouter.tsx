@@ -21,6 +21,7 @@ const NewsletterPage   = lazy(() => import('./pages/NewsletterPage').then(m => (
 const UsersPage        = lazy(() => import('./pages/OtherAdminPages').then(m => ({ default: m.UsersPage })));
 const OrdersPage    = lazy(() => import('./pages/OtherAdminPages').then(m => ({ default: m.OrdersPage })));
 const InvoicePage    = lazy(() => import('./pages/InvoicePage').then(m => ({ default: m.InvoicePage })));
+const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage').then(m => ({ default: m.OrderDetailPage })));
 const CardsPage     = lazy(() => import('./pages/OtherAdminPages').then(m => ({ default: m.CardsPage })));
 const ContactsPage  = lazy(() => import('./pages/OtherAdminPages').then(m => ({ default: m.ContactsPage })));
 const BlogsPage     = lazy(() => import('./pages/OtherAdminPages').then(m => ({ default: m.BlogsPage })));
@@ -176,6 +177,7 @@ const AdminRouterInner: React.FC = () => {
         <Route path="testimonials"  element={<Suspense fallback={<AdminLoader />}><TestimonialsPage /></Suspense>} />
         <Route path="newsletter"    element={<Suspense fallback={<AdminLoader />}><NewsletterPage /></Suspense>} />
         <Route path="orders"        element={<Suspense fallback={<AdminLoader />}><OrdersPage /></Suspense>} />
+        <Route path="orders/:id"    element={<Suspense fallback={<AdminLoader />}><OrderDetailPage /></Suspense>} />
         <Route path="users"    element={<Suspense fallback={<AdminLoader />}><UsersPage /></Suspense>} />
         <Route path="cards"    element={<Suspense fallback={<AdminLoader />}><CardsPage /></Suspense>} />
         <Route path="contacts" element={<Suspense fallback={<AdminLoader />}><ContactsPage /></Suspense>} />
