@@ -6,14 +6,13 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import styled, { keyframes, createGlobalStyle } from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { publicTrackingApi, TrackingTimeline, TrackingEvent } from '../api/admin';
 
 // ── Animations ────────────────────────────────────────────────────────────────
 const fadeUp  = keyframes`from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}`;
 const spin    = keyframes`to{transform:rotate(360deg)}`;
 const pulse   = keyframes`0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.95)}`;
-const shimmer = keyframes`from{background-position:200% center}to{background-position:-200% center}`;
 const bounce  = keyframes`0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}`;
 
 // ── Styled components ─────────────────────────────────────────────────────────
@@ -167,7 +166,6 @@ const TLDot = styled.div<{$color?:string;$active?:boolean}>`
   ${p=>p.$active?`animation:${pulse} 2s ease infinite;`:''}
 `;
 const TLTitle = styled.div`font-size:.9375rem;font-weight:600;color:#f1f5f9;`;
-const TLNote  = styled.div`font-size:.8125rem;color:#94a3b8;margin-top:3px;`;
 const TLMeta  = styled.div`margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;`;
 const TLTime  = styled.span`font-size:.75rem;color:#475569;`;
 const TLTag   = styled.span<{$color?:string}>`
