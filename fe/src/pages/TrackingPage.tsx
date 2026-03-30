@@ -11,7 +11,7 @@ import { Search, Package, CheckCircle2, ClipboardList, Truck, PartyPopper, MapPi
 import { publicTrackingApi, TrackingTimeline, TrackingEvent } from '../api/admin';
 import { PageHero } from '../components/ui/PageHero';
 import { theme as t } from '../styles/theme';
-import { Container, Section, Button } from '../styles/shared';
+import { Container, Button } from '../styles/shared';
 
 // ── Animations ────────────────────────────────────────────────────────────────
 const fadeUp  = keyframes`from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}`;
