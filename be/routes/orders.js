@@ -56,6 +56,19 @@ userRouter.get('/my/:id', authenticate, asyncHandler(async (req, res) => {
   success(res, order);
 }));
 
+/** POST /api/orders/my/:id/cancel — cancel own order */
+userRouter.post('/my/:id/cancel', authenticate, asyncHandler(async (req, res) => {
+  const order = await orderService.cancelOrder(req.params.id, req.user.uid);
+  success(res, order, 'Order cancelled successfully.');
+}));
+
+/** GET /api/orders/lookup?email= — guest order lookup */
+userRouter.get('/lookup', asyncHandler(async (req, res) => {
+  const { email } = req.query;
+  const orders = await orderService.getOrdersByEmail(email);
+  success(res, orders);
+}));
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 const adminRouter = Router();
 adminRouter.use(authenticate, requireAdmin);

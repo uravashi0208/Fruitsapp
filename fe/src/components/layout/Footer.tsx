@@ -173,6 +173,8 @@ export const Footer: React.FC = () => {
               <FooterList>
                 <li><span><Link to="/faq">FAQs</Link></span></li>
                 <li><span><Link to="/contact">Contact</Link></span></li>
+                <li><span><Link to="/account">My Account</Link></span></li>
+                <li><span><Link to="/my-orders">Track My Order</Link></span></li>
               </FooterList>
             </div>
           </div>

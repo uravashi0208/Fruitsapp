@@ -16,7 +16,8 @@
  *   przelewy24 | blik | cod
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import {
@@ -463,6 +464,15 @@ const CheckoutPage: React.FC = () => {
   const { items, subtotal, shipping, total } = useCart();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const { isLoggedIn, loading: authLoading, openAuthModal } = useAuth();
+
+  // Guard: guest users must log in before checkout
+  useEffect(() => {
+    if (!authLoading && !isLoggedIn) {
+      dispatch(showToast({ message: 'Please sign in to continue to checkout', type: 'info' }));
+      openAuthModal('login');
+    }
+  }, [authLoading, isLoggedIn, openAuthModal, dispatch]);
 
   const [payMethod, setPayMethod] = useState<PayMethod>('card');
   const [submitted, setSubmitted] = useState(false);
@@ -553,6 +563,33 @@ const CheckoutPage: React.FC = () => {
   };
 
   // ── Success screen ─────────────────────────────────────────────────────────
+  // Show login prompt overlay for guests
+  if (!authLoading && !isLoggedIn) return (
+    <main>
+      <PageHero title="Checkout" breadcrumbs={[{ label: 'Checkout' }]} />
+      <Section>
+        <Container>
+          <div style={{ textAlign: 'center', padding: '80px 20px', background: 'white', border: '1px solid #f0f0f0', maxWidth: 480, margin: '0 auto', borderRadius: 8 }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>🔐</div>
+            <h2 style={{ fontSize: 22, marginBottom: 12, fontWeight: 600 }}>Sign in to checkout</h2>
+            <p style={{ color: 'gray', marginBottom: 24, fontSize: 14 }}>
+              Create a free account or sign in to place your order, track deliveries, and earn loyalty points.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button onClick={() => openAuthModal('login')} style={{ minWidth: 130 }}>Sign In</Button>
+              <Button $variant="outline" onClick={() => openAuthModal('register')} style={{ minWidth: 130 }}>Create Account</Button>
+            </div>
+            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
+              <p style={{ fontSize: 12, color: 'gray' }}>
+                ✓ Free to join &nbsp;·&nbsp; ✓ Earn loyalty points &nbsp;·&nbsp; ✓ Order tracking
+              </p>
+            </div>
+          </div>
+        </Container>
+      </Section>
+    </main>
+  );
+
   if (submitted) return (
     <main>
       <PageHero title="Checkout" breadcrumbs={[{ label: 'Checkout' }]} />

@@ -6,6 +6,7 @@ import {
   CreditCard, MessageSquare, FileText, Settings,
   ChevronLeft, ChevronRight, Heart, LogOut, Tag,
   ChevronDown, ChevronUp, List, HelpCircle, CalendarDays,
+  Star, Ticket,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import { useAdminDispatch, useAdminSelector, toggleSidebar, logout } from '../store';
@@ -278,6 +279,16 @@ export const AdminSidebar: React.FC = () => {
         <Item to="/admin/wishlist" $c={collapsed}>
           <Heart />
           <NavLabel $c={collapsed}>Wishlists</NavLabel>
+        </Item>
+
+        <Item to="/admin/reviews" $c={collapsed}>
+          <Star />
+          <NavLabel $c={collapsed}>Reviews</NavLabel>
+        </Item>
+
+        <Item to="/admin/coupons" $c={collapsed}>
+          <Ticket />
+          <NavLabel $c={collapsed}>Coupons</NavLabel>
         </Item>
 
         <SectionLabel $c={collapsed}>SYSTEM</SectionLabel>

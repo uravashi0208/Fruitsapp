@@ -170,6 +170,14 @@ export interface PlaceOrderBody {
   notes?:   string;
 }
 
+export interface PlacedOrderItem {
+  productId?: string | number;
+  name:       string;
+  price:      number;
+  quantity:   number;
+  image?:     string;
+}
+
 export interface PlacedOrder {
   id:                 string;
   orderNumber:        string;
@@ -182,6 +190,14 @@ export interface PlacedOrder {
   shipping:           number;
   tax:                number;
   createdAt:          string;
+  // Full order fields returned by /api/orders/my
+  items?:             PlacedOrderItem[];
+  userEmail?:         string;
+  userName?:          string;
+  address?:           Record<string, string>;
+  notes?:             string;
+  trackingCode?:      string;
+  updatedAt?:         string;
 }
 
 export const ordersApi = {
@@ -363,4 +379,70 @@ export const faqApi = {
   },
   categories: () =>
     api.get<ApiOk<string[]>>('/api/faqs/categories', { noAuth: true }),
+};
+
+// ─── Coupons ──────────────────────────────────────────────────────────────────
+export interface CouponResult {
+  couponId:   string;
+  code:       string;
+  type:       'percent' | 'fixed';
+  value:      number;
+  discount:   number;
+  finalTotal: number;
+}
+
+export const couponsApi = {
+  apply: (code: string, orderTotal: number) =>
+    api.post<ApiOk<CouponResult>>('/api/coupons/apply', { code, orderTotal }, { noAuth: true }),
+};
+
+// ─── Cancel order & lookup ────────────────────────────────────────────────────
+export const cancelOrder = (id: string) =>
+  api.post<ApiOk<PlacedOrder>>(`/api/orders/my/${id}/cancel`, {});
+
+export const lookupOrdersByEmail = (email: string) =>
+  api.get<ApiOk<PlacedOrder[]>>(`/api/orders/lookup?email=${encodeURIComponent(email)}`, { noAuth: true });
+
+// ─── Admin notifications ──────────────────────────────────────────────────────
+export interface AdminNotification {
+  id:        string;
+  type:      'order' | 'stock' | 'contact';
+  title:     string;
+  message:   string;
+  link:      string;
+  read:      boolean;
+  createdAt: string;
+}
+
+export const adminNotificationsApi = {
+  list:       () => api.get<ApiOk<AdminNotification[]>>('/api/admin/notifications'),
+  unread:     () => api.get<ApiOk<{ count: number }>>('/api/admin/notifications/unread'),
+  markRead:   (id: string) => api.patch<ApiOk<null>>(`/api/admin/notifications/${id}/read`, {}),
+  markAllRead:() => api.patch<ApiOk<null>>('/api/admin/notifications/read-all', {}),
+  delete:     (id: string) => api.delete<ApiOk<null>>(`/api/admin/notifications/${id}`),
+};
+
+// ─── Admin coupons ────────────────────────────────────────────────────────────
+export interface AdminCoupon {
+  id:        string;
+  code:      string;
+  type:      'percent' | 'fixed';
+  value:     number;
+  minOrder:  number;
+  maxUses:   number | null;
+  usedCount: number;
+  expiresAt: string | null;
+  status:    'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const adminCouponsApi = {
+  list:   (params: { page?: number; limit?: number; search?: string; status?: string } = {}) => {
+    const qs = new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([,v])=>v!=null).map(([k,v])=>[k,String(v)]))).toString();
+    return api.get<{ success: boolean; data: AdminCoupon[]; pagination: any }>(`/api/admin/coupons${qs?`?${qs}`:''}`);
+  },
+  create: (body: Partial<AdminCoupon>) => api.post<ApiOk<AdminCoupon>>('/api/admin/coupons', body),
+  update: (id: string, body: Partial<AdminCoupon>) => api.put<ApiOk<AdminCoupon>>(`/api/admin/coupons/${id}`, body),
+  delete: (id: string) => api.delete<ApiOk<null>>(`/api/admin/coupons/${id}`),
 };

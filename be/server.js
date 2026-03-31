@@ -8,8 +8,10 @@ require('./config/firebase');
 // ── Start cron jobs ───────────────────────────────────────────
 // Event reminder cron: every night at midnight
 // Sends newsletter emails 2 days before each calendar event
-const { startEventReminderCron } = require('./cron/eventReminder');
+const { startEventReminderCron }   = require('./cron/eventReminder');
+const { startCartAbandonmentCron } = require('./cron/cartAbandonment');
 startEventReminderCron();
+startCartAbandonmentCron();
 
 const server = app.listen(PORT, () => {
   console.log(`\n🚀 Vegefoods API running on port ${PORT}`);

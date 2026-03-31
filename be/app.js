@@ -108,6 +108,8 @@ const { publicRouter: calPublic, adminRouter: calAdmin } = require('./routes/cal
 const dashboardRouter = require('./routes/dashboard');
 const stripeRouter    = require('./routes/stripe');
 const { publicRouter: trackPublic, adminRouter: trackAdmin } = require('./routes/tracking');
+const { publicRouter: couponPublic, adminRouter: couponAdmin } = require('./routes/coupons');
+const notificationsRouter = require('./routes/notifications');
 
 const app = express();
 
@@ -160,6 +162,7 @@ app.use('/api/blogs',        blogPublic);
 app.use('/api/contact',      contPublic);
 app.use('/api/faqs',         faqPublic);
 app.use('/api/calendar',     calPublic);
+app.use('/api/coupons',      couponPublic);
 
 // ── User Auth ─────────────────────────────────────────────────────────────────
 app.use('/api/auth', userAuthRouter);
@@ -192,6 +195,8 @@ app.use('/api/admin/faqs',         faqAdmin);
 app.use('/api/admin/wishlist',     wishAdmin);
 app.use('/api/admin/tracking',   trackAdmin);
 app.use('/api/admin/calendar',     calAdmin);
+app.use('/api/admin/coupons',      couponAdmin);
+app.use('/api/admin/notifications', notificationsRouter);
 app.use('/api/admin',              reviewAdmin);
 
 // ── Error handling ────────────────────────────────────────────────────────────

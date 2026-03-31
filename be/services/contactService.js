@@ -6,6 +6,7 @@ const { db, FieldValue } = require('../config/firebase');
 const { AppError }       = require('../middleware/errorHandler');
 
 const COL = 'contacts';
+const notificationService = require('./notificationService');
 const toMs = (v) => v?.toMillis ? v.toMillis() : new Date(v || 0).getTime();
 
 const createContact = async (data) => {
@@ -17,6 +18,7 @@ const createContact = async (data) => {
     createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
   };
   await db.collection(COL).doc(id).set(doc);
+  setImmediate(() => notificationService.notifyNewContact(doc).catch(() => {}));
   return { ...doc, createdAt: new Date().toISOString() };
 };
 

@@ -9,6 +9,7 @@ import { ToastManager } from './components/ui/Toast';
 import styled from 'styled-components';
 import { WishlistPage, AboutPage, BlogPage, ContactPage } from './pages/OtherPages';
 import { AdminRouter } from './admin/AdminRouter';
+import { AuthContext, useAuthState } from './hooks/useAuth';
 import ShippingPage from './pages/ShippingPage';
 import TrackingPage from './pages/TrackingPage';
 import ReturnsPage from './pages/ReturnsPage';
@@ -22,6 +23,8 @@ const CheckoutPage      = lazy(() => import('./pages/CheckoutPage'));
 const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
 const BlogDetailPage    = lazy(() => import('./pages/BlogDetailPage'));
 const FaqPage           = lazy(() => import('./pages/FaqPage'));
+const AccountPage       = lazy(() => import('./pages/AccountPage'));
+const MyOrdersPage      = lazy(() => import('./pages/MyOrdersPage'));
 
 const PageLoader = styled.div`
   min-height: 60vh;
@@ -41,7 +44,7 @@ const PageLoader = styled.div`
 const AppLayout = styled.div`display:flex;flex-direction:column;min-height:100vh;`;
 const MainContent = styled.div`flex:1;`;
 
-const StorefrontShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const StorefrontShellInner: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <AppLayout>
     <Navbar />
     <MainContent>
@@ -51,6 +54,15 @@ const StorefrontShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
     <ToastManager />
   </AppLayout>
 );
+
+const StorefrontShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const authState = useAuthState();
+  return (
+    <AuthContext.Provider value={authState}>
+      <StorefrontShellInner>{children}</StorefrontShellInner>
+    </AuthContext.Provider>
+  );
+};
 
 const App: React.FC = () => (
   <Provider store={store}>
@@ -83,6 +95,8 @@ const App: React.FC = () => (
                 <Route path="/privacy"     element={<PrivacyPage />} />
                 <Route path="/tracking"    element={<TrackingPage />} />
                 <Route path="/tracking/:code" element={<TrackingPage />} />
+                <Route path="/account"     element={<Suspense fallback={<PageLoader />}><AccountPage /></Suspense>} />
+                <Route path="/my-orders"   element={<Suspense fallback={<PageLoader />}><MyOrdersPage /></Suspense>} />
                 <Route path="*"            element={<HomePage />} />
               </Routes>
             </StorefrontShell>

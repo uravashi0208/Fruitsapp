@@ -77,6 +77,19 @@ const makeAuthRouter = (collection) => {
     success(res, null, 'Password changed successfully');
   }));
 
+  // ── Loyalty points (user-only) ──────────────────────────────────────────────
+  router.get('/loyalty/balance', authenticate, asyncHandler(async (req, res) => {
+    const loyaltyService = require('../services/loyaltyService');
+    const result = await loyaltyService.getBalance(req.user.uid);
+    success(res, result);
+  }));
+
+  router.get('/loyalty/history', authenticate, asyncHandler(async (req, res) => {
+    const loyaltyService = require('../services/loyaltyService');
+    const result = await loyaltyService.getHistory(req.user.uid);
+    success(res, result);
+  }));
+
   return router;
 };
 

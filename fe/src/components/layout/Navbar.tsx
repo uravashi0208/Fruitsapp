@@ -12,7 +12,9 @@ import { theme } from '../../styles/theme';
 import { useCart } from '../../hooks/useCart';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleMobileMenu, closeMobileMenu } from '../../store/uiSlice';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import AuthModal from '../ui/AuthModal';
 
 
 
@@ -191,12 +193,79 @@ const HamburgerBtn = styled.button`
 
 const HamburgerIcon = styled.span`font-size: 20px;`;
 
+// ── Auth styled components ─────────────────────────────────────
+const LoginBtn = styled.button<{ $scrolled: boolean }>`
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px;
+  border: 1.5px solid ${({ $scrolled }) => $scrolled ? theme.colors.primary : 'rgba(130,174,70,0.8)'};
+  border-radius: 20px;
+  background: transparent;
+  color: ${({ $scrolled }) => $scrolled ? theme.colors.primary : '#000'};
+  font-size: 12px; font-weight: 600;
+  font-family: ${theme.fonts.body};
+  cursor: pointer; transition: all 0.2s;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  &:hover { background: ${theme.colors.primary}; color: white; border-color: ${theme.colors.primary}; }
+  @media (max-width: ${theme.breakpoints.lg}) {
+    border-color: rgba(255,255,255,0.4); color: white;
+  }
+`;
+
+const UserDropdownWrap = styled.div`
+  position: relative;
+  &:hover > div { display: block; }
+`;
+
+const UserBtn = styled.button`
+  display: flex; align-items: center; gap: 6px;
+  background: ${theme.colors.primary}; color: white;
+  border: none; border-radius: 20px; padding: 6px 12px 6px 6px;
+  font-size: 12px; font-weight: 600; font-family: ${theme.fonts.body};
+  cursor: pointer; transition: background 0.2s;
+  &:hover { background: ${theme.colors.primaryDark}; }
+`;
+
+const UserAvatar = styled.span`
+  width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+`;
+
+const UserDropdown = styled.div`
+  display: none; position: absolute;
+  top: calc(100% + 8px); right: 0;
+  background: white; border: 1px solid ${theme.colors.border};
+  border-radius: 8px; min-width: 180px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  overflow: hidden; z-index: 999;
+`;
+
+const DropdownItem = styled(Link)`
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 16px; font-size: 13px;
+  color: ${theme.colors.textDark}; text-decoration: none;
+  transition: background 0.15s;
+  &:hover { background: #f8f9fa; color: ${theme.colors.primary}; }
+`;
+
+const DropdownLogout = styled.button`
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 16px; font-size: 13px; color: #dc2626;
+  background: none; border: none; width: 100%; text-align: left;
+  cursor: pointer; font-family: ${theme.fonts.body};
+  border-top: 1px solid ${theme.colors.border}; transition: background 0.15s;
+  &:hover { background: #fff5f5; }
+`;
+
 export const Navbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
   const dispatch = useAppDispatch();
   const mobileOpen = useAppSelector((s) => s.ui.mobileMenuOpen);
   const { totalItems } = useCart();
   const location = useLocation();
+  const { user, isLoggedIn, logout, authModalOpen, authModalMode, openAuthModal, closeAuthModal, login } = useAuth();
+  const initials = (name?: string) => (name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -274,10 +343,43 @@ export const Navbar: React.FC = () => {
             <li style={{ listStyle: 'none' }}>
               <NavLinkStyled to="/contact" $scrolled={scrolled}>Contact</NavLinkStyled>
             </li>
+            <li style={{ listStyle: 'none' }}>
+              <NavLinkStyled to="/account" $scrolled={scrolled}>My Account</NavLinkStyled>
+            </li>
+            <li style={{ listStyle: 'none' }}>
+              <NavLinkStyled to="/my-orders" $scrolled={scrolled}>Track Order</NavLinkStyled>
+            </li>
           </NavList>
 
-          {/* Cart CTA + hamburger */}
+          {/* Cart CTA + Auth + hamburger */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+            {/* Guest: Login button | Logged-in: Avatar dropdown */}
+            {isLoggedIn ? (
+              <UserDropdownWrap>
+                <UserBtn>
+                  <UserAvatar>{initials(user?.name)}</UserAvatar>
+                  {user?.name?.split(' ')[0]}
+                  <ChevronDown size={12} />
+                </UserBtn>
+                <UserDropdown>
+                  <DropdownItem to="/account">
+                    <User size={14} /> My Account
+                  </DropdownItem>
+                  <DropdownItem to="/account">
+                    <ShoppingCart size={14} /> My Orders
+                  </DropdownItem>
+                  <DropdownLogout onClick={() => { logout(); }}>
+                    <LogOut size={14} /> Logout
+                  </DropdownLogout>
+                </UserDropdown>
+              </UserDropdownWrap>
+            ) : (
+              <LoginBtn $scrolled={scrolled} onClick={() => openAuthModal('login')}>
+                <User size={13} /> Login
+              </LoginBtn>
+            )}
+
             <CartCta to="/cart" $scrolled={scrolled} aria-label={`Cart, ${totalItems} items`}>
               <ShoppingCart /> <CartCount>[{totalItems}]</CartCount>
             </CartCta>
@@ -291,6 +393,14 @@ export const Navbar: React.FC = () => {
               Menu
             </HamburgerBtn>
           </div>
+
+          {/* Auth modal */}
+          <AuthModal
+            isOpen={authModalOpen}
+            initialMode={authModalMode}
+            onClose={closeAuthModal}
+            onSuccess={login}
+          />
         </NavInner>
       </NavWrapper>
     </header>

@@ -12,6 +12,8 @@ const { AppError }       = require('../middleware/errorHandler');
 const { sendMail, buildEmailTemplate } = require('../utils/mailer');
 
 const cardService    = require('./cardService');
+const notificationService = require('./notificationService');
+const couponService       = require('./couponService');
 const COL  = 'orders';
 const toMs = (v) => v?.toMillis ? v.toMillis() : new Date(v || 0).getTime();
 
@@ -303,6 +305,13 @@ const createOrder = async (data, userId = null) => {
     );
   }
 
+  // ── 4. Fire admin notification (non-blocking) ───────────────────────────
+  setImmediate(() =>
+    notificationService.notifyNewOrder({
+      id: doc.id, orderNumber: doc.orderNumber, total: doc.total,
+    }).catch(e => console.error('[orderService] notification error:', e.message))
+  );
+
   return {
     ...doc,
     createdAt: new Date().toISOString(),
@@ -494,6 +503,46 @@ const enrichPaymentDetails = async (id, cardDetails) => {
   }
 };
 
+// ─── User: cancel own order ───────────────────────────────────────────────────
+const cancelOrder = async (id, userId) => {
+  const snap = await db.collection(COL).doc(id).get();
+  if (!snap.exists) throw new AppError('Order not found.', 404);
+
+  const order = snap.data();
+
+  // Ownership check
+  if (order.userId && order.userId !== userId)
+    throw new AppError('Access denied.', 403);
+
+  // Only allow cancel before shipped
+  const nonCancellable = ['shipped', 'delivered', 'cancelled'];
+  if (nonCancellable.includes(order.status))
+    throw new AppError(`Cannot cancel an order that is already ${order.status}.`, 422);
+
+  const history = [
+    ...(order.statusHistory || []),
+    { status: 'cancelled', note: 'Cancelled by customer', timestamp: new Date().toISOString() },
+  ];
+
+  await db.collection(COL).doc(id).update({
+    status:        'cancelled',
+    statusHistory: history,
+    cancelledAt:   FieldValue.serverTimestamp(),
+    updatedAt:     FieldValue.serverTimestamp(),
+  });
+
+  return { ...order, status: 'cancelled' };
+};
+
+// ─── Guest: lookup orders by email ───────────────────────────────────────────
+const getOrdersByEmail = async (email) => {
+  if (!email) throw new AppError('Email is required.', 422);
+  const snap   = await db.collection(COL).where('email', '==', email.toLowerCase().trim()).get();
+  const orders = snap.docs.map(d => d.data());
+  orders.sort((a, b) => toMs(b.createdAt) - toMs(a.createdAt));
+  return orders;
+};
+
 module.exports = {
   createOrder,
   listOrders,
@@ -504,5 +553,7 @@ module.exports = {
   deleteOrder,
   getOrderStats,
   enrichPaymentDetails,
+  cancelOrder,
+  getOrdersByEmail,
   PAYMENT_LABELS,
 };

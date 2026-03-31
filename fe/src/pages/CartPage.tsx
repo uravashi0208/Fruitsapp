@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { Trash2, ShoppingBag, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, AlertTriangle, Tag, X } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { useCart } from '../hooks/useCart';
 import { isInStock } from '../store/cartSlice';
 import { theme } from '../styles/theme';
 import { Container, Section, Flex, Button, Divider, QuantityWrapper, QuantityBtn, QuantityNum } from '../styles/shared';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
+import { couponsApi, CouponResult } from '../api/storefront';
+import { useAppDispatch } from '../store';
+import { showToast } from '../store/uiSlice';
 
 const CartLayout = styled.div`
   display: grid;
@@ -180,7 +183,36 @@ const UnavailableBanner = styled.div`
 `;
 
 const CartPage: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { items, subtotal, shipping, total, removeItem, changeQty } = useCart();
+
+  const [couponCode,    setCouponCode]    = useState('');
+  const [couponResult,  setCouponResult]  = useState<CouponResult | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const discountedTotal = couponResult
+    ? Math.max(0, total - couponResult.discount)
+    : total;
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    try {
+      const res = await couponsApi.apply(couponCode.trim(), subtotal);
+      setCouponResult(res.data);
+      dispatch(showToast({ message: `Coupon applied! You save $${res.data.discount.toFixed(2)}`, type: 'success' }));
+    } catch (e: any) {
+      dispatch(showToast({ message: e.message || 'Invalid coupon code', type: 'error' }));
+      setCouponResult(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponResult(null);
+    setCouponCode('');
+  };
 
   // Separate available vs unavailable items
   const unavailableItems = items.filter(i => !isInStock(i as any));
@@ -336,33 +368,58 @@ const CartPage: React.FC = () => {
                 </p>
               )}
 
+              {couponResult && (
+                <SummaryRow as="div" style={{ color: theme.colors.primary }}>
+                  <span style={{ color: theme.colors.primary }}>🏷️ Coupon ({couponResult.code})</span>
+                  <span style={{ color: '#16a34a', fontWeight: 600 }}>−${couponResult.discount.toFixed(2)}</span>
+                </SummaryRow>
+              )}
               <TotalRow as="div">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${discountedTotal.toFixed(2)}</span>
               </TotalRow>
 
               <Divider $my="20px" />
 
               <p style={{ fontSize: 13, color: theme.colors.text, marginBottom: 8 }}>🏷️ Have a coupon?</p>
-              <div style={{ display: 'flex', gap: 0, borderRadius: 30, overflow: 'hidden', border: '1px solid #dee2e6' }}>
-                <input
-                  type="text"
-                  placeholder="Coupon code"
-                  style={{
-                    flex: 1, padding: '10px 16px', border: 'none',
-                    fontFamily: theme.fonts.body, fontSize: 13, outline: 'none',
-                  }}
-                />
-                <button
-                  style={{
-                    padding: '10px 16px', background: theme.colors.primary,
-                    color: 'white', border: 'none', fontFamily: theme.fonts.body,
-                    fontSize: 13, cursor: 'pointer',
-                  }}
-                >
-                  Apply
-                </button>
-              </div>
+              {couponResult ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#f1f8f1', border: '1px solid #82ae46', borderRadius: 6 }}>
+                  <Tag size={14} color={theme.colors.primary} />
+                  <span style={{ flex: 1, fontSize: 13, color: theme.colors.primary, fontWeight: 600 }}>
+                    {couponResult.code} — ${couponResult.discount.toFixed(2)} off
+                  </span>
+                  <button onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 0, borderRadius: 30, overflow: 'hidden', border: '1px solid #dee2e6' }}>
+                  <input
+                    type="text"
+                    placeholder="Coupon code"
+                    value={couponCode}
+                    onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && applyCoupon()}
+                    style={{
+                      flex: 1, padding: '10px 16px', border: 'none',
+                      fontFamily: theme.fonts.body, fontSize: 13, outline: 'none',
+                      fontWeight: 600, letterSpacing: 1,
+                    }}
+                  />
+                  <button
+                    onClick={applyCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    style={{
+                      padding: '10px 16px', background: theme.colors.primary,
+                      color: 'white', border: 'none', fontFamily: theme.fonts.body,
+                      fontSize: 13, cursor: couponLoading ? 'not-allowed' : 'pointer',
+                      opacity: !couponCode.trim() ? 0.7 : 1,
+                    }}
+                  >
+                    {couponLoading ? '…' : 'Apply'}
+                  </button>
+                </div>
+              )}
 
               <Button
                 as={Link as any}
