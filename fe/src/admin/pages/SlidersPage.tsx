@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
+  AdminCard, AdminBtn, IconBtn, ToggleTrack, ToggleThumb,
   AdminInput, AdminSelect,
   FormGroup, FormLabel, FormGrid, EmptyState,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
