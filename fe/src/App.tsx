@@ -9,6 +9,7 @@ import { ToastManager } from './components/ui/Toast';
 import styled from 'styled-components';
 import { WishlistPage, AboutPage, BlogPage, ContactPage } from './pages/OtherPages';
 import { AdminRouter } from './admin/AdminRouter';
+import ScrollToTop from './components/ScrollToTop';
 import { AuthContext, useAuthState } from './hooks/useAuth';
 import ShippingPage from './pages/ShippingPage';
 import TrackingPage from './pages/TrackingPage';
@@ -68,6 +69,7 @@ const App: React.FC = () => (
   <Provider store={store}>
     <GlobalStyles />
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* Admin panel — has its own Provider + Router inside */}
         <Route path="/admin/*" element={<AdminRouter />} />

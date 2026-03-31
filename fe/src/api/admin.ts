@@ -553,6 +553,9 @@ export const adminTestimonialsApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/testimonials/${id}`),
+
+  setStatus: (id: string, status: 'active' | 'inactive') =>
+    api.patch<Ok<AdminTestimonial>>(`/api/admin/testimonials/${id}/status`, { status }),
 };
 
 // ─── SLIDERS ──────────────────────────────────────────────────
@@ -606,6 +609,9 @@ export interface NewsletterSendResult {
 }
 
 export const adminNewsletterApi = {
+  setStatus: (id: string, status: 'active' | 'unsubscribed') =>
+    api.patch<Ok<NewsletterSubscriber>>(`/api/admin/newsletter/${id}/status`, { status }),
+
   list: (params: { page?: number; limit?: number; status?: string } = {}) => {
     const qs = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]))

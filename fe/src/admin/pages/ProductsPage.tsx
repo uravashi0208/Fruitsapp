@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill, AdminInput, AdminSelect, AdminTextarea,
+  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb, AdminInput, AdminSelect, AdminTextarea,
   FormGroup, FormLabel, FormGrid,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter, PageBtns, PageBtn, SectionTitle, EmptyState,
 } from '../styles/adminShared';
@@ -420,18 +420,15 @@ export const ProductsPage: React.FC = () => {
                   <TD style={{ color: t.colors.textMuted }}>{p.badge || '—'}</TD>
                   <TD style={{ fontWeight: 700, color: t.colors.textPrimary }}>${p.price}</TD>
                   <TD $center>
-                    <StatusPill
-                      $variant={
-                        p.status === 'active' ? 'success' :
-                        p.status === 'out_of_stock' ? 'danger' :
-                        p.status === 'draft' ? 'warning' : 'neutral'
-                      }
-                      style={{ cursor: toggling === p.id ? 'wait' : 'pointer', userSelect: 'none', opacity: toggling === p.id ? 0.6 : 1 }}
-                      title="Click to toggle status"
-                      onClick={e => { e.stopPropagation(); toggleStatus(p); }}
-                    >
-                      {p.status === 'out_of_stock' ? 'out of stock' : p.status}
-                    </StatusPill>
+                    {p.status === 'active' || p.status === 'inactive' ? (
+                      <ToggleTrack $on={p.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(p); }} title="Click to toggle status" style={{ opacity: toggling === p.id ? 0.6 : 1, cursor: toggling === p.id ? 'wait' : 'pointer' }}>
+                        <ToggleThumb $on={p.status === 'active'} />
+                      </ToggleTrack>
+                    ) : (
+                      <StatusPill $variant={p.status === 'out_of_stock' ? 'danger' : p.status === 'draft' ? 'warning' : 'neutral'}>
+                        {p.status === 'out_of_stock' ? 'out of stock' : p.status}
+                      </StatusPill>
+                    )}
                   </TD>
                   <TD $center>
                     <StockBadge

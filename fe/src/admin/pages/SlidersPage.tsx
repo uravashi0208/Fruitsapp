@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill,
+  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
   AdminInput, AdminSelect,
   FormGroup, FormLabel, FormGrid, EmptyState,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
@@ -299,14 +299,9 @@ export const SlidersPage: React.FC = () => {
                     </TD>
                     <TD $center><SortBadge>{s.sortOrder}</SortBadge></TD>
                     <TD $center>
-                      <StatusPill
-                        $variant={s.status === 'active' ? 'success' : 'neutral'}
-                        style={{ cursor: toggling === s.id ? 'wait' : 'pointer', userSelect: 'none', opacity: toggling === s.id ? 0.6 : 1 }}
-                        title="Click to toggle active / inactive"
-                        onClick={() => toggleStatus(s)}
-                      >
-                        {s.status}
-                      </StatusPill>
+                      <ToggleTrack $on={s.status === 'active'} onClick={() => toggleStatus(s)} title="Click to toggle active / inactive" style={{ opacity: toggling === s.id ? 0.6 : 1, cursor: toggling === s.id ? 'wait' : 'pointer' }}>
+                        <ToggleThumb $on={s.status === 'active'} />
+                      </ToggleTrack>
                     </TD>
                     <TD $center>
                       <PortalDropdown>

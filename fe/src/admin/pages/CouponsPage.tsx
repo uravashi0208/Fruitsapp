@@ -7,7 +7,7 @@ import styled from 'styled-components';
 import { Plus, Trash2, Edit2, Tag, RefreshCw, Search, Copy, CheckCircle } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill,
+  AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
   AdminInput, AdminSelect, FormGroup, FormLabel, FormGrid, SearchBar, SearchInput,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
   PageBtns, PageBtn, EmptyState,
@@ -79,6 +79,20 @@ const emptyForm: Partial<AdminCoupon> & { code: string } = {
 
 export const CouponsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+
+  const [localStatus, setLocalStatus] = useState<Record<string, 'active' | 'inactive'>>({});
+
+  const toggleStatus = async (coupon: AdminCoupon) => {
+    const current = localStatus[coupon.id] ?? coupon.status;
+    const next = current === 'active' ? 'inactive' : 'active';
+    setLocalStatus(prev => ({ ...prev, [coupon.id]: next }));
+    try {
+      await adminCouponsApi.update(coupon.id, { status: next });
+    } catch {
+      setLocalStatus(prev => ({ ...prev, [coupon.id]: current }));
+      dispatch(showAdminToast({ message: 'Failed to update status', type: 'error' }));
+    }
+  };
 
   const [coupons,  setCoupons]  = useState<AdminCoupon[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -252,7 +266,7 @@ export const CouponsPage: React.FC = () => {
                         }
                       </TD>
                       <TD>
-                        <StatusPill $variant={coupon.status === "active" ? "success" : "neutral"}>{coupon.status}</StatusPill>
+                        <ToggleTrack $on={(localStatus[coupon.id] ?? coupon.status) === "active"} onClick={e => { e.stopPropagation(); toggleStatus(coupon); }} title="Toggle status"><ToggleThumb $on={(localStatus[coupon.id] ?? coupon.status) === "active"} /></ToggleTrack>
                       </TD>
                       <TD>
                         <AdminFlex $gap="6px">

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill,
+  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
   AdminInput, AdminTextarea,
   FormGroup, FormLabel, EmptyState,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
@@ -87,6 +87,20 @@ const ResultBox  = styled.div<{ $success: boolean }>`
 /* ── Component ───────────────────────────────────────────────── */
 export const NewsletterPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+
+  const [localStatus, setLocalStatus] = useState<Record<string, 'active' | 'unsubscribed'>>({});
+
+  const toggleStatus = async (s: NewsletterSubscriber) => {
+    const current = localStatus[s.id] ?? s.status;
+    const next = current === 'active' ? 'unsubscribed' : 'active';
+    setLocalStatus(prev => ({ ...prev, [s.id]: next }));
+    try {
+      await adminNewsletterApi.setStatus(s.id, next);
+    } catch {
+      setLocalStatus(prev => ({ ...prev, [s.id]: current }));
+      dispatch(showAdminToast({ message: 'Failed to update status', type: 'error' }));
+    }
+  };
 
   const [page,         setPage]         = useState(1);
   const [search,       setSearch]       = useState('');
@@ -274,9 +288,9 @@ export const NewsletterPage: React.FC = () => {
                         : '—'}
                     </TD>
                     <TD $center>
-                      <StatusPill $variant={s.status === 'active' ? 'success' : 'neutral'}>
-                        {s.status}
-                      </StatusPill>
+                      <ToggleTrack $on={(localStatus[s.id] ?? s.status) === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(s); }} title="Toggle status">
+                        <ToggleThumb $on={(localStatus[s.id] ?? s.status) === 'active'} />
+                      </ToggleTrack>
                     </TD>
                     <TD $center>
                       <PortalDropdown>

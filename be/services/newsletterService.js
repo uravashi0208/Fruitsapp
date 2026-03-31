@@ -44,4 +44,11 @@ const deleteSubscriber = async (id) => {
   await db.collection(COL).doc(id).delete();
 };
 
-module.exports = { subscribe, unsubscribe, listSubscribers, deleteSubscriber };
+const setStatus = async (id, status) => {
+  const snap = await db.collection(COL).doc(id).get();
+  if (!snap.exists) throw new AppError('Subscriber not found.', 404);
+  await db.collection(COL).doc(id).update({ status, updatedAt: FieldValue.serverTimestamp() });
+  return { ...snap.data(), status };
+};
+
+module.exports = { subscribe, unsubscribe, listSubscribers, deleteSubscriber, setStatus };

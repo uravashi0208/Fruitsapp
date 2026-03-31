@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill,
+  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
   AdminInput, AdminSelect, AdminTextarea,
   FormGroup, FormLabel, FormGrid, EmptyState,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
@@ -246,14 +246,9 @@ export const CategoriesPage: React.FC = () => {
                   </TD>
                   <TD>{c.sortOrder ?? 0}</TD>
                   <TD>
-                    <StatusPill
-                      $variant={c.status === 'active' ? 'success' : 'neutral'}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => toggleStatus(c)}
-                      title="Click to toggle status"
-                    >
-                      {c.status}
-                    </StatusPill>
+                    <ToggleTrack $on={c.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(c); }} title="Click to toggle status">
+                      <ToggleThumb $on={c.status === 'active'} />
+                    </ToggleTrack>
                   </TD>
                   <TD $right onClick={e => e.stopPropagation()}>
                     <PortalDropdown>

@@ -5,12 +5,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import {
-  Plus, Search, Trash2, Edit2, ToggleLeft, ToggleRight,
+  Plus, Search, Trash2, Edit2,
   ChevronUp, ChevronDown, HelpCircle, RefreshCw,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill,
+  AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
   AdminInput, AdminSelect, AdminTextarea,
   FormGroup, FormLabel, FormGrid, SearchBar, SearchInput,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
@@ -281,17 +281,9 @@ export const FaqPage: React.FC = () => {
               <FaqQuestion>{faq.question}</FaqQuestion>
               <FaqMeta>
                 <CategoryTag>{faq.category}</CategoryTag>
-                <StatusPill $variant={faq.status === 'active' ? 'success' : 'neutral'}>
-                  {faq.status}
-                </StatusPill>
-                <IconBtn
-                  title={faq.status === 'active' ? 'Deactivate' : 'Activate'}
-                  onClick={e => { e.stopPropagation(); toggleStatus(faq); }}
-                >
-                  {faq.status === 'active'
-                    ? <ToggleRight size={16} style={{ color: '#10b981' }} />
-                    : <ToggleLeft  size={16} style={{ color: t.colors.textMuted }} />}
-                </IconBtn>
+                <ToggleTrack $on={faq.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(faq); }} title={faq.status === 'active' ? 'Deactivate' : 'Activate'}>
+                  <ToggleThumb $on={faq.status === 'active'} />
+                </ToggleTrack>
                 <IconBtn title="Edit" onClick={e => { e.stopPropagation(); openEdit(faq); }}>
                   <Edit2 size={14} />
                 </IconBtn>

@@ -423,6 +423,32 @@ export const ModalFooter = styled.div`
   html.dark & { background: #252e42; border-top-color: #2a3347; }
 `;
 
+
+// ── Toggle Switch ─────────────────────────────────────────────
+export const ToggleTrack = styled.label<{ $on: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 24px;
+  border-radius: 999px;
+  background: ${({ $on }) => $on ? '#465fff' : '#d0d5dd'};
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  position: relative;
+`;
+
+export const ToggleThumb = styled.span<{ $on: boolean }>`
+  position: absolute;
+  left: ${({ $on }) => $on ? '22px' : '2px'};
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  transition: left 0.2s;
+`;
+
 // ── Misc ──────────────────────────────────────────────────────
 export const AdminDivider = styled.hr`
   border: none;

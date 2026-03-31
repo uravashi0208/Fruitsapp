@@ -23,17 +23,38 @@ const getCategory = async (id) => {
   return snap.data();
 };
 
+/**
+ * Resolve sortOrder:
+ * - If no records exist yet → use 0 (or user value)
+ * - If records exist AND incoming is 0/empty/null/undefined → auto next
+ * - If records exist AND user typed a non-zero value → honour it
+ */
+const resolveSortOrder = async (incoming) => {
+  const snap = await db.collection(COL).get();
+  if (snap.empty) {
+    return (incoming !== undefined && incoming !== '' && incoming !== null)
+      ? Number(incoming)
+      : 0;
+  }
+  const orders = snap.docs.map(d => d.data().sortOrder ?? 0);
+  const next   = Math.max(...orders) + 1;
+  const val    = Number(incoming);
+  if (incoming === undefined || incoming === '' || incoming === null || val === 0) return next;
+  return val;
+};
+
 const createCategory = async (data, imageUrl = '') => {
   const id   = uuidv4();
   const slug = data.slug || makeSlug(data.name);
   const existing = await db.collection(COL).where('slug', '==', slug).limit(1).get();
   if (!existing.empty) throw new AppError('A category with this slug already exists.', 409);
+  const sortOrder = await resolveSortOrder(data.sortOrder);
   const doc = {
     id, name: data.name, slug,
     description: data.description || '',
     image: imageUrl,
     status: data.status || 'active',
-    sortOrder: Number(data.sortOrder) || 0,
+    sortOrder,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   };

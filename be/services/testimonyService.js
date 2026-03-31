@@ -60,4 +60,11 @@ const deleteTestimony = async (id) => {
   await db.collection(COL).doc(id).delete();
 };
 
-module.exports = { listTestimonials, getTestimony, createTestimony, updateTestimony, deleteTestimony };
+const setStatus = async (id, status) => {
+  const snap = await db.collection(COL).doc(id).get();
+  if (!snap.exists) throw new AppError('Testimony not found.', 404);
+  await db.collection(COL).doc(id).update({ status, updatedAt: FieldValue.serverTimestamp() });
+  return { ...snap.data(), status };
+};
+
+module.exports = { listTestimonials, getTestimony, createTestimony, updateTestimony, deleteTestimony, setStatus };

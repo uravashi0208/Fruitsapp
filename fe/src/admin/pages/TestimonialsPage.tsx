@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill,
+  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
   AdminInput, AdminSelect, AdminTextarea,
   FormGroup, FormLabel, FormGrid, EmptyState,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
@@ -112,6 +112,20 @@ const resolveAvatar = (avatar: string) => {
 /* ── Component ───────────────────────────────────────────────── */
 export const TestimonialsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+
+  const [localStatus, setLocalStatus] = useState<Record<string, 'active' | 'inactive'>>({});
+
+  const toggleStatus = async (item: AdminTestimonial) => {
+    const current = localStatus[item.id] ?? item.status;
+    const next = current === 'active' ? 'inactive' : 'active';
+    setLocalStatus(prev => ({ ...prev, [item.id]: next }));
+    try {
+      await adminTestimonialsApi.setStatus(item.id, next);
+    } catch {
+      setLocalStatus(prev => ({ ...prev, [item.id]: current }));
+      dispatch(showAdminToast({ message: 'Failed to update status', type: 'error' }));
+    }
+  };
   const { data: rawData, loading, error, refetch } = useAdminTestimonials();
 
   const [search,       setSearch]       = useState('');
@@ -288,9 +302,9 @@ export const TestimonialsPage: React.FC = () => {
                     <TD><MsgPreview>"{item.message}"</MsgPreview></TD>
                     <TD><Stars rating={item.rating} /></TD>
                     <TD $center>
-                      <StatusPill $variant={item.status === 'active' ? 'success' : 'neutral'}>
-                        {item.status}
-                      </StatusPill>
+                      <ToggleTrack $on={(localStatus[item.id] ?? item.status) === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(item); }} title="Toggle status">
+                        <ToggleThumb $on={(localStatus[item.id] ?? item.status) === 'active'} />
+                      </ToggleTrack>
                     </TD>
                     <TD $center onClick={e=>e.stopPropagation()}>
                       <PortalDropdown>

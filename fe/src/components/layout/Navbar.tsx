@@ -213,13 +213,12 @@ const LoginBtn = styled.button<{ $scrolled: boolean }>`
 
 const UserDropdownWrap = styled.div`
   position: relative;
-  &:hover > div { display: block; }
 `;
 
 const UserBtn = styled.button`
   display: flex; align-items: center; gap: 6px;
   background: ${theme.colors.primary}; color: white;
-  border: none; border-radius: 20px; padding: 6px 12px 6px 6px;
+  border: none; border-radius: 0px; padding: 8px 19px 8px 15px;
   font-size: 12px; font-weight: 600; font-family: ${theme.fonts.body};
   cursor: pointer; transition: background 0.2s;
   &:hover { background: ${theme.colors.primaryDark}; }
@@ -232,13 +231,21 @@ const UserAvatar = styled.span`
   font-size: 11px; font-weight: 700;
 `;
 
-const UserDropdown = styled.div`
-  display: none; position: absolute;
-  top: calc(100% + 8px); right: 0;
+const UserDropdown = styled.div<{ $open: boolean }>`
+  display: ${({ $open }) => $open ? 'block' : 'none'};
+  position: absolute;
+  top: 100%; right: 0;
+  padding-top: 8px;
+  background: transparent;
+  min-width: 180px;
+  z-index: 999;
+`;
+
+const UserDropdownInner = styled.div`
   background: white; border: 1px solid ${theme.colors.border};
-  border-radius: 8px; min-width: 180px;
+  border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  overflow: hidden; z-index: 999;
+  overflow: hidden;
 `;
 
 const DropdownItem = styled(Link)`
@@ -260,6 +267,7 @@ const DropdownLogout = styled.button`
 
 export const Navbar: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
+  const [userDropOpen, setUserDropOpen] = useState(false);
   const dispatch = useAppDispatch();
   const mobileOpen = useAppSelector((s) => s.ui.mobileMenuOpen);
   const { totalItems } = useCart();
@@ -343,12 +351,6 @@ export const Navbar: React.FC = () => {
             <li style={{ listStyle: 'none' }}>
               <NavLinkStyled to="/contact" $scrolled={scrolled}>Contact</NavLinkStyled>
             </li>
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/account" $scrolled={scrolled}>My Account</NavLinkStyled>
-            </li>
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/my-orders" $scrolled={scrolled}>Track Order</NavLinkStyled>
-            </li>
           </NavList>
 
           {/* Cart CTA + Auth + hamburger */}
@@ -356,22 +358,27 @@ export const Navbar: React.FC = () => {
 
             {/* Guest: Login button | Logged-in: Avatar dropdown */}
             {isLoggedIn ? (
-              <UserDropdownWrap>
-                <UserBtn>
+              <UserDropdownWrap
+                onMouseEnter={() => setUserDropOpen(true)}
+                onMouseLeave={() => setUserDropOpen(false)}
+              >
+                <UserBtn onClick={() => setUserDropOpen(v => !v)}>
                   <UserAvatar>{initials(user?.name)}</UserAvatar>
                   {user?.name?.split(' ')[0]}
                   <ChevronDown size={12} />
                 </UserBtn>
-                <UserDropdown>
-                  <DropdownItem to="/account">
-                    <User size={14} /> My Account
-                  </DropdownItem>
-                  <DropdownItem to="/account">
-                    <ShoppingCart size={14} /> My Orders
-                  </DropdownItem>
-                  <DropdownLogout onClick={() => { logout(); }}>
-                    <LogOut size={14} /> Logout
-                  </DropdownLogout>
+                <UserDropdown $open={userDropOpen}>
+                  <UserDropdownInner>
+                    <DropdownItem to="/account" onClick={() => setUserDropOpen(false)}>
+                      <User size={14} /> My Account
+                    </DropdownItem>
+                    <DropdownItem to="/orders" onClick={() => setUserDropOpen(false)}>
+                      <ShoppingCart size={14} /> My Orders
+                    </DropdownItem>
+                    <DropdownLogout onClick={() => { logout(); setUserDropOpen(false); }}>
+                      <LogOut size={14} /> Logout
+                    </DropdownLogout>
+                  </UserDropdownInner>
                 </UserDropdown>
               </UserDropdownWrap>
             ) : (

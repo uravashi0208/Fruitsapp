@@ -23,8 +23,29 @@ const getSlider = async (id) => {
   return snap.data();
 };
 
+/**
+ * Resolve sortOrder:
+ * - If no records exist yet → use 0 (or user value)
+ * - If records exist AND incoming is 0/empty/null/undefined → auto next
+ * - If records exist AND user typed a non-zero value → honour it
+ */
+const resolveSortOrder = async (incoming) => {
+  const snap = await db.collection(COL).get();
+  if (snap.empty) {
+    return (incoming !== undefined && incoming !== '' && incoming !== null)
+      ? Number(incoming)
+      : 0;
+  }
+  const orders = snap.docs.map(d => d.data().sortOrder ?? 0);
+  const next   = Math.max(...orders) + 1;
+  const val    = Number(incoming);
+  if (incoming === undefined || incoming === '' || incoming === null || val === 0) return next;
+  return val;
+};
+
 const createSlider = async (data, imageUrl = '') => {
-  const id  = uuidv4();
+  const id        = uuidv4();
+  const sortOrder = await resolveSortOrder(data.sortOrder);
   const doc = {
     id,
     title:      data.title,
@@ -32,7 +53,7 @@ const createSlider = async (data, imageUrl = '') => {
     buttonText: data.buttonText || 'View Details',
     buttonLink: data.buttonLink || '#',
     image:      imageUrl,
-    sortOrder:  Number(data.sortOrder) || 0,
+    sortOrder,
     status:     data.status || 'active',
     createdAt:  FieldValue.serverTimestamp(),
     updatedAt:  FieldValue.serverTimestamp(),
