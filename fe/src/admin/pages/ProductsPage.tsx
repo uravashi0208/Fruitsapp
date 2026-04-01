@@ -57,6 +57,30 @@ const SearchInput2 = styled.input`border:none;outline:none;font-size:0.875rem;ba
 const FilterBtn    = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
 const ExportBtn    = styled(FilterBtn)``;
 
+/* Bulk action bar */
+const BulkBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: ${t.colors.primaryGhost};
+  border: 1px solid ${t.colors.primary};
+`;
+const BulkCount = styled.span`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${t.colors.primary};
+  flex: 1;
+`;
+const BulkDivider = styled.div`
+  width: 1px;
+  height: 20px;
+  background: ${t.colors.border};
+`;
+
 /* Image upload */
 const UploadBox   = styled.label`
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -78,7 +102,7 @@ const COLUMNS: ColDef[] = [
   { key: 'status',     label: 'Status' },
   { key: 'stock',      label: 'Stock' },
   { key: 'createdAt',  label: 'Created At' },
-  { key: 'actions',    label: '',           thProps: { $width: '60px' } },
+  { key: 'actions',    label: 'Actions', thProps: { $width: '200px' } },
 ];
 
 const emptyForm = (): Partial<AdminProduct> & { imageFile?: File | null } => ({
@@ -268,6 +292,29 @@ export const ProductsPage: React.FC = () => {
   const importRef = React.useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
 
+  const [bulkWorking, setBulkWorking]       = useState(false);
+  const [bulkConfirm, setBulkConfirm]       = useState<'active'|'inactive'|'delete'|null>(null);
+
+  const handleBulkAction = useCallback(async (action: 'active' | 'inactive' | 'delete') => {
+    if (!selected.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selected);
+    try {
+      if (action === 'delete') {
+        await adminProductsApi.bulkSoftDelete(ids);
+        dispatch(showAdminToast({ message: `${ids.length} product(s) soft-deleted`, type: 'warning' }));
+      } else {
+        await adminProductsApi.bulkUpdateStatus(ids, action);
+        dispatch(showAdminToast({ message: `${ids.length} product(s) set to ${action}`, type: 'success' }));
+      }
+      setSelected(new Set());
+      setBulkConfirm(null);
+      refetch();
+    } catch (err) {
+      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Bulk action failed', type: 'error' }));
+    } finally { setBulkWorking(false); }
+  }, [selected, dispatch, refetch]);
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!importRef.current) return;
@@ -298,6 +345,47 @@ export const ProductsPage: React.FC = () => {
   return (
     <section onClick={() => setOpenMenuId(null)}>
       {error && <div style={{ color: t.colors.danger, padding: '1rem', background: '#fff5f5', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
+
+      {/* ── Bulk Action Bar ── */}
+      {selected.size > 0 && (
+        <BulkBar>
+          <BulkCount>{selected.size} product{selected.size > 1 ? 's' : ''} selected</BulkCount>
+          <BulkDivider />
+          <AdminBtn
+            $variant="ghost"
+            disabled={bulkWorking}
+            onClick={() => setBulkConfirm('active')}
+            style={{ height: 36, fontSize: '0.8125rem' }}
+          >
+            Set Active
+          </AdminBtn>
+          <AdminBtn
+            $variant="ghost"
+            disabled={bulkWorking}
+            onClick={() => setBulkConfirm('inactive')}
+            style={{ height: 36, fontSize: '0.8125rem' }}
+          >
+            Set Inactive
+          </AdminBtn>
+          <BulkDivider />
+          <AdminBtn
+            $variant="danger"
+            disabled={bulkWorking}
+            onClick={() => setBulkConfirm('delete')}
+            style={{ height: 36, fontSize: '0.8125rem' }}
+          >
+            <Trash2 size={14} /> Delete Selected
+          </AdminBtn>
+          <AdminBtn
+            $variant="ghost"
+            disabled={bulkWorking}
+            onClick={() => setSelected(new Set())}
+            style={{ height: 36, fontSize: '0.8125rem', marginLeft: 4 }}
+          >
+            ✕ Clear
+          </AdminBtn>
+        </BulkBar>
+      )}
 
       <AdminDataTable
         title="Products List"
@@ -604,6 +692,45 @@ export const ProductsPage: React.FC = () => {
           </ModalBackdrop>
         );
       })()}
+      {/* ── Bulk Confirm Modal ── */}
+      {bulkConfirm && (
+        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+          <ModalBox $width="420px" onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <SectionTitle>
+                {bulkConfirm === 'delete'   ? 'Delete Selected Products' :
+                 bulkConfirm === 'active'   ? 'Set Products Active' :
+                                              'Set Products Inactive'}
+              </SectionTitle>
+              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ fontSize: '0.9rem', color: t.colors.textSecondary, lineHeight: 1.6 }}>
+                {bulkConfirm === 'delete' ? (
+                  <>Are you sure you want to <strong>soft-delete {selected.size} product{selected.size > 1 ? 's' : ''}</strong>?
+                  They will be hidden from the store but not permanently removed.</>
+                ) : (
+                  <>Set <strong>{selected.size} product{selected.size > 1 ? 's' : ''}</strong> to <strong>{bulkConfirm}</strong>?</>
+                )}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={() => setBulkConfirm(null)} disabled={bulkWorking}>Cancel</AdminBtn>
+              <AdminBtn
+                $variant={bulkConfirm === 'delete' ? 'danger' : 'primary'}
+                disabled={bulkWorking}
+                onClick={() => handleBulkAction(bulkConfirm)}
+              >
+                {bulkWorking ? 'Processing…' :
+                 bulkConfirm === 'delete' ? `Delete ${selected.size} Product${selected.size > 1 ? 's' : ''}` :
+                 bulkConfirm === 'active' ? `Set ${selected.size} Active` :
+                                            `Set ${selected.size} Inactive`}
+              </AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
+
     </section>
   );
 };

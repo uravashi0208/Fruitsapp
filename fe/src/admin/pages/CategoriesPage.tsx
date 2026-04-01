@@ -33,8 +33,8 @@ const COLUMNS: ColDef[] = [
   { key: 'slug',        label: 'Slug' },
   { key: 'description', label: 'Description' },
   { key: 'order',       label: 'Order' },
-  { key: 'status',      label: 'Status', thProps: { $center: true } },
-  { key: 'actions',     label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'status',      label: 'Status'},
+  { key: 'actions',     label: 'Actions', sortable: false, thProps: { $width: '200px' } },
 ];
 const emptyForm = (): Partial<AdminCategory> & { imageFile?: File | null } => ({
   name: '', description: '', status: 'active', sortOrder: 0, imageFile: null,
@@ -185,7 +185,7 @@ export const CategoriesPage: React.FC = () => {
               <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: t.colors.textMuted, fontSize: '0.8rem' }}>{c.description || '—'}</div>
             </TD>
             <TD><SortBadge>{c.sortOrder ?? 0}</SortBadge></TD>
-            <TD style={{ textAlign: 'center' }}>
+            <TD>
               <ToggleTrack $on={c.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(c); }} title="Click to toggle status">
                 <ToggleThumb $on={c.status === 'active'} />
               </ToggleTrack>

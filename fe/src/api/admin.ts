@@ -266,6 +266,14 @@ export const adminProductsApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/products/${id}`),
+
+  /** Bulk set status for multiple products */
+  bulkUpdateStatus: (ids: string[], status: 'active' | 'inactive') =>
+    api.patch<Ok<{ updated: number }>>('/api/admin/products/bulk/status', { ids, status }),
+
+  /** Soft-delete multiple products (sets deleted=1, not hard delete) */
+  bulkSoftDelete: (ids: string[]) =>
+    api.delete<Ok<{ deleted: number }>>('/api/admin/products/bulk', { body: { ids } }),
 };
 
 // ─── ORDERS ───────────────────────────────────────────────────

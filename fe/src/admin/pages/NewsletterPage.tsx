@@ -49,8 +49,8 @@ const COLUMNS: ColDef[] = [
   { key: 'subscriber',   label: 'Subscriber' },
   { key: 'name',         label: 'Name' },
   { key: 'subscribedOn', label: 'Subscribed On' },
-  { key: 'status',       label: 'Status',  thProps: { $center: true } },
-  { key: 'actions',      label: 'Actions', thProps: { $center: true } },
+  { key: 'status',       label: 'Status' },
+  { key: 'actions',      label: 'Actions' },
 ];
 
 export const NewsletterPage: React.FC = () => {

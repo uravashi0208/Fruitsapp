@@ -40,9 +40,9 @@ const resolveImage = (image: string): string => {
 const COLUMNS: ColDef[] = [
   { key: 'slider',  label: 'Slider' },
   { key: 'button',  label: 'Button' },
-  { key: 'order',   label: 'Order', thProps: { $center: true } },
-  { key: 'status',  label: 'Status', thProps: { $center: true } },
-  { key: 'actions', label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'order',   label: 'Order' },
+  { key: 'status',  label: 'Status' },
+  { key: 'actions', label: 'Action', sortable: false, thProps: { $width: '200px' } },
 ];
 const PER_PAGE = 10;
 
@@ -170,13 +170,13 @@ export const SlidersPage: React.FC = () => {
               <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: t.colors.textPrimary }}>{s.buttonText || '—'}</div>
               <div style={{ fontSize: '0.75rem', color: t.colors.textMuted, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.buttonLink}</div>
             </TD>
-            <TD style={{ textAlign: 'center' }}><SortBadge>{s.sortOrder}</SortBadge></TD>
-            <TD style={{ textAlign: 'center' }}>
+            <TD><SortBadge>{s.sortOrder}</SortBadge></TD>
+            <TD>
               <ToggleTrack $on={s.status === 'active'} onClick={() => toggleStatus(s)} style={{ opacity: toggling === s.id ? 0.6 : 1, cursor: toggling === s.id ? 'wait' : 'pointer' }}>
                 <ToggleThumb $on={s.status === 'active'} />
               </ToggleTrack>
             </TD>
-            <TD style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <TD onClick={e => e.stopPropagation()}>
               <PortalDropdown>
                 <MenuItem onClick={() => openView(s)}><Edit2 size={13} /> View</MenuItem>
                 <MenuItem onClick={() => openEdit(s)}><Edit2 size={13} /> Edit</MenuItem>

@@ -43,10 +43,10 @@ const roleV = (r:string) => r==='admin'?'info':r==='editor'?'warning':'neutral';
 const USER_COLS: ColDef[] = [
   { key: 'user',      label: 'User' },
   { key: 'role',      label: 'Role' },
-  { key: 'status',    label: 'Status', thProps: { $center: true } },
+  { key: 'status',    label: 'Status'},
   { key: 'joined',    label: 'Joined' },
   { key: 'lastLogin', label: 'Last Login' },
-  { key: 'actions',   label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'actions',   label: 'Actions', sortable: false, thProps: { $width: '200px' } },
 ];
 
 export const UsersPage: React.FC = () => {
@@ -112,7 +112,7 @@ export const UsersPage: React.FC = () => {
               </PersonCell>
             </TD>
             <TD><StatusPill $variant={roleV(u.role) as any}>{u.role}</StatusPill></TD>
-            <TD style={{textAlign:'center'}}><StatusPill $variant={userStatusV(u.status) as any}>{u.status}</StatusPill></TD>
+            <TD><StatusPill $variant={userStatusV(u.status) as any}>{u.status}</StatusPill></TD>
             <TD style={{fontSize:'0.8rem'}}>{formatDate(u.createdAt)}</TD>
             <TD style={{fontSize:'0.8rem'}}>{formatDate(u.lastLogin)}</TD>
             <TD style={{textAlign:'center'}} onClick={e=>e.stopPropagation()}>
@@ -192,7 +192,7 @@ const ORDER_COLS: ColDef[] = [
   { key: 'total',      label: 'Total', thProps: { style: { textAlign: 'right' } } },
   { key: 'payStatus',  label: 'Pay Status', thProps: { $center: true } },
   { key: 'ordStatus',  label: 'Order Status', thProps: { $center: true } },
-  { key: 'actions',    label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'actions',    label: 'Actions', sortable: false, thProps: { $width: '150px' } },
 ];
 
 const PM_ICONS: Record<string,string> = {card:'💳',apple_pay:'🍎',google_pay:'🔵',paypal:'🅿️',klarna:'🟣',revolut:'🔷',sepa_debit:'🏦',ideal:'🇳🇱',bancontact:'🇧🇪',sofort:'⚡',giropay:'🇩🇪',eps:'🇦🇹',przelewy24:'🇵🇱',blik:'📱',cod:'💵',bank:'🏦'};
@@ -415,9 +415,9 @@ const contactStatusV=(s:string)=>s==='new'?'danger':s==='read'?'warning':s==='re
 const CONTACT_COLS: ColDef[] = [
   { key: 'from',    label: 'From' },
   { key: 'subject', label: 'Subject' },
-  { key: 'status',  label: 'Status', thProps: { $center: true } },
+  { key: 'status',  label: 'Status'},
   { key: 'received',label: 'Received' },
-  { key: 'actions', label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'actions', label: 'Actions', sortable: false, thProps: { $width: '180px' } },
 ];
 
 export const ContactsPage: React.FC = () => {
@@ -475,7 +475,7 @@ export const ContactsPage: React.FC = () => {
           <TR key={c.id} style={{cursor:'pointer'}} onClick={()=>{setSelected(c);if(c.status==='new')changeStatus(c,'read');}}>
             <TD><PersonName style={{fontWeight:c.status==='new'?700:500}}>{c.name}</PersonName><PersonSub>{c.email}</PersonSub></TD>
             <TD style={{maxWidth:260,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:c.status==='new'?600:400}}>{c.subject||c.message.slice(0,60)}</TD>
-            <TD style={{textAlign:'center'}}><StatusPill $variant={contactStatusV(c.status) as any}>{c.status}</StatusPill></TD>
+            <TD><StatusPill $variant={contactStatusV(c.status) as any}>{c.status}</StatusPill></TD>
             <TD style={{fontSize:'0.8rem'}}>{formatDate(c.createdAt)}</TD>
             <TD style={{textAlign:'center'}} onClick={e=>e.stopPropagation()}>
               <PortalDropdown>
@@ -544,7 +544,7 @@ const BLOG_COLS: ColDef[] = [
   { key: 'status',   label: 'Status', thProps: { $center: true } },
   { key: 'views',    label: 'Views', thProps: { $center: true } },
   { key: 'updated',  label: 'Updated' },
-  { key: 'actions',  label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'actions',  label: 'Actions', sortable: false, thProps: { $width: '150px' } },
 ];
 
 export const BlogsPage: React.FC = () => {

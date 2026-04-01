@@ -243,7 +243,7 @@ export function AdminDataTable<T>({
   totalPages = 1,
   onPageChange,
   colSpan,
-}: AdminDataTableProps<T>) {
+}: AdminDataTableProps<T>) {  
 
   const colspan = colSpan ?? columns.length + (selectable ? 1 : 0);
   // backwards-compat: old `toolbar` → filterArea slot
@@ -335,7 +335,7 @@ export function AdminDataTable<T>({
       {showPagination && (
         <PaginationRow>
           <PaginationInfo>{paginationInfo}</PaginationInfo>
-          {totalPages > 1 && onPageChange && (
+          {totalPages >= 1 && onPageChange && (
             <PageBtns>
               <PageBtn disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>‹</PageBtn>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (

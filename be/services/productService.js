@@ -15,7 +15,7 @@ const toMs = (v) => v?.toMillis ? v.toMillis() : new Date(v || 0).getTime();
 const listActiveProducts = async ({ category = '', limit = 50, search = '', featured = false } = {}) => {
   const snap = await db.collection(COL).get();
   let products = snap.docs.map(d => d.data());
-  products = products.filter(p => p.status === 'active');
+  products = products.filter(p => p.status === 'active' && !p.deleted);
   if (category) {
     const cat = category.toLowerCase();
     products = products.filter(p =>
@@ -38,6 +38,8 @@ const listActiveProducts = async ({ category = '', limit = 50, search = '', feat
 const listProducts = async ({ page = 1, limit = 20, search = '', category = '', status = '', sortBy = 'createdAt', sortDir = 'desc' } = {}) => {
   const snap = await db.collection(COL).get();
   let products = snap.docs.map(d => d.data());
+  // Exclude soft-deleted records
+  products = products.filter(p => !p.deleted);
   if (status)   products = products.filter(p => p.status === status);
   if (category) {
     const cat = category.toLowerCase();
@@ -144,4 +146,35 @@ const deleteProduct = async (id) => {
   await db.collection(COL).doc(id).delete();
 };
 
-module.exports = { listActiveProducts, listProducts, getProduct, createProduct, updateProduct, removeProductImage, updateProductStatus, deleteProduct };
+/**
+ * Bulk update status for multiple products.
+ * @param {string[]} ids
+ * @param {'active'|'inactive'} status
+ */
+const bulkUpdateStatus = async (ids, status) => {
+  if (!ids || !ids.length) throw new AppError('No product IDs provided.', 422);
+  const batch = db.batch();
+  for (const id of ids) {
+    const ref = db.collection(COL).doc(id);
+    batch.update(ref, { status, updatedAt: FieldValue.serverTimestamp() });
+  }
+  await batch.commit();
+  return { updated: ids.length };
+};
+
+/**
+ * Soft-delete: sets deleted=1 instead of removing the document.
+ * @param {string[]} ids
+ */
+const softDeleteProducts = async (ids) => {
+  if (!ids || !ids.length) throw new AppError('No product IDs provided.', 422);
+  const batch = db.batch();
+  for (const id of ids) {
+    const ref = db.collection(COL).doc(id);
+    batch.update(ref, { deleted: 1, status: 'inactive', updatedAt: FieldValue.serverTimestamp() });
+  }
+  await batch.commit();
+  return { deleted: ids.length };
+};
+
+module.exports = { listActiveProducts, listProducts, getProduct, createProduct, updateProduct, removeProductImage, updateProductStatus, deleteProduct, bulkUpdateStatus, softDeleteProducts };

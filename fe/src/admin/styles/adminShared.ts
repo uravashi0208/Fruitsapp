@@ -351,13 +351,13 @@ export const PaginationWrapper = styled.div`
 export const PageBtns = styled.div`display: flex; gap: 4px;`;
 
 export const PageBtn = styled.button<{ $active?: boolean }>`
-  width: 34px;
-  height: 34px;
+  width: 37px;
+  height: 37px;
   border-radius: ${t.radii.md};
   border: 1px solid ${({ $active }) => ($active ? t.colors.primary : t.colors.border)};
   background: ${({ $active }) => ($active ? t.colors.primary : 'white')};
   color: ${({ $active }) => ($active ? 'white' : t.colors.textPrimary)};
-  font-size: 0.8125rem;
+  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;

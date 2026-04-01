@@ -67,17 +67,8 @@ const PER_PAGE = 10;
 export const TestimonialsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const [localStatus, setLocalStatus] = useState<Record<string, 'active' | 'inactive'>>({});
-  const toggleStatus = async (item: AdminTestimonial) => {
-    const current = localStatus[item.id] ?? item.status;
-    const next = current === 'active' ? 'inactive' : 'active';
-    setLocalStatus(prev => ({ ...prev, [item.id]: next }));
-    try {
-      await adminTestimonialsApi.setStatus(item.id, next);
-    } catch {
-      setLocalStatus(prev => ({ ...prev, [item.id]: current }));
-      dispatch(showAdminToast({ message: 'Failed to update status', type: 'error' }));
-    }
-  };
+  
+
   const { data: rawData, loading, error, refetch } = useAdminTestimonials();
   const [search, setSearch]               = useState('');
   const [statusFilter, setStatusFilter]   = useState<'' | 'active' | 'inactive'>('');
@@ -140,6 +131,20 @@ export const TestimonialsPage: React.FC = () => {
       dispatch(showAdminToast({ message: e instanceof ApiError ? e.message : 'Delete failed', type: 'error' }));
     } finally { setSaving(false); }
   };
+
+  const toggleStatus = async (item: AdminTestimonial) => {
+      const current = localStatus[item.id] ?? item.status;
+      const next = current === 'active' ? 'inactive' : 'active';
+      try {
+        await adminTestimonialsApi.setStatus(item.id, next);
+        dispatch(showAdminToast({ message: `"${item.name}" set to ${next}`, type: 'info' }));
+        refetch();
+      } catch (err) {
+        setLocalStatus(prev => ({ ...prev, [item.id]: current }));
+      dispatch(showAdminToast({ message: 'Failed to update status', type: 'error' }));
+      }
+    };;
+  
 
   return (
     <>
