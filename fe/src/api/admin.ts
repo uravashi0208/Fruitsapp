@@ -518,7 +518,7 @@ export const adminCategoriesApi = {
     api.put<Ok<AdminCategory>>(`/api/admin/categories/${id}`, body),
 
   setStatus: (id: string, status: AdminCategory['status']) =>
-    api.patch<Ok<AdminCategory>>(`/api/admin/categories/${id}/status`, { status }),
+    api.put<Ok<AdminCategory>>(`/api/admin/categories/${id}`, { status }),
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/categories/${id}`),
@@ -555,7 +555,7 @@ export const adminTestimonialsApi = {
     api.delete<Ok<{ message: string }>>(`/api/admin/testimonials/${id}`),
 
   setStatus: (id: string, status: 'active' | 'inactive') =>
-    api.patch<Ok<AdminTestimonial>>(`/api/admin/testimonials/${id}/status`, { status }),
+    api.put<Ok<AdminTestimonial>>(`/api/admin/testimonials/${id}`, { status }),
 };
 
 // ─── SLIDERS ──────────────────────────────────────────────────
@@ -586,7 +586,7 @@ export const adminSlidersApi = {
     api.put<Ok<AdminSlider>>(`/api/admin/sliders/${id}`, formData),
 
   setStatus: (id: string, status: AdminSlider['status']) =>
-    api.patch<Ok<AdminSlider>>(`/api/admin/sliders/${id}/status`, { status }),
+    api.put<Ok<AdminSlider>>(`/api/admin/sliders/${id}`, { status }),
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/sliders/${id}`),
@@ -610,7 +610,7 @@ export interface NewsletterSendResult {
 
 export const adminNewsletterApi = {
   setStatus: (id: string, status: 'active' | 'unsubscribed') =>
-    api.patch<Ok<NewsletterSubscriber>>(`/api/admin/newsletter/${id}/status`, { status }),
+    api.put<Ok<NewsletterSubscriber>>(`/api/admin/newsletter/${id}`, { status }),
 
   list: (params: { page?: number; limit?: number; status?: string } = {}) => {
     const qs = new URLSearchParams(

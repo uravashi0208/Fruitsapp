@@ -18,7 +18,7 @@ const asyncHandler    = require('../utils/asyncHandler');
 const { success, created, noContent } = require('../utils/response');
 const { authenticate, requireEditor } = require('../middleware/auth');
 const { upload, uploadToFirebase }    = require('../utils/upload');
-const { categorySchema, validate }    = require('../validations/schemas');
+const { categorySchema, updateCategorySchema, validate }    = require('../validations/schemas');
 
 // ── Public ────────────────────────────────────────────────────────────────────
 const publicRouter = Router();
@@ -56,7 +56,7 @@ adminRouter.post('/', upload.single('image'), asyncHandler(async (req, res) => {
 }));
 
 adminRouter.put('/:id', upload.single('image'), asyncHandler(async (req, res) => {
-  const data     = validate(categorySchema, req.body);
+  const data     = validate(updateCategorySchema, req.body);
   let   imageUrl = null;
   if (req.file) imageUrl = await uploadToFirebase(req.file.buffer, req.file.originalname, req.file.mimetype, 'categories');
   const cat = await categoryService.updateCategory(req.params.id, data, imageUrl);

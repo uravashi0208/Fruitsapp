@@ -146,10 +146,8 @@ export const NewsletterPage: React.FC = () => {
         subtitle="Manage subscribers and send email campaigns"
         actions={
           <>
-            <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
-            <AdminBtn $variant="primary" onClick={() => { setSendOpen(true); setSendResult(null); }}>
-              <Send size={15} /> Send Email
-            </AdminBtn>
+          <AdminBtn $variant="primary" onClick={() => { setSendOpen(true); setSendResult(null); }}><Send size={15} /> Send Email</AdminBtn>
+          <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
           </>
         }
         searchArea={

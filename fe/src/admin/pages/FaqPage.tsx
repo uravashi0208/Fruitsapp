@@ -205,12 +205,8 @@ export const FaqPage: React.FC = () => {
           <PageSub>{faqs.length} questions total · {activeCount} active · {inactiveCount} inactive</PageSub>
         </div>
         <AdminFlex $gap="10px" $wrap>
-          <AdminBtn $variant="ghost" onClick={load} style={{ gap: 6 }}>
-            <RefreshCw size={14} /> Refresh
-          </AdminBtn>
-          <AdminBtn $variant="primary" onClick={openAdd} style={{ gap: 6 }}>
-            <Plus size={15} /> Add FAQ
-          </AdminBtn>
+        <AdminBtn $variant="primary" onClick={openAdd} style={{ gap: 6 }}><Plus size={15} /> Add FAQ</AdminBtn>
+        <AdminBtn $variant="ghost" onClick={load} style={{ gap: 6 }}><RefreshCw size={14} /></AdminBtn>
         </AdminFlex>
       </PageHeader>
 

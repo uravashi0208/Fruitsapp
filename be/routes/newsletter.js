@@ -87,6 +87,17 @@ adminRouter.get('/', asyncHandler(async (req, res) => {
   paginated(res, result.subscribers, { page: result.page, limit: result.limit, total: result.total });
 }));
 
+// Update subscriber status
+adminRouter.put('/:id', asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  const VALID = ['active', 'unsubscribed'];
+  if (!status || !VALID.includes(status)) {
+    return res.status(422).json({ success: false, message: `status must be one of: ${VALID.join(', ')}.` });
+  }
+  const result = await newsletterService.setStatus(req.params.id, status);
+  success(res, result, 'Subscriber status updated');
+}));
+
 // Delete subscriber
 adminRouter.delete('/:id', asyncHandler(async (req, res) => {
   await newsletterService.deleteSubscriber(req.params.id);

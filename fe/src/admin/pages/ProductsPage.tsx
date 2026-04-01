@@ -68,17 +68,17 @@ const UploadBox   = styled.label`
 const UploadInput = styled.input`display: none;`;
 const PreviewImg  = styled.img`width: 80px; height: 80px; border-radius: 10px; object-fit: cover; border: 1px solid ${t.colors.border};`;
 
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 10;
 
 const COLUMNS: ColDef[] = [
   { key: 'product',    label: 'Products' },
   { key: 'category',   label: 'Category' },
   { key: 'brand',      label: 'Brand' },
   { key: 'price',      label: 'Price' },
-  { key: 'status',     label: 'Status',     thProps: { $center: true } },
-  { key: 'stock',      label: 'Stock',      thProps: { $center: true } },
+  { key: 'status',     label: 'Status' },
+  { key: 'stock',      label: 'Stock' },
   { key: 'createdAt',  label: 'Created At' },
-  { key: 'actions',    label: '',           thProps: { $center: true, $width: '60px' } },
+  { key: 'actions',    label: '',           thProps: { $width: '60px' } },
 ];
 
 const emptyForm = (): Partial<AdminProduct> & { imageFile?: File | null } => ({
@@ -310,6 +310,7 @@ export const ProductsPage: React.FC = () => {
               {importing ? <><RefreshCw size={14} style={{ animation:'spin 0.8s linear infinite' }}/> Importing…</> : <><Upload size={15} /> Import</>}
             </ExportBtn>
             <AdminBtn $variant="primary" onClick={openAdd}><Plus size={15} /> Add Product</AdminBtn>
+            <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
           </>
         }
         searchArea={

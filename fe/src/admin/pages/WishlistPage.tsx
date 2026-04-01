@@ -3,26 +3,32 @@ import styled from 'styled-components';
 import { Heart, Search, Trash2, User, ShoppingCart, Package, RefreshCw } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminFlex, AdminTable, AdminTHead, AdminTh, AdminTr, AdminTd,
-  AdminBtn, IconBtn, SearchBar, SearchInput,
-  SectionTitle, EmptyState, AdminGrid,
+  AdminCard, AdminFlex, AdminBtn, IconBtn,
+  SearchBar, SearchInput, SectionTitle, EmptyState, AdminGrid,
 } from '../styles/adminShared';
 import { adminWishlistApi, WishlistByUser, WishlistAdminEntry } from '../../api/admin';
 import { useAdminWishlist } from '../../hooks/useAdminApi';
 import { useAdminDispatch, showAdminToast } from '../store';
 import { ApiError } from '../../api/client';
 import { formatDate } from '../utils/formatDate';
+import AdminDataTable, { TR, TD, ColDef } from '../components/AdminDataTable';
 
-const Toolbar    = styled(AdminFlex)`justify-content:space-between;flex-wrap:wrap;gap:${t.spacing.md};margin-bottom:${t.spacing.lg};`;
-const FilterRow  = styled(AdminFlex)`gap:${t.spacing.sm};flex-wrap:wrap;`;
-const StatCard   = styled(AdminCard)`display:flex;align-items:center;gap:14px;padding:1.25rem 1.5rem;`;
-const StatIcon   = styled.div<{$color:string}>`width:44px;height:44px;border-radius:10px;background:${({$color})=>$color};display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
-const StatVal    = styled.div`font-size:1.5rem;font-weight:700;color:${t.colors.textPrimary};line-height:1;`;
-const StatLbl    = styled.div`font-size:0.75rem;color:${t.colors.textMuted};margin-top:2px;`;
-const PThumb     = styled.img`width:38px;height:38px;border-radius:6px;object-fit:cover;border:1px solid ${t.colors.border};flex-shrink:0;`;
-const Avatar     = styled.div`width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,${t.colors.primary},${t.colors.primaryDark});color:white;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
-const CatTag     = styled.span`display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;text-transform:capitalize;background:${t.colors.primaryGhost};color:${t.colors.primary};`;
-const Skeleton   = styled.div`height:60px;background:linear-gradient(90deg,${t.colors.border} 25%,${t.colors.surfaceAlt} 50%,${t.colors.border} 75%);background-size:200%;animation:adminPulse 1.5s ease infinite;border-radius:${t.radii.md};margin-bottom:8px;`;
+const StatCard  = styled(AdminCard)`display:flex;align-items:center;gap:14px;padding:1.25rem 1.5rem;`;
+const StatIcon  = styled.div<{$color:string}>`width:44px;height:44px;border-radius:10px;background:${({$color})=>$color};display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
+const StatVal   = styled.div`font-size:1.5rem;font-weight:700;color:${t.colors.textPrimary};line-height:1;`;
+const StatLbl   = styled.div`font-size:0.75rem;color:${t.colors.textMuted};margin-top:2px;`;
+const PThumb    = styled.img`width:38px;height:38px;border-radius:6px;object-fit:cover;border:1px solid ${t.colors.border};flex-shrink:0;`;
+const Avatar    = styled.div`width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,${t.colors.primary},${t.colors.primaryDark});color:white;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
+const CatTag    = styled.span`display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;text-transform:capitalize;background:${t.colors.primaryGhost};color:${t.colors.primary};`;
+const Skeleton  = styled.div`height:60px;background:linear-gradient(90deg,${t.colors.border} 25%,${t.colors.surfaceAlt} 50%,${t.colors.border} 75%);background-size:200%;animation:adminPulse 1.5s ease infinite;border-radius:${t.radii.md};margin-bottom:8px;`;
+
+const WISHLIST_COLS: ColDef[] = [
+  { key: 'product',  label: 'Product' },
+  { key: 'category', label: 'Category' },
+  { key: 'price',    label: 'Price' },
+  { key: 'added',    label: 'Added' },
+  { key: 'actions',  label: '', sortable: false, thProps: { style: { textAlign: 'right' } } },
+];
 
 export const AdminWishlistPage: React.FC = () => {
   const dispatch = useAdminDispatch();
@@ -30,12 +36,10 @@ export const AdminWishlistPage: React.FC = () => {
   const [userFilter, setUserFilter] = useState('');
 
   const { data, loading, error, refetch } = useAdminWishlist({ search, userId: userFilter || undefined });
-
   const entries  = data?.entries || [];
   const byUser   = data?.byUser  || [];
   const total    = data?.total   || 0;
 
-  // Stats
   const uniqueUsers    = byUser.length;
   const uniqueProds    = new Set(entries.map(e => String(e.productId))).size;
   const topProduct     = entries.reduce<Record<string,number>>((acc,e)=>{ acc[e.productName]=(acc[e.productName]||0)+1; return acc; },{});
@@ -62,12 +66,11 @@ export const AdminWishlistPage: React.FC = () => {
       </AdminGrid>
 
       {/* Toolbar */}
-      <Toolbar as="div">
+      <AdminFlex as="div" $justify="space-between" $wrap style={{gap:t.spacing.md,marginBottom:t.spacing.lg}}>
         <SectionTitle>{total} Wishlist Entries</SectionTitle>
-        <FilterRow as="div">
+        <AdminFlex as="div" $gap={t.spacing.sm} $wrap>
           <SearchBar style={{maxWidth:280}}>
-            <Search size={14}/>
-            <SearchInput placeholder="User name, email or product…" value={search} onChange={e=>setSearch(e.target.value)}/>
+            <Search size={14}/><SearchInput placeholder="User name, email or product…" value={search} onChange={e=>setSearch(e.target.value)}/>
           </SearchBar>
           {byUser.length>0&&(
             <select value={userFilter} onChange={e=>setUserFilter(e.target.value)}
@@ -77,8 +80,8 @@ export const AdminWishlistPage: React.FC = () => {
             </select>
           )}
           <IconBtn onClick={refetch} title="Refresh"><RefreshCw size={14}/></IconBtn>
-        </FilterRow>
-      </Toolbar>
+        </AdminFlex>
+      </AdminFlex>
 
       {error && <div style={{color:t.colors.danger,padding:'1rem',marginBottom:'1rem'}}>{error}</div>}
 
@@ -105,36 +108,31 @@ export const AdminWishlistPage: React.FC = () => {
                   </div>
                 </AdminFlex>
               </div>
-              {/* Items table */}
-              <div style={{overflowX:'auto'}}>
-                <AdminTable>
-                  <AdminTHead><tr>
-                    <AdminTh>Product</AdminTh><AdminTh>Category</AdminTh><AdminTh>Price</AdminTh>
-                    <AdminTh>Added</AdminTh><AdminTh style={{textAlign:'right'}}>Actions</AdminTh>
-                  </tr></AdminTHead>
-                  <tbody>
-                    {group.items.map((w: WishlistAdminEntry) => (
-                      <AdminTr key={w.id}>
-                        <AdminTd>
-                          <AdminFlex as="div" $gap="10px">
-                            <PThumb src={w.productImage} alt={w.productName} onError={e=>{(e.target as HTMLImageElement).src=`https://placehold.co/38x38/e8f5e9/4CAF50?text=${w.productName[0]}`;}}/>
-                            <span style={{fontWeight:600,fontSize:'0.875rem'}}>{w.productName}</span>
-                          </AdminFlex>
-                        </AdminTd>
-                        <AdminTd><CatTag>{w.productCategory}</CatTag></AdminTd>
-                        <AdminTd style={{fontWeight:700,color:t.colors.primary}}>${w.productPrice}</AdminTd>
-                        <AdminTd style={{fontSize:'0.8rem',color:t.colors.textMuted}}>{formatDate(w.addedAt)}</AdminTd>
-                        <AdminTd>
-                          <AdminFlex as="div" $gap="4px" style={{justifyContent:'flex-end'}}>
-                            <AdminBtn $variant="ghost" $size="sm" as="a" href={`/product/${w.productId}`} target="_blank"><ShoppingCart size={13}/> View</AdminBtn>
-                            <IconBtn $variant="danger" title="Remove" onClick={()=>handleRemove(w.id)}><Trash2 size={14}/></IconBtn>
-                          </AdminFlex>
-                        </AdminTd>
-                      </AdminTr>
-                    ))}
-                  </tbody>
-                </AdminTable>
-              </div>
+              {/* Items using AdminDataTable */}
+              <AdminDataTable
+                columns={WISHLIST_COLS}
+                rows={group.items}
+                showPagination={false}
+                renderRow={(w: WishlistAdminEntry) => (
+                  <TR key={w.id}>
+                    <TD>
+                      <AdminFlex as="div" $gap="10px">
+                        <PThumb src={w.productImage} alt={w.productName} onError={e=>{(e.target as HTMLImageElement).src=`https://placehold.co/38x38/e8f5e9/4CAF50?text=${w.productName[0]}`;}}/>
+                        <span style={{fontWeight:600,fontSize:'0.875rem'}}>{w.productName}</span>
+                      </AdminFlex>
+                    </TD>
+                    <TD><CatTag>{w.productCategory}</CatTag></TD>
+                    <TD style={{fontWeight:700,color:t.colors.primary}}>${w.productPrice}</TD>
+                    <TD style={{fontSize:'0.8rem',color:t.colors.textMuted}}>{formatDate(w.addedAt)}</TD>
+                    <TD>
+                      <AdminFlex as="div" $gap="4px" style={{justifyContent:'flex-end'}}>
+                        <AdminBtn $variant="ghost" $size="sm" as="a" href={`/product/${w.productId}`} target="_blank"><ShoppingCart size={13}/> View</AdminBtn>
+                        <IconBtn $variant="danger" title="Remove" onClick={()=>handleRemove(w.id)}><Trash2 size={14}/></IconBtn>
+                      </AdminFlex>
+                    </TD>
+                  </TR>
+                )}
+              />
             </AdminCard>
           ))}
         </div>

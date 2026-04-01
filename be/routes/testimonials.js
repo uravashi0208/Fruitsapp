@@ -10,7 +10,7 @@ const asyncHandler     = require('../utils/asyncHandler');
 const { success, created, noContent } = require('../utils/response');
 const { authenticate, requireEditor } = require('../middleware/auth');
 const { upload, uploadToFirebase }    = require('../utils/upload');
-const { testimonySchema, validate }   = require('../validations/schemas');
+const { testimonySchema, updateTestimonySchema, validate }   = require('../validations/schemas');
 
 const publicRouter = Router();
 publicRouter.get('/', asyncHandler(async (req, res) => {
@@ -36,7 +36,7 @@ adminRouter.post('/', upload.single('avatar'), asyncHandler(async (req, res) => 
 }));
 
 adminRouter.put('/:id', upload.single('avatar'), asyncHandler(async (req, res) => {
-  const data    = validate(testimonySchema, req.body);
+  const data    = validate(updateTestimonySchema, req.body);
   let avatarUrl = null;
   if (req.file) avatarUrl = await uploadToFirebase(req.file.buffer, req.file.originalname, req.file.mimetype, 'testimonials');
   success(res, await testimonyService.updateTestimony(req.params.id, data, avatarUrl), 'Testimony updated');

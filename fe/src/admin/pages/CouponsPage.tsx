@@ -53,7 +53,7 @@ const SwitchWrap = styled.label`
 const SearchBar2   = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
 const SearchInput2 = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 const emptyForm: Partial<AdminCoupon> & { code: string } = {
   code: '', type: 'percent', value: 10,
@@ -169,7 +169,11 @@ export const CouponsPage: React.FC = () => {
         title="Coupons & Promo Codes"
         subtitle={`${total} coupon(s) total`}
         actions={
-          <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15} /> Create Coupon</AdminBtn>
+          <>
+            <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15} /> Create Coupon</AdminBtn>
+            <IconBtn title="Refresh" onClick={load}><RefreshCw size={14} /></IconBtn>
+          </>
+          
         }
         searchArea={
           <SearchBar2 style={{ border: `1px solid ${t.colors.border}`, borderRadius: 10, background: t.colors.surfaceAlt }}>
@@ -184,7 +188,6 @@ export const CouponsPage: React.FC = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </AdminSelect>
-            <IconBtn title="Refresh" onClick={load}><RefreshCw size={14} /></IconBtn>
           </>
         }
         columns={COLUMNS}

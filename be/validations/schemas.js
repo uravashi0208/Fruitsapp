@@ -62,6 +62,8 @@ const categorySchema = Joi.object({
   sortOrder:   Joi.number().integer().min(0).default(0),
 });
 
+const updateCategorySchema = categorySchema.fork(['name'], (field) => field.optional());
+
 // ── Product ───────────────────────────────────────────────────────────────────
 const productSchema = Joi.object({
   name:             Joi.string().min(1).max(200).required(),
@@ -112,6 +114,8 @@ const testimonySchema = Joi.object({
   rating:   Joi.number().min(1).max(5).default(5),
   status:   Joi.string().valid('active', 'inactive').default('active'),
 });
+
+const updateTestimonySchema = testimonySchema.fork(['name', 'message'], (field) => field.optional());
 
 // ── Newsletter ────────────────────────────────────────────────────────────────
 const newsletterSchema = Joi.object({
@@ -327,10 +331,10 @@ module.exports = {
   validate,
   registerSchema, loginSchema, changePasswordSchema, refreshTokenSchema,
   updateUserSchema,
-  categorySchema,
+  categorySchema, updateCategorySchema,
   productSchema, updateProductSchema,
   sliderSchema,
-  testimonySchema,
+  testimonySchema, updateTestimonySchema,
   newsletterSchema,
   settingsSchema,
   blogSchema,
