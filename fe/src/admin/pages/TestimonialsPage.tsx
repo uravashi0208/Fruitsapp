@@ -60,7 +60,7 @@ const COLUMNS: ColDef[] = [
   { key: 'message', label: 'Message' },
   { key: 'rating',  label: 'Rating' },
   { key: 'status',  label: 'Status', thProps: { $center: true } },
-  { key: 'actions', label: '', sortable: false, thProps: { $center: true, $width: '60px' } },
+  { key: 'actions', label: 'Actions', sortable: false, thProps: {$width: '200px' } },
 ];
 const PER_PAGE = 10;
 

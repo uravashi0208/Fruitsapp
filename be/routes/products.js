@@ -40,6 +40,30 @@ publicRouter.get('/:id', asyncHandler(async (req, res) => {
 const adminRouter = Router();
 adminRouter.use(authenticate, requireEditor);
 
+// ── Bulk operations (must be BEFORE /:id routes) ─────────────────────────────
+
+// PATCH /api/admin/products/bulk/status  { ids: string[], status: 'active'|'inactive' }
+adminRouter.patch('/bulk/status', asyncHandler(async (req, res) => {
+  const { ids, status } = req.body;
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(422).json({ success: false, message: 'ids array is required.' });
+  if (!['active', 'inactive'].includes(status))
+    return res.status(422).json({ success: false, message: 'status must be active or inactive.' });
+  const result = await productService.bulkUpdateStatus(ids, status);
+  success(res, result, `${result.updated} product(s) set to ${status}`);
+}));
+
+// DELETE /api/admin/products/bulk  { ids: string[] }  — soft delete (sets deleted=1)
+adminRouter.delete('/bulk', asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length)
+    return res.status(422).json({ success: false, message: 'ids array is required.' });
+  const result = await productService.softDeleteProducts(ids);
+  success(res, result, `${result.deleted} product(s) soft-deleted`);
+}));
+
+// ── CRUD routes ───────────────────────────────────────────────────────────────
+
 adminRouter.get('/', asyncHandler(async (req, res) => {
   const q      = validate(paginationSchema, req.query);
   const result = await productService.listProducts({ ...q, sortBy: q.sortBy || 'createdAt', sortDir: q.sortDir || 'desc' });
@@ -128,28 +152,6 @@ adminRouter.delete('/:id/image', asyncHandler(async (req, res) => {
 adminRouter.delete('/:id', asyncHandler(async (req, res) => {
   await productService.deleteProduct(req.params.id);
   noContent(res, 'Product deleted');
-}));
-
-// ── Bulk operations ───────────────────────────────────────────────────────────
-
-// PATCH /api/admin/products/bulk/status  { ids: string[], status: 'active'|'inactive' }
-adminRouter.patch('/bulk/status', asyncHandler(async (req, res) => {
-  const { ids, status } = req.body;
-  if (!Array.isArray(ids) || !ids.length)
-    return res.status(422).json({ success: false, message: 'ids array is required.' });
-  if (!['active', 'inactive'].includes(status))
-    return res.status(422).json({ success: false, message: 'status must be active or inactive.' });
-  const result = await productService.bulkUpdateStatus(ids, status);
-  success(res, result, `${result.updated} product(s) set to ${status}`);
-}));
-
-// DELETE /api/admin/products/bulk  { ids: string[] }  — soft delete (sets deleted=1)
-adminRouter.delete('/bulk', asyncHandler(async (req, res) => {
-  const { ids } = req.body;
-  if (!Array.isArray(ids) || !ids.length)
-    return res.status(422).json({ success: false, message: 'ids array is required.' });
-  const result = await productService.softDeleteProducts(ids);
-  success(res, result, `${result.deleted} product(s) soft-deleted`);
 }));
 
 
