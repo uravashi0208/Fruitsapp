@@ -15,7 +15,7 @@ import {
   CalenderIcon
 } from '../icons';
 import {
-  HelpCircle,
+  HelpCircle,Ticket, Star
 } from 'lucide-react';
 
 type NavItem = {
@@ -60,7 +60,9 @@ const navItems: NavItem[] = [
   { icon: <EnvelopeIcon />,       name: 'Newsletter',    path: '/admin/newsletter' },
   { icon: <PageIcon />,           name: 'Contacts',      path: '/admin/contacts' },
   { icon: <HelpCircle />,         name: 'FAQs',          path: '/admin/FAQs' },
-  { icon: <CalenderIcon />,       name: 'Calendar',      path: '/admin/calendar' }
+  { icon: <CalenderIcon />,       name: 'Calendar',      path: '/admin/calendar' },
+  { icon: <Ticket />,       name: 'Coupons',      path: '/admin/coupons' },
+  { icon: <Star />,       name: 'Reviews',      path: '/admin/reviews' }
 ];
 
 const othersItems: NavItem[] = [

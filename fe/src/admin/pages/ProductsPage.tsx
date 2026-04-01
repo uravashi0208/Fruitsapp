@@ -8,9 +8,9 @@ import {
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
-  AdminCard, AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb, AdminInput, AdminSelect, AdminTextarea,
+  AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb, AdminInput, AdminSelect, AdminTextarea,
   FormGroup, FormLabel, FormGrid,
-  ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter, PageBtns, PageBtn, SectionTitle, EmptyState,
+  ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter, SectionTitle,
 } from '../styles/adminShared';
 import { adminProductsApi } from '../../api/admin';
 import { API_BASE } from '../../api/client';
@@ -19,45 +19,9 @@ import { useAdminDispatch, showAdminToast } from '../store';
 import { AdminProduct } from '../../api/admin';
 import { ApiError } from '../../api/client';
 import { formatDate } from '../utils/formatDate';
+import AdminDataTable, { TR, TD, CheckBox, ColDef } from '../components/AdminDataTable';
 
 /* ── Styled ─────────────────────────────────────────────────── */
-const PageHeader = styled.div`
-  display: flex; align-items: flex-start; justify-content: space-between;
-  flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
-`;
-const PageTitle = styled.h1`
-  font-size: 1.375rem; font-weight: 700; color: ${t.colors.textPrimary};
-  margin: 0 0 2px;
-`;
-const PageSub = styled.p`font-size: 0.8125rem; color: ${t.colors.textMuted}; margin: 0;`;
-const HeaderBtns = styled.div`display: flex; gap: 10px; flex-wrap: wrap;`;
-
-const TableWrap = styled(AdminCard)`padding: 0; overflow: hidden;`;
-const TableInner = styled.div`overflow-x: auto;`;
-
-const Tbl = styled.table`width: 100%; border-collapse: collapse; font-family: ${t.fonts.body};`;
-const THead = styled.thead`background: ${t.colors.surfaceAlt}; border-bottom: 1px solid ${t.colors.border};`;
-const TH = styled.th<{ $check?: boolean; $center?: boolean }>`
-  padding: 12px 16px;
-  font-size: 0.75rem; font-weight: 600; color: ${t.colors.textMuted};
-  text-align: ${({ $center }) => $center ? 'center' : 'left'};
-  white-space: nowrap;
-  ${({ $check }) => $check && 'width: 40px; padding: 12px 8px 12px 16px;'}
-`;
-const TR = styled.tr`
-  border-bottom: 1px solid ${t.colors.border};
-  transition: background 0.12s;
-  &:last-child { border-bottom: none; }
-  &:hover { background: ${t.colors.surfaceAlt}; }
-`;
-const TD = styled.td<{ $check?: boolean; $center?: boolean }>`
-  padding: 14px 16px;
-  font-size: 0.8125rem; color: ${t.colors.textSecondary};
-  vertical-align: middle;
-  ${({ $check }) => $check && 'padding: 14px 8px 14px 16px; width: 40px;'}
-  ${({ $center }) => $center && 'text-align: center;'}
-`;
-
 const ProductCell = styled.div`display: flex; align-items: center; gap: 12px;`;
 const ProductThumb = styled.img`
   width: 44px; height: 44px; border-radius: 8px; object-fit: cover;
@@ -88,18 +52,13 @@ const StockBadge = styled.span<{ $out: boolean; $low?: boolean }>`
   &:active { opacity: 0.55; }
 `;
 
-const CheckBox = styled.input.attrs({ type: 'checkbox' })`
-  width: 16px; height: 16px; cursor: pointer; accent-color: ${t.colors.primary};
-`;
-
-
-const SearchBar2  = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
-const SearchInput2= styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
-const FilterBtn   = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
-const ExportBtn   = styled(FilterBtn)``;
+const SearchBar2   = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
+const SearchInput2 = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
+const FilterBtn    = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
+const ExportBtn    = styled(FilterBtn)``;
 
 /* Image upload */
-const UploadBox = styled.label`
+const UploadBox   = styled.label`
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   border: 2px dashed ${t.colors.border}; border-radius: 12px;
   padding: 24px; cursor: pointer; gap: 8px; text-align: center;
@@ -111,6 +70,17 @@ const PreviewImg  = styled.img`width: 80px; height: 80px; border-radius: 10px; o
 
 const PAGE_SIZE = 7;
 
+const COLUMNS: ColDef[] = [
+  { key: 'product',    label: 'Products' },
+  { key: 'category',   label: 'Category' },
+  { key: 'brand',      label: 'Brand' },
+  { key: 'price',      label: 'Price' },
+  { key: 'status',     label: 'Status',     thProps: { $center: true } },
+  { key: 'stock',      label: 'Stock',      thProps: { $center: true } },
+  { key: 'createdAt',  label: 'Created At' },
+  { key: 'actions',    label: '',           thProps: { $center: true, $width: '60px' } },
+];
+
 const emptyForm = (): Partial<AdminProduct> & { imageFile?: File | null } => ({
   name: '', category: '' as string, price: 0, stock: 0, sku: '',
   description: '', image: '', status: 'active', rating: 4.0, reviews: 0,
@@ -121,10 +91,8 @@ export const ProductsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const navigate = useNavigate();
   const { data: categoriesData, loading: catsLoading, refetch: refetchCats } = useAdminCategories();
-  // Only show active categories in filters and form dropdowns
   const categories = (categoriesData ?? []).filter(c => c.status === 'active');
 
-  // Refetch categories every time this page mounts (in case new ones were added)
   React.useEffect(() => { refetchCats(); }, [refetchCats]);
 
   const [search,       setSearch]       = useState('');
@@ -138,8 +106,8 @@ export const ProductsPage: React.FC = () => {
   const [editTarget,   setEditTarget]   = useState<AdminProduct|null>(null);
   const [form,         setForm]         = useState<Partial<AdminProduct> & { imageFile?: File|null }>(emptyForm());
   const [saving,       setSaving]       = useState(false);
-  const [toggling,     setToggling]     = useState<string | null>(null); // productId being toggled
-  const [, setOpenMenuId]   = useState<string|null>(null);
+  const [toggling,     setToggling]     = useState<string | null>(null);
+  const [, setOpenMenuId] = useState<string|null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -193,14 +161,12 @@ export const ProductsPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      // If there's a file, upload via multipart; otherwise JSON
       const { imageFile, ...rest } = form;
       if (imageFile) {
-        // Fields the server owns — never send these back or validation breaks
         const SERVER_FIELDS = new Set(['id', 'createdAt', 'updatedAt', 'image', 'thumbnail', 'images', 'reviewCount']);
         const fd = new FormData();
         Object.entries(rest).forEach(([k, v]) => {
-          if (SERVER_FIELDS.has(k)) return;     // skip read-only / computed fields
+          if (SERVER_FIELDS.has(k)) return;
           if (v === undefined) return;
           if (v === null) return;
           if (k === 'tags') {
@@ -210,7 +176,6 @@ export const ProductsPage: React.FC = () => {
           }
           fd.append(k, String(v));
         });
-        // Always send badge explicitly so an empty value clears it in the database
         if (!fd.has('badge')) fd.append('badge', '');
         fd.append('thumbnail', imageFile);
         const token = sessionStorage.getItem('vf_access');
@@ -224,7 +189,6 @@ export const ProductsPage: React.FC = () => {
         });
         if (!res.ok) throw new Error((await res.json()).error || 'Upload failed');
       } else {
-        // Ensure badge is always sent so an empty value clears it in the database
         const payload = { ...rest, badge: rest.badge ?? '' };
         if (editTarget) {
           await adminProductsApi.update(editTarget.id, payload as AdminProduct);
@@ -265,7 +229,6 @@ export const ProductsPage: React.FC = () => {
     } finally { setToggling(null); }
   }, [dispatch, refetch, toggling]);
 
-  // ── Restock modal ────────────────────────────────────────
   const [restockTarget, setRestockTarget] = useState<AdminProduct | null>(null);
   const [restockQty,    setRestockQty]    = useState('');
   const [restocking,    setRestocking]    = useState(false);
@@ -302,7 +265,6 @@ export const ProductsPage: React.FC = () => {
 
   const viewProduct = (products ?? []).find(p => p.id === viewId);
 
-  // ── Import ─────────────────────────────────────────────────
   const importRef = React.useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
 
@@ -335,34 +297,29 @@ export const ProductsPage: React.FC = () => {
 
   return (
     <section onClick={() => setOpenMenuId(null)}>
-      {/* Header */}
-      <PageHeader>
-        <div>
-          <PageTitle>Products</PageTitle>
-          <PageSub>Track and manage your store products</PageSub>
-        </div>
-        <HeaderBtns>
-          <ExportBtn><Download size={15} /> Export</ExportBtn>
-          <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }} onChange={handleImport} />
-          <ExportBtn onClick={() => importRef.current?.click()} style={{ cursor:'pointer' }} title="Import products from Excel/CSV">
-            {importing ? <><RefreshCw size={14} style={{ animation:'spin 0.8s linear infinite' }}/> Importing…</> : <><Upload size={15} /> Import</>}
-          </ExportBtn>
-          <AdminBtn $variant="primary" onClick={openAdd}><Plus size={15} /> Add Product</AdminBtn>
-        </HeaderBtns>
-      </PageHeader>
+      {error && <div style={{ color: t.colors.danger, padding: '1rem', background: '#fff5f5', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
 
-      <TableWrap>
-        {/* Toolbar */}
-        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${t.colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div>
-            <div style={{ fontWeight: 600, color: t.colors.textPrimary, fontSize: '0.9375rem' }}>Products List</div>
-            <div style={{ fontSize: '0.8rem', color: t.colors.textMuted }}>Track your store's progress to boost your sales.</div>
-          </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <SearchBar2>
-              <Search size={15} color={t.colors.textMuted} />
-              <SearchInput2 placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            </SearchBar2>
+      <AdminDataTable
+        title="Products List"
+        subtitle="Track your store's progress to boost your sales."
+        actions={
+          <>
+            <ExportBtn><Download size={15} /> Export</ExportBtn>
+            <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }} onChange={handleImport} />
+            <ExportBtn onClick={() => importRef.current?.click()} style={{ cursor:'pointer' }} title="Import products from Excel/CSV">
+              {importing ? <><RefreshCw size={14} style={{ animation:'spin 0.8s linear infinite' }}/> Importing…</> : <><Upload size={15} /> Import</>}
+            </ExportBtn>
+            <AdminBtn $variant="primary" onClick={openAdd}><Plus size={15} /> Add Product</AdminBtn>
+          </>
+        }
+        searchArea={
+          <SearchBar2>
+            <Search size={15} color={t.colors.textMuted} />
+            <SearchInput2 placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+          </SearchBar2>
+        }
+        filterArea={
+          <>
             <AdminSelect style={{ height: 40, borderRadius: 10, width: 150 }} value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(1); }}>
               <option value="all">{catsLoading ? 'Loading…' : 'All Categories'}</option>
               {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -374,106 +331,78 @@ export const ProductsPage: React.FC = () => {
               <option value="draft">Draft</option>
             </AdminSelect>
             <FilterBtn onClick={refetch}><Filter size={15} /> Filter</FilterBtn>
-          </div>
-        </div>
-
-        {error && <div style={{ color: t.colors.danger, padding: '1rem', background: '#fff5f5' }}>{error}</div>}
-
-        <TableInner>
-          <Tbl>
-            <THead>
-              <tr>
-                <TH $check><CheckBox checked={allChecked} onChange={toggleAll} /></TH>
-                <TH>Products</TH>
-                <TH>Category</TH>
-                <TH>Brand</TH>
-                <TH>Price</TH>
-                <TH $center>Status</TH>
-                <TH $center>Stock</TH>
-                <TH>Created At</TH>
-                <TH $center style={{ width: 60 }}></TH>
-              </tr>
-            </THead>
-            <tbody>
-              {loading ? (
-                <tr><TD colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', color: t.colors.textMuted }}>Loading…</TD></tr>
-              ) : (products ?? []).length === 0 ? (
-                <tr><TD colSpan={9}>
-                  <EmptyState><Package size={36} /><h3>No products found</h3><p>Try adjusting your filters or add a new product.</p></EmptyState>
-                </TD></tr>
-              ) : (products ?? []).map(p => (
-                <TR key={p.id}>
-                  <TD $check><CheckBox checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></TD>
-                  <TD>
-                    <ProductCell>
-                      {p.image || p.thumbnail
-                        ? <ProductThumb src={(() => { const u = p.image || p.thumbnail || ''; return u.startsWith('http') ? u : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${u}`; })()} alt={p.name} />
-                        : <ProductThumbPh><Package size={18} color={t.colors.textMuted} /></ProductThumbPh>
-                      }
-                      <div>
-                        <ProductName>{p.name}</ProductName>
-                        <ProductSku>{p.sku}</ProductSku>
-                      </div>
-                    </ProductCell>
-                  </TD>
-                  <TD style={{ textTransform: 'capitalize' }}>{p.category || '—'}</TD>
-                  <TD style={{ color: t.colors.textMuted }}>{p.badge || '—'}</TD>
-                  <TD style={{ fontWeight: 700, color: t.colors.textPrimary }}>${p.price}</TD>
-                  <TD $center>
-                    {p.status === 'active' || p.status === 'inactive' ? (
-                      <ToggleTrack $on={p.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(p); }} title="Click to toggle status" style={{ opacity: toggling === p.id ? 0.6 : 1, cursor: toggling === p.id ? 'wait' : 'pointer' }}>
-                        <ToggleThumb $on={p.status === 'active'} />
-                      </ToggleTrack>
-                    ) : (
-                      <StatusPill $variant={p.status === 'out_of_stock' ? 'danger' : p.status === 'draft' ? 'warning' : 'neutral'}>
-                        {p.status === 'out_of_stock' ? 'out of stock' : p.status}
-                      </StatusPill>
-                    )}
-                  </TD>
-                  <TD $center>
-                    <StockBadge
-                      $out={(p.stock ?? 0) === 0 || p.status === 'out_of_stock'}
-                      $low={(p.stock ?? 0) > 0 && (p.stock ?? 0) <= LOW_STOCK_THRESHOLD}
-                      title="Click to update stock"
-                      onClick={e => { e.stopPropagation(); toggleStock(p); }}
-                    >
-                      {(p.stock ?? 0) === 0 || p.status === 'out_of_stock' ? (
-                        <><AlertTriangle size={11} /> Out of Stock</>
-                      ) : (p.stock ?? 0) <= LOW_STOCK_THRESHOLD ? (
-                        <><TrendingDown size={11} /> {p.stock} left</>
-                      ) : (
-                        <><CheckCircle size={11} /> {p.stock} in stock</>
-                      )}
-                    </StockBadge>
-                  </TD>
-                  <TD>{formatDate(p.createdAt)}</TD>
-                  <TD $center onClick={e => e.stopPropagation()}>
-                    <PortalDropdown>
-                      <MenuItem onClick={() => { closeAllDropdowns(); navigate(`/admin/products/${p.id}`); }}><Eye size={14} /> View More</MenuItem>
-                      <MenuItem onClick={() => openEdit(p)}><Edit2 size={14} /> Edit</MenuItem>
-                      <MenuItem $danger onClick={() => setDeleteId(p.id)}><Trash2 size={14} /> Delete</MenuItem>
-                    </PortalDropdown>
-                  </TD>
-                </TR>
-              ))}
-            </tbody>
-          </Tbl>
-        </TableInner>
-
-        {/* Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: `1px solid ${t.colors.border}`, flexWrap: 'wrap', gap: 8 }}>
-          <span style={{ fontSize: '0.8125rem', color: t.colors.textMuted }}>
-            Showing 1 to {Math.min(page * PAGE_SIZE, pagination?.total ?? 0)} of {pagination?.total ?? 0}
-          </span>
-          <PageBtns>
-            <PageBtn disabled={page === 1} onClick={() => setPage(p => p - 1)}>‹</PageBtn>
-            {Array.from({ length: pagination?.totalPages ?? 1 }, (_, i) => (
-              <PageBtn key={i + 1} $active={page === i + 1} onClick={() => setPage(i + 1)}>{i + 1}</PageBtn>
-            ))}
-            <PageBtn disabled={page === (pagination?.totalPages ?? 1)} onClick={() => setPage(p => p + 1)}>›</PageBtn>
-          </PageBtns>
-        </div>
-      </TableWrap>
+          </>
+        }
+        columns={COLUMNS}
+        selectable
+        allChecked={allChecked}
+        onToggleAll={toggleAll}
+        rows={products ?? []}
+        loading={loading}
+        emptyIcon={<Package size={36} />}
+        emptyTitle="No products found"
+        emptyText="Try adjusting your filters or add a new product."
+        renderRow={(p) => (
+          <TR key={p.id}>
+            <TD><CheckBox checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></TD>
+            <TD>
+              <ProductCell>
+                {p.image || p.thumbnail
+                  ? <ProductThumb src={(() => { const u = p.image || p.thumbnail || ''; return u.startsWith('http') ? u : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${u}`; })()} alt={p.name} />
+                  : <ProductThumbPh><Package size={18} color={t.colors.textMuted} /></ProductThumbPh>
+                }
+                <div>
+                  <ProductName>{p.name}</ProductName>
+                  <ProductSku>{p.sku}</ProductSku>
+                </div>
+              </ProductCell>
+            </TD>
+            <TD style={{ textTransform: 'capitalize' }}>{p.category || '—'}</TD>
+            <TD style={{ color: t.colors.textMuted }}>{p.badge || '—'}</TD>
+            <TD>${p.price}</TD>
+            <TD>
+              {p.status === 'active' || p.status === 'inactive' ? (
+                <ToggleTrack $on={p.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(p); }} title="Click to toggle status" style={{ opacity: toggling === p.id ? 0.6 : 1, cursor: toggling === p.id ? 'wait' : 'pointer' }}>
+                  <ToggleThumb $on={p.status === 'active'} />
+                </ToggleTrack>
+              ) : (
+                <StatusPill $variant={p.status === 'out_of_stock' ? 'danger' : p.status === 'draft' ? 'warning' : 'neutral'}>
+                  {p.status === 'out_of_stock' ? 'out of stock' : p.status}
+                </StatusPill>
+              )}
+            </TD>
+            <TD>
+              <StockBadge
+                $out={(p.stock ?? 0) === 0 || p.status === 'out_of_stock'}
+                $low={(p.stock ?? 0) > 0 && (p.stock ?? 0) <= LOW_STOCK_THRESHOLD}
+                title="Click to update stock"
+                onClick={e => { e.stopPropagation(); toggleStock(p); }}
+              >
+                {(p.stock ?? 0) === 0 || p.status === 'out_of_stock' ? (
+                  <><AlertTriangle size={11} /> Out of Stock</>
+                ) : (p.stock ?? 0) <= LOW_STOCK_THRESHOLD ? (
+                  <><TrendingDown size={11} /> {p.stock} left</>
+                ) : (
+                  <><CheckCircle size={11} /> {p.stock} in stock</>
+                )}
+              </StockBadge>
+            </TD>
+            <TD>{formatDate(p.createdAt)}</TD>
+            <TD onClick={e => e.stopPropagation()}>
+              <PortalDropdown>
+                <MenuItem onClick={() => { closeAllDropdowns(); navigate(`/admin/products/${p.id}`); }}><Eye size={14} /> View More</MenuItem>
+                <MenuItem onClick={() => openEdit(p)}><Edit2 size={14} /> Edit</MenuItem>
+                <MenuItem $danger onClick={() => setDeleteId(p.id)}><Trash2 size={14} /> Delete</MenuItem>
+              </PortalDropdown>
+            </TD>
+          </TR>
+        )}
+        showPagination
+        paginationInfo={`Showing 1 to ${Math.min(page * PAGE_SIZE, pagination?.total ?? 0)} of ${pagination?.total ?? 0}`}
+        currentPage={page}
+        totalPages={pagination?.totalPages ?? 1}
+        onPageChange={setPage}
+      />
 
       {/* ── Add / Edit Modal ── */}
       {modalOpen && (
@@ -489,21 +418,15 @@ export const ProductsPage: React.FC = () => {
                   <FormLabel>Product Name *</FormLabel>
                   <AdminInput value={form.name ?? ''} onChange={setField('name')} placeholder="e.g. Cherry Tomatoes" autoFocus />
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>SKU *</FormLabel>
                   <AdminInput value={form.sku ?? ''} onChange={setField('sku')} placeholder="VEG-013" />
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>Category</FormLabel>
                   <AdminSelect value={form.category ?? ''} onChange={setField('category')}>
-                    <option value="">
-                      {catsLoading ? 'Loading categories…' : '— Select category —'}
-                    </option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
+                    <option value="">{catsLoading ? 'Loading categories…' : '— Select category —'}</option>
+                    {categories.map(c => (<option key={c.id} value={c.name}>{c.name}</option>))}
                   </AdminSelect>
                   {!catsLoading && categories.length === 0 && (
                     <span style={{ fontSize: '0.75rem', color: '#f79009', marginTop: 4, display: 'block' }}>
@@ -511,23 +434,18 @@ export const ProductsPage: React.FC = () => {
                     </span>
                   )}
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>Price ($) *</FormLabel>
                   <AdminInput type="number" min={0} step={0.01} value={form.price ?? ''} onChange={setField('price')} />
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>Original Price ($)</FormLabel>
                   <AdminInput type="number" min={0} step={0.01} value={form.originalPrice ?? ''} onChange={setField('originalPrice')} placeholder="Leave empty if no discount" />
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>Stock (units)</FormLabel>
                   <AdminInput type="number" min={0} value={form.stock ?? ''} onChange={setField('stock')} />
                 </FormGroup>
-
-                {/* Availability Status — In Stock / Out of Stock */}
                 <FormGroup>
                   <FormLabel>Availability</FormLabel>
                   <AdminSelect
@@ -541,7 +459,6 @@ export const ProductsPage: React.FC = () => {
                     <option value="outofstock">Out of Stock</option>
                   </AdminSelect>
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>Status</FormLabel>
                   <AdminSelect value={form.status ?? 'active'} onChange={setField('status')}>
@@ -550,41 +467,28 @@ export const ProductsPage: React.FC = () => {
                     <option value="draft">Draft</option>
                   </AdminSelect>
                 </FormGroup>
-
                 <FormGroup>
                   <FormLabel>Brand / Badge</FormLabel>
                   <AdminInput value={form.badge ?? ''} onChange={setField('badge')} placeholder="e.g. SALE, Organic" />
                 </FormGroup>
-
-                {/* Product Image Upload */}
                 <FormGroup $span={2}>
                   <FormLabel>Product Image</FormLabel>
                   <UploadBox htmlFor="product-img-upload">
-                    <UploadInput
-                      id="product-img-upload"
-                      type="file"
-                      accept="image/*"
-                      ref={fileRef}
-                      onChange={handleImageFile}
-                    />
+                    <UploadInput id="product-img-upload" type="file" accept="image/*" ref={fileRef} onChange={handleImageFile} />
                     {imagePreview ? (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                        <PreviewImg src={imagePreview} alt="preview"
-                          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <PreviewImg src={imagePreview} alt="preview" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                         <span style={{ fontSize: '0.75rem', color: t.colors.textMuted }}>Click to change image</span>
                       </div>
                     ) : (
                       <>
                         <Package size={32} color={t.colors.textMuted} />
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: t.colors.textSecondary }}>
-                          Click to upload image
-                        </span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: t.colors.textSecondary }}>Click to upload image</span>
                         <span style={{ fontSize: '0.75rem', color: t.colors.textMuted }}>PNG, JPG, WebP up to 5MB</span>
                       </>
                     )}
                   </UploadBox>
                 </FormGroup>
-
                 <FormGroup $span={2}>
                   <FormLabel>Description</FormLabel>
                   <AdminTextarea value={form.description ?? ''} onChange={setField('description')} placeholder="Describe the product…" style={{ minHeight: 80 }} />
@@ -608,9 +512,7 @@ export const ProductsPage: React.FC = () => {
             <ModalHeader><SectionTitle>{viewProduct.name}</SectionTitle><IconBtn onClick={() => setViewId(null)}>✕</IconBtn></ModalHeader>
             <ModalBody>
               <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                <ProductThumb src={(() => { const u = viewProduct.image || viewProduct.thumbnail || ''; return u ? (u.startsWith('http') ? u : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${u}`) : 'https://placehold.co/80x80/e8f5e9/4CAF50?text=P'; })()} alt={viewProduct.name}
-                  style={{ width: 80, height: 80 }}
-                  onError={e => { (e.target as HTMLImageElement).src = `https://placehold.co/80x80/e8f5e9/4CAF50?text=P`; }} />
+                <ProductThumb src={(() => { const u = viewProduct.image || viewProduct.thumbnail || ''; return u ? (u.startsWith('http') ? u : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${u}`) : 'https://placehold.co/80x80/e8f5e9/4CAF50?text=P'; })()} alt={viewProduct.name} style={{ width: 80, height: 80 }} onError={e => { (e.target as HTMLImageElement).src = `https://placehold.co/80x80/e8f5e9/4CAF50?text=P`; }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '1.1rem', color: t.colors.textPrimary }}>{viewProduct.name}</div>
                   <div style={{ color: t.colors.textMuted, fontSize: '0.8rem' }}>SKU: {viewProduct.sku}</div>
@@ -640,67 +542,31 @@ export const ProductsPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
-      {/* ── Restock / Stock Update Modal ── */}
+      {/* ── Restock Modal ── */}
       {restockTarget && (
         <ModalBackdrop onClick={closeRestock}>
           <ModalBox $width="460px" onClick={e => e.stopPropagation()}>
             <ModalHeader>
               <SectionTitle style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Package size={18} />
-                Update Stock — {restockTarget.name}
+                <Package size={18} /> Update Stock — {restockTarget.name}
               </SectionTitle>
               <IconBtn onClick={closeRestock}>✕</IconBtn>
             </ModalHeader>
             <ModalBody>
-              {/* Current status summary */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 16px', borderRadius: 8, marginBottom: 20,
-                background: (restockTarget.stock ?? 0) === 0 ? t.colors.dangerBg : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#fff7ed' : t.colors.successBg,
-                border: `1px solid ${(restockTarget.stock ?? 0) === 0 ? t.colors.danger : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#fb923c' : t.colors.success}`,
-              }}>
-                {(restockTarget.stock ?? 0) === 0
-                  ? <AlertTriangle size={16} color={t.colors.danger} />
-                  : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD
-                    ? <TrendingDown size={16} color="#ea580c" />
-                    : <CheckCircle size={16} color={t.colors.success} />}
-                <span style={{ fontSize: '0.875rem', fontWeight: 600,
-                  color: (restockTarget.stock ?? 0) === 0 ? t.colors.danger : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#ea580c' : t.colors.success }}>
-                  Current stock: {restockTarget.stock ?? 0} units
-                  {(restockTarget.stock ?? 0) === 0 ? ' — Out of Stock' : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? ' — Low Stock' : ' — In Stock'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: (restockTarget.stock ?? 0) === 0 ? t.colors.dangerBg : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#fff7ed' : t.colors.successBg, border: `1px solid ${(restockTarget.stock ?? 0) === 0 ? t.colors.danger : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#fb923c' : t.colors.success}` }}>
+                {(restockTarget.stock ?? 0) === 0 ? <AlertTriangle size={16} color={t.colors.danger} /> : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? <TrendingDown size={16} color="#ea580c" /> : <CheckCircle size={16} color={t.colors.success} />}
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: (restockTarget.stock ?? 0) === 0 ? t.colors.danger : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? '#ea580c' : t.colors.success }}>
+                  Current stock: {restockTarget.stock ?? 0} units{(restockTarget.stock ?? 0) === 0 ? ' — Out of Stock' : (restockTarget.stock ?? 0) <= LOW_STOCK_THRESHOLD ? ' — Low Stock' : ' — In Stock'}
                 </span>
               </div>
-
               <FormGroup>
                 <FormLabel>New Stock Quantity</FormLabel>
-                <AdminInput
-                  type="number"
-                  min="0"
-                  value={restockQty}
-                  onChange={e => setRestockQty(e.target.value)}
-                  placeholder="Enter new stock level"
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleRestock()}
-                  style={{ fontSize: '1.1rem', padding: '10px 14px' }}
-                />
-                <p style={{ fontSize: '0.75rem', color: t.colors.textMuted, marginTop: 6 }}>
-                  Set to <strong>0</strong> to mark as out of stock. Setting a positive value will mark the product as active.
-                </p>
+                <AdminInput type="number" min="0" value={restockQty} onChange={e => setRestockQty(e.target.value)} placeholder="Enter new stock level" autoFocus onKeyDown={e => e.key === 'Enter' && handleRestock()} style={{ fontSize: '1.1rem', padding: '10px 14px' }} />
+                <p style={{ fontSize: '0.75rem', color: t.colors.textMuted, marginTop: 6 }}>Set to <strong>0</strong> to mark as out of stock.</p>
               </FormGroup>
-
-              {/* Quick presets */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 {[0, 10, 25, 50, 100].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => setRestockQty(String(n))}
-                    style={{
-                      padding: '4px 12px', borderRadius: 20, border: `1px solid ${t.colors.border}`,
-                      background: restockQty === String(n) ? t.colors.primary : 'white',
-                      color: restockQty === String(n) ? 'white' : t.colors.textSecondary,
-                      fontSize: '0.8125rem', cursor: 'pointer', fontWeight: 500,
-                    }}
-                  >
+                  <button key={n} onClick={() => setRestockQty(String(n))} style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${t.colors.border}`, background: restockQty === String(n) ? t.colors.primary : 'white', color: restockQty === String(n) ? 'white' : t.colors.textSecondary, fontSize: '0.8125rem', cursor: 'pointer', fontWeight: 500 }}>
                     {n === 0 ? 'Out of Stock' : `+${n}`}
                   </button>
                 ))}
@@ -708,11 +574,7 @@ export const ProductsPage: React.FC = () => {
             </ModalBody>
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={closeRestock}>Cancel</AdminBtn>
-              <AdminBtn
-                $variant={restockQty === '0' ? 'danger' : 'primary'}
-                onClick={handleRestock}
-                disabled={restocking}
-              >
+              <AdminBtn $variant={restockQty === '0' ? 'danger' : 'primary'} onClick={handleRestock} disabled={restocking}>
                 {restocking ? 'Saving…' : restockQty === '0' ? 'Mark Out of Stock' : 'Update Stock'}
               </AdminBtn>
             </ModalFooter>
