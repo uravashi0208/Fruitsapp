@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
-import { Plus, Trash2, Tag, Edit2, Eye, Download, Filter, Search, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Tag, Edit2, Eye, Download, Filter, Search, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
@@ -26,6 +26,25 @@ const UploadBox = styled.label`display:flex;flex-direction:column;align-items:ce
 const UploadInput = styled.input`display:none;`;
 const PreviewImg  = styled.img`width:72px;height:72px;border-radius:10px;object-fit:cover;border:1px solid ${t.colors.border};`;
 const SortBadge   = styled.span`display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:${t.colors.surfaceAlt};border:1px solid ${t.colors.border};font-size:0.75rem;font-weight:600;color:${t.colors.textSecondary};`;
+
+const BulkBar = styled.div`
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:4px 6px 4px 12px;border-radius:10px;
+  background:${t.colors.primaryGhost};border:1.5px solid ${t.colors.primary};
+  box-shadow:0 2px 8px ${t.colors.primaryGhost};
+  animation:bulkSlideIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+  @keyframes bulkSlideIn{from{opacity:0;transform:scale(0.95) translateY(-3px);}to{opacity:1;transform:scale(1) translateY(0);}}
+`;
+const BulkCount = styled.span`font-size:0.8rem;font-weight:700;color:${t.colors.primary};padding-right:10px;border-right:1.5px solid ${t.colors.border};white-space:nowrap;span{font-size:0.9rem;font-weight:800;}`;
+const BulkActionBtn = styled.button<{ $variant?: 'success'|'warning'|'danger'|'ghost' }>`
+  display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:7px;
+  font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all 0.15s ease;white-space:nowrap;
+  ${({$variant})=>$variant==='success'&&`background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='warning'&&`background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='danger'&&`background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>(!$variant||$variant==='ghost')&&`background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
+  &:disabled{opacity:0.5;cursor:not-allowed;}
+`;
 
 const PAGE_SIZE = 10;
 const COLUMNS: ColDef[] = [
@@ -57,6 +76,8 @@ export const CategoriesPage: React.FC = () => {
   const [saving, setSaving]         = useState(false);
   const [imgPreview, setImgPreview] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<'active'|'inactive'|'delete'|null>(null);
 
   const filtered = cats.filter(c => {
     const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.slug?.toLowerCase().includes(search.toLowerCase());
@@ -132,6 +153,26 @@ export const CategoriesPage: React.FC = () => {
     }
   }, [dispatch, refetch]);
 
+  const handleBulkAction = useCallback(async (action: 'active' | 'inactive' | 'delete') => {
+    if (!selIds.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selIds);
+    try {
+      if (action === 'delete') {
+        await adminCategoriesApi.bulkDelete(ids);
+        dispatch(showAdminToast({ message: `${ids.length} category(s) deleted`, type: 'warning' }));
+      } else {
+        await adminCategoriesApi.bulkUpdateStatus(ids, action);
+        dispatch(showAdminToast({ message: `${ids.length} category(s) set to ${action}`, type: 'success' }));
+      }
+      setSelIds(new Set());
+      setBulkConfirm(null);
+      refetch();
+    } catch (err) {
+      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Bulk action failed', type: 'error' }));
+    } finally { setBulkWorking(false); }
+  }, [selIds, dispatch, refetch]);
+
   return (
     <section>
       {error && <div style={{ color: t.colors.danger, padding: '1rem', background: '#fff5f5', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
@@ -153,6 +194,15 @@ export const CategoriesPage: React.FC = () => {
         }
         filterArea={
           <>
+          {selIds.size > 0 && (
+            <BulkBar>
+              <BulkCount><span>{selIds.size}</span> selected</BulkCount>
+              <BulkActionBtn $variant="success" disabled={bulkWorking} onClick={() => setBulkConfirm('active')}><CheckCircle size={12} /> Set Active</BulkActionBtn>
+              <BulkActionBtn $variant="warning" disabled={bulkWorking} onClick={() => setBulkConfirm('inactive')}><XCircle size={12} /> Set Inactive</BulkActionBtn>
+              <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('delete')}><Trash2 size={12} /> Delete</BulkActionBtn>
+              <BulkActionBtn $variant="ghost" disabled={bulkWorking} onClick={() => setSelIds(new Set())}>✕ Clear</BulkActionBtn>
+            </BulkBar>
+          )}
             <AdminSelect style={{ height: 40, borderRadius: 10, width: 130 }} value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1); }}>
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -288,6 +338,32 @@ export const CategoriesPage: React.FC = () => {
           </ModalBackdrop>
         );
       })()}
+
+      {bulkConfirm && (
+        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+          <ModalBox $width="420px" onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: t.colors.textPrimary }}>
+                {bulkConfirm === 'delete' ? 'Delete Selected Categories' : bulkConfirm === 'active' ? 'Set Categories Active' : 'Set Categories Inactive'}
+              </div>
+              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ fontSize: '0.9rem', color: t.colors.textSecondary, lineHeight: 1.6 }}>
+                {bulkConfirm === 'delete'
+                  ? <>Are you sure you want to delete <strong>{selIds.size} category(s)</strong>? This cannot be undone.</>
+                  : <>Set <strong>{selIds.size} category(s)</strong> to <strong>{bulkConfirm}</strong>?</>}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={() => setBulkConfirm(null)} disabled={bulkWorking}>Cancel</AdminBtn>
+              <AdminBtn $variant={bulkConfirm === 'delete' ? 'danger' : 'primary'} disabled={bulkWorking} onClick={() => handleBulkAction(bulkConfirm)}>
+                {bulkWorking ? 'Processing…' : bulkConfirm === 'delete' ? `Delete ${selIds.size}` : `Set ${selIds.size} ${bulkConfirm}`}
+              </AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
     </section>
   );
 };

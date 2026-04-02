@@ -349,6 +349,12 @@ export const adminUsersApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/users/${id}`),
+
+  bulkUpdateStatus: (ids: string[], status: 'active' | 'inactive' | 'banned') =>
+    api.patch<Ok<{ updated: number }>>('/api/admin/users/bulk/status', { ids, status }),
+
+  bulkDelete: (ids: string[]) =>
+    api.delete<Ok<{ deleted: number }>>('/api/admin/users/bulk', { body: { ids } }),
 };
 
 // ─── CARDS ────────────────────────────────────────────────────
@@ -438,6 +444,12 @@ export const adminBlogsApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/blogs/${id}`),
+
+  bulkUpdateStatus: (ids: string[], status: 'published' | 'draft' | 'inactive') =>
+    api.patch<Ok<{ updated: number }>>('/api/admin/blogs/bulk/status', { ids, status }),
+
+  bulkDelete: (ids: string[]) =>
+    api.delete<Ok<{ deleted: number }>>('/api/admin/blogs/bulk', { body: { ids } }),
 };
 
 // ─── SETTINGS ─────────────────────────────────────────────────
@@ -530,6 +542,12 @@ export const adminCategoriesApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/categories/${id}`),
+
+  bulkUpdateStatus: (ids: string[], status: 'active' | 'inactive') =>
+    api.patch<Ok<{ updated: number }>>('/api/admin/categories/bulk/status', { ids, status }),
+
+  bulkDelete: (ids: string[]) =>
+    api.delete<Ok<{ deleted: number }>>('/api/admin/categories/bulk', { body: { ids } }),
 };
 
 
@@ -598,6 +616,12 @@ export const adminSlidersApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/sliders/${id}`),
+
+  bulkUpdateStatus: (ids: string[], status: 'active' | 'inactive') =>
+    api.patch<Ok<{ updated: number }>>('/api/admin/sliders/bulk/status', { ids, status }),
+
+  bulkDelete: (ids: string[]) =>
+    api.delete<Ok<{ deleted: number }>>('/api/admin/sliders/bulk', { body: { ids } }),
 };
 
 // ─── NEWSLETTER ───────────────────────────────────────────────
@@ -699,4 +723,10 @@ export const adminFaqsApi = {
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/faqs/${id}`),
+
+  bulkUpdateStatus: (ids: string[], status: 'active' | 'inactive') =>
+    api.patch<Ok<{ updated: number }>>('/api/admin/faqs/bulk/status', { ids, status }),
+
+  bulkDelete: (ids: string[]) =>
+    api.delete<Ok<{ deleted: number }>>('/api/admin/faqs/bulk', { body: { ids } }),
 };

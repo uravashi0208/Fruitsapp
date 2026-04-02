@@ -57,28 +57,85 @@ const SearchInput2 = styled.input`border:none;outline:none;font-size:0.875rem;ba
 const FilterBtn    = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
 const ExportBtn    = styled(FilterBtn)``;
 
-/* Bulk action bar */
+/* ── Bulk action bar (right-aligned in filter row) ───────────── */
 const BulkBar = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
-  padding: 10px 16px;
-  margin-bottom: 12px;
+  padding: 4px 6px 4px 12px;
   border-radius: 10px;
   background: ${t.colors.primaryGhost};
-  border: 1px solid ${t.colors.primary};
+  border: 1.5px solid ${t.colors.primary};
+  box-shadow: 0 2px 8px ${t.colors.primaryGhost};
+  animation: bulkSlideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  @keyframes bulkSlideIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-3px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+  }
 `;
+
 const BulkCount = styled.span`
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   color: ${t.colors.primary};
-  flex: 1;
+  padding-right: 10px;
+  border-right: 1.5px solid ${t.colors.border};
+  white-space: nowrap;
+
+  span {
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
 `;
+
+const BulkActionBtn = styled.button<{ $variant?: 'success' | 'warning' | 'danger' | 'ghost' }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  ${({ $variant }) => $variant === 'success' && `
+    background: ${t.colors.successBg};
+    color: ${t.colors.success};
+    border-color: ${t.colors.success};
+    &:hover { filter: brightness(0.93); }
+  `}
+  ${({ $variant }) => $variant === 'warning' && `
+    background: ${t.colors.warningBg};
+    color: ${t.colors.warning};
+    border-color: ${t.colors.warning};
+    &:hover { filter: brightness(0.93); }
+  `}
+  ${({ $variant }) => $variant === 'danger' && `
+    background: ${t.colors.dangerBg};
+    color: ${t.colors.danger};
+    border-color: ${t.colors.danger};
+    &:hover { filter: brightness(0.93); }
+  `}
+  ${({ $variant }) => (!$variant || $variant === 'ghost') && `
+    background: ${t.colors.surface};
+    color: ${t.colors.textSecondary};
+    border-color: ${t.colors.border};
+    &:hover { background: ${t.colors.surfaceAlt}; color: ${t.colors.textPrimary}; }
+  `}
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+
 const BulkDivider = styled.div`
   width: 1px;
-  height: 20px;
+  height: 18px;
   background: ${t.colors.border};
+  margin: 0 2px;
 `;
 
 /* Image upload */
@@ -346,47 +403,6 @@ export const ProductsPage: React.FC = () => {
     <section onClick={() => setOpenMenuId(null)}>
       {error && <div style={{ color: t.colors.danger, padding: '1rem', background: '#fff5f5', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
 
-      {/* ── Bulk Action Bar ── */}
-      {selected.size > 0 && (
-        <BulkBar>
-          <BulkCount>{selected.size} product{selected.size > 1 ? 's' : ''} selected</BulkCount>
-          <BulkDivider />
-          <AdminBtn
-            $variant="ghost"
-            disabled={bulkWorking}
-            onClick={() => setBulkConfirm('active')}
-            style={{ height: 36, fontSize: '0.8125rem' }}
-          >
-            Set Active
-          </AdminBtn>
-          <AdminBtn
-            $variant="ghost"
-            disabled={bulkWorking}
-            onClick={() => setBulkConfirm('inactive')}
-            style={{ height: 36, fontSize: '0.8125rem' }}
-          >
-            Set Inactive
-          </AdminBtn>
-          <BulkDivider />
-          <AdminBtn
-            $variant="danger"
-            disabled={bulkWorking}
-            onClick={() => setBulkConfirm('delete')}
-            style={{ height: 36, fontSize: '0.8125rem' }}
-          >
-            <Trash2 size={14} /> Delete Selected
-          </AdminBtn>
-          <AdminBtn
-            $variant="ghost"
-            disabled={bulkWorking}
-            onClick={() => setSelected(new Set())}
-            style={{ height: 36, fontSize: '0.8125rem', marginLeft: 4 }}
-          >
-            ✕ Clear
-          </AdminBtn>
-        </BulkBar>
-      )}
-
       <AdminDataTable
         title="Products List"
         subtitle="Track your store's progress to boost your sales."
@@ -409,6 +425,24 @@ export const ProductsPage: React.FC = () => {
         }
         filterArea={
           <>
+            {selected.size > 0 && (
+              <BulkBar>
+                <BulkCount><span>{selected.size}</span> selected</BulkCount>
+                <BulkActionBtn $variant="success" disabled={bulkWorking} onClick={() => setBulkConfirm('active')}>
+                  Set Active
+                </BulkActionBtn>
+                <BulkActionBtn $variant="warning" disabled={bulkWorking} onClick={() => setBulkConfirm('inactive')}>
+                  Set Inactive
+                </BulkActionBtn>
+                <BulkDivider />
+                <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('delete')}>
+                  <Trash2 size={12} /> Delete Selected
+                </BulkActionBtn>
+                <BulkActionBtn $variant="ghost" disabled={bulkWorking} onClick={() => setSelected(new Set())}>
+                  ✕ Clear
+                </BulkActionBtn>
+              </BulkBar>
+            )}
             <AdminSelect style={{ height: 40, borderRadius: 10, width: 150 }} value={catFilter} onChange={e => { setCatFilter(e.target.value); setPage(1); }}>
               <option value="all">{catsLoading ? 'Loading…' : 'All Categories'}</option>
               {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}

@@ -68,4 +68,25 @@ adminRouter.delete('/:id', asyncHandler(async (req, res) => {
   noContent(res, 'Category deleted');
 }));
 
+// ── Bulk routes ───────────────────────────────────────────────────────────────
+adminRouter.patch('/bulk/status', asyncHandler(async (req, res) => {
+  const { ids, status } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids required' });
+  const { db, FieldValue } = require('../config/firebase');
+  const batch = db.batch();
+  ids.forEach(id => batch.update(db.collection('categories').doc(id), { status, updatedAt: FieldValue.serverTimestamp() }));
+  await batch.commit();
+  success(res, { updated: ids.length }, `${ids.length} categories updated`);
+}));
+
+adminRouter.delete('/bulk', asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids required' });
+  const { db } = require('../config/firebase');
+  const batch = db.batch();
+  ids.forEach(id => batch.delete(db.collection('categories').doc(id)));
+  await batch.commit();
+  success(res, { deleted: ids.length }, `${ids.length} categories deleted`);
+}));
+
 module.exports = { publicRouter, adminRouter };

@@ -445,4 +445,8 @@ export const adminCouponsApi = {
   create: (body: Partial<AdminCoupon>) => api.post<ApiOk<AdminCoupon>>('/api/admin/coupons', body),
   update: (id: string, body: Partial<AdminCoupon>) => api.put<ApiOk<AdminCoupon>>(`/api/admin/coupons/${id}`, body),
   delete: (id: string) => api.delete<ApiOk<null>>(`/api/admin/coupons/${id}`),
+  bulkUpdateStatus: (ids: string[], status: 'active' | 'inactive') =>
+    api.patch<ApiOk<{ updated: number }>>('/api/admin/coupons/bulk/status', { ids, status }),
+  bulkDelete: (ids: string[]) =>
+    api.delete<ApiOk<{ deleted: number }>>('/api/admin/coupons/bulk', { body: { ids } }),
 };

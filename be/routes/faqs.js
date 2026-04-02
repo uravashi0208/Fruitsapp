@@ -94,4 +94,24 @@ adminRouter.delete('/:id', asyncHandler(async (req, res) => {
   noContent(res, 'FAQ deleted');
 }));
 
+adminRouter.patch('/bulk/status', asyncHandler(async (req, res) => {
+  const { ids, status } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids required' });
+  const { db, FieldValue } = require('../config/firebase');
+  const batch = db.batch();
+  ids.forEach(id => batch.update(db.collection('faqs').doc(id), { status, updatedAt: FieldValue.serverTimestamp() }));
+  await batch.commit();
+  success(res, { updated: ids.length }, `${ids.length} FAQs updated`);
+}));
+
+adminRouter.delete('/bulk', asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids required' });
+  const { db } = require('../config/firebase');
+  const batch = db.batch();
+  ids.forEach(id => batch.delete(db.collection('faqs').doc(id)));
+  await batch.commit();
+  success(res, { deleted: ids.length }, `${ids.length} FAQs deleted`);
+}));
+
 module.exports = { publicRouter, adminRouter };

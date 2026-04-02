@@ -6,7 +6,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import {
   Plus, Search, Trash2, Edit2,
-  ChevronUp, ChevronDown, HelpCircle, RefreshCw,
+  ChevronUp, ChevronDown, HelpCircle, RefreshCw, CheckCircle, XCircle,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
@@ -69,6 +69,29 @@ const CategoryTag = styled.span`
   background: ${t.colors.surfaceAlt}; color: ${t.colors.textMuted};
 `;
 
+const FaqCheckbox = styled.input`
+  width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; accent-color: ${t.colors.primary};
+`;
+
+const BulkBar = styled.div`
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:4px 6px 4px 12px;border-radius:10px;
+  background:${t.colors.primaryGhost};border:1.5px solid ${t.colors.primary};
+  box-shadow:0 2px 8px ${t.colors.primaryGhost};
+  animation:bulkSlideIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+  @keyframes bulkSlideIn{from{opacity:0;transform:scale(0.95) translateY(-3px);}to{opacity:1;transform:scale(1) translateY(0);}}
+`;
+const BulkCount = styled.span`font-size:0.8rem;font-weight:700;color:${t.colors.primary};padding-right:10px;border-right:1.5px solid ${t.colors.border};white-space:nowrap;span{font-size:0.9rem;font-weight:800;}`;
+const BulkActionBtn = styled.button<{ $variant?: 'success'|'warning'|'danger'|'ghost' }>`
+  display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:7px;
+  font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all 0.15s ease;white-space:nowrap;
+  ${({$variant})=>$variant==='success'&&`background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='warning'&&`background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='danger'&&`background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>(!$variant||$variant==='ghost')&&`background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
+  &:disabled{opacity:0.5;cursor:not-allowed;}
+`;
+
 const FAQ_CATEGORIES = ['General', 'Shipping', 'Returns & Exchange', 'Payment', 'Account', 'Products', 'Other'];
 
 // ── Empty form state ───────────────────────────────────────────────────────────
@@ -93,6 +116,9 @@ export const FaqPage: React.FC = () => {
   const [deleteId,  setDeleteId]  = useState<string | null>(null);
   const [deleting,  setDeleting]  = useState(false);
   const [expanded,  setExpanded]  = useState<string | null>(null);
+  const [selIds,    setSelIds]    = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<'active'|'inactive'|'delete'|null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -196,6 +222,31 @@ export const FaqPage: React.FC = () => {
   const activeCount   = faqs.filter(f => f.status === 'active').length;
   const inactiveCount = faqs.filter(f => f.status === 'inactive').length;
 
+  const allFilteredIds = filtered.map(f => f.id);
+  const allChecked = allFilteredIds.length > 0 && allFilteredIds.every(id => selIds.has(id));
+  const toggleAll  = () => setSelIds(allChecked ? new Set() : new Set(allFilteredIds));
+  const toggleOne  = (id: string) => setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const handleBulkAction = useCallback(async (action: 'active' | 'inactive' | 'delete') => {
+    if (!selIds.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selIds);
+    try {
+      if (action === 'delete') {
+        await adminFaqsApi.bulkDelete(ids);
+        setFaqs(prev => prev.filter(f => !ids.includes(f.id)));
+        dispatch(showAdminToast({ message: `${ids.length} FAQ(s) deleted`, type: 'warning' }));
+      } else {
+        await adminFaqsApi.bulkUpdateStatus(ids, action);
+        setFaqs(prev => prev.map(f => ids.includes(f.id) ? { ...f, status: action } : f));
+        dispatch(showAdminToast({ message: `${ids.length} FAQ(s) set to ${action}`, type: 'success' }));
+      }
+      setSelIds(new Set()); setBulkConfirm(null);
+    } catch (err) {
+      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Bulk action failed', type: 'error' }));
+    } finally { setBulkWorking(false); }
+  }, [selIds, dispatch]);
+
   return (
     <div>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -241,6 +292,15 @@ export const FaqPage: React.FC = () => {
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </AdminSelect>
+          {selIds.size > 0 && (
+            <BulkBar>
+              <BulkCount><span>{selIds.size}</span> selected</BulkCount>
+              <BulkActionBtn $variant="success" disabled={bulkWorking} onClick={() => setBulkConfirm('active')}><CheckCircle size={12} /> Set Active</BulkActionBtn>
+              <BulkActionBtn $variant="warning" disabled={bulkWorking} onClick={() => setBulkConfirm('inactive')}><XCircle size={12} /> Set Inactive</BulkActionBtn>
+              <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('delete')}><Trash2 size={12} /> Delete</BulkActionBtn>
+              <BulkActionBtn $variant="ghost" disabled={bulkWorking} onClick={() => setSelIds(new Set())}>✕ Clear</BulkActionBtn>
+            </BulkBar>
+          )}
         </AdminFlex>
 
         {/* Category pills */}
@@ -270,30 +330,41 @@ export const FaqPage: React.FC = () => {
           </div>
         </EmptyState>
       ) : (
-        filtered.map(faq => (
-          <FaqAccordion key={faq.id}>
-            <FaqHeader onClick={() => setExpanded(expanded === faq.id ? null : faq.id)}>
-              <HelpCircle size={16} style={{ color: t.colors.primary, flexShrink: 0 }} />
-              <FaqQuestion>{faq.question}</FaqQuestion>
-              <FaqMeta>
-                <CategoryTag>{faq.category}</CategoryTag>
-                <ToggleTrack $on={faq.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(faq); }} title={faq.status === 'active' ? 'Deactivate' : 'Activate'}>
-                  <ToggleThumb $on={faq.status === 'active'} />
-                </ToggleTrack>
-                <IconBtn title="Edit" onClick={e => { e.stopPropagation(); openEdit(faq); }}>
-                  <Edit2 size={14} />
-                </IconBtn>
-                <IconBtn $variant="danger" title="Delete" onClick={e => { e.stopPropagation(); setDeleteId(faq.id); }}>
-                  <Trash2 size={14} />
-                </IconBtn>
-                {expanded === faq.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </FaqMeta>
-            </FaqHeader>
-            {expanded === faq.id && (
-              <FaqAnswer>{faq.answer}</FaqAnswer>
-            )}
-          </FaqAccordion>
-        ))
+        <>
+          {filtered.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 16px', background: t.colors.surfaceAlt, borderRadius: 8, border: `1px solid ${t.colors.border}` }}>
+              <FaqCheckbox type="checkbox" checked={allChecked} onChange={toggleAll} />
+              <span style={{ fontSize: '0.8rem', color: t.colors.textMuted, fontWeight: 500 }}>
+                {allChecked ? 'Deselect all' : `Select all ${filtered.length}`}
+              </span>
+            </div>
+          )}
+          {filtered.map(faq => (
+            <FaqAccordion key={faq.id}>
+              <FaqHeader onClick={() => setExpanded(expanded === faq.id ? null : faq.id)}>
+                <FaqCheckbox type="checkbox" checked={selIds.has(faq.id)} onClick={e => e.stopPropagation()} onChange={() => toggleOne(faq.id)} />
+                <HelpCircle size={16} style={{ color: t.colors.primary, flexShrink: 0 }} />
+                <FaqQuestion>{faq.question}</FaqQuestion>
+                <FaqMeta>
+                  <CategoryTag>{faq.category}</CategoryTag>
+                  <ToggleTrack $on={faq.status === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(faq); }} title={faq.status === 'active' ? 'Deactivate' : 'Activate'}>
+                    <ToggleThumb $on={faq.status === 'active'} />
+                  </ToggleTrack>
+                  <IconBtn title="Edit" onClick={e => { e.stopPropagation(); openEdit(faq); }}>
+                    <Edit2 size={14} />
+                  </IconBtn>
+                  <IconBtn $variant="danger" title="Delete" onClick={e => { e.stopPropagation(); setDeleteId(faq.id); }}>
+                    <Trash2 size={14} />
+                  </IconBtn>
+                  {expanded === faq.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </FaqMeta>
+              </FaqHeader>
+              {expanded === faq.id && (
+                <FaqAnswer>{faq.answer}</FaqAnswer>
+              )}
+            </FaqAccordion>
+          ))}
+        </>
       )}
 
       {/* ── Create / Edit Modal ───────────────────────────────────────────── */}
@@ -377,6 +448,32 @@ export const FaqPage: React.FC = () => {
               <AdminBtn $variant="ghost" onClick={() => setDeleteId(null)}>Cancel</AdminBtn>
               <AdminBtn $variant="danger" onClick={handleDelete} disabled={deleting}>
                 {deleting ? 'Deleting…' : 'Delete'}
+              </AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
+
+      {bulkConfirm && (
+        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+          <ModalBox style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{ fontWeight: 700, color: t.colors.textPrimary }}>
+                {bulkConfirm === 'delete' ? 'Delete Selected FAQs' : bulkConfirm === 'active' ? 'Set FAQs Active' : 'Set FAQs Inactive'}
+              </span>
+              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ color: t.colors.textSecondary, margin: 0, lineHeight: 1.6 }}>
+                {bulkConfirm === 'delete'
+                  ? <>Are you sure you want to delete <strong>{selIds.size} FAQ(s)</strong>? This cannot be undone.</>
+                  : <>Set <strong>{selIds.size} FAQ(s)</strong> to <strong>{bulkConfirm}</strong>?</>}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={() => setBulkConfirm(null)} disabled={bulkWorking}>Cancel</AdminBtn>
+              <AdminBtn $variant={bulkConfirm === 'delete' ? 'danger' : 'primary'} disabled={bulkWorking} onClick={() => handleBulkAction(bulkConfirm)}>
+                {bulkWorking ? 'Processing…' : bulkConfirm === 'delete' ? `Delete ${selIds.size}` : `Set ${selIds.size} ${bulkConfirm}`}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>

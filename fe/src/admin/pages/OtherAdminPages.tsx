@@ -6,7 +6,7 @@ import {
   Search, Trash2, Eye, Plus, Edit2,
   Mail, CreditCard, CheckCircle, Ban,
   MessageSquare, FileText, MoreHorizontal,
-  Star, BookOpen, RefreshCw, Download, Filter,
+  Star, BookOpen, RefreshCw, Download, Filter, XCircle,
 } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
@@ -23,7 +23,7 @@ import {
 } from '../../api/admin';
 import { ApiError } from '../../api/client';
 import { formatDate } from '../utils/formatDate';
-import AdminDataTable, { TR, TD, ColDef } from '../components/AdminDataTable';
+import AdminDataTable, { TR, TD, ColDef, CheckBox } from '../components/AdminDataTable';
 
 const PAGE_SIZE = 10;
 
@@ -36,6 +36,25 @@ const SBar       = styled.div`display:flex;align-items:center;gap:8px;border:1px
 const SInp       = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
 const FilterBtn  = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
 
+/* ── Shared BulkBar ── */
+const BulkBar = styled.div`
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:4px 6px 4px 12px;border-radius:10px;
+  background:${t.colors.primaryGhost};border:1.5px solid ${t.colors.primary};
+  box-shadow:0 2px 8px ${t.colors.primaryGhost};
+  animation:bulkSlideIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+  @keyframes bulkSlideIn{from{opacity:0;transform:scale(0.95) translateY(-3px);}to{opacity:1;transform:scale(1) translateY(0);}}
+`;
+const BulkCount = styled.span`font-size:0.8rem;font-weight:700;color:${t.colors.primary};padding-right:10px;border-right:1.5px solid ${t.colors.border};white-space:nowrap;span{font-size:0.9rem;font-weight:800;}`;
+const BulkActionBtn = styled.button<{ $variant?: 'success'|'warning'|'danger'|'ghost' }>`
+  display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:7px;
+  font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all 0.15s ease;white-space:nowrap;
+  ${({$variant})=>$variant==='success'&&`background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='warning'&&`background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='danger'&&`background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>(!$variant||$variant==='ghost')&&`background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
+  &:disabled{opacity:0.5;cursor:not-allowed;}
+`;
 // ── USERS PAGE ──────────────────────────────────────────────────────────
 const userStatusV = (s:string) => s==='active'?'success':s==='banned'?'danger':'neutral';
 const roleV = (r:string) => r==='admin'?'info':r==='editor'?'warning':'neutral';
@@ -56,6 +75,9 @@ export const UsersPage: React.FC = () => {
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<AdminUser|null>(null);
   const [deleteId, setDeleteId] = useState<string|null>(null);
+  const [selIds,   setSelIds]   = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<'active'|'inactive'|'banned'|'delete'|null>(null);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search,status:statusF==='all'?'':statusF}),[page,search,statusF]);
   const { data:users, pagination, loading, error, refetch } = useAdminUsers(query);
@@ -77,6 +99,29 @@ export const UsersPage: React.FC = () => {
     } catch(err) { dispatch(showAdminToast({message:err instanceof ApiError?err.message:'Delete failed',type:'error'})); }
   }, [dispatch, refetch]);
 
+  const allIds     = (users??[]).map(u => u.uid);
+  const allChecked = allIds.length > 0 && allIds.every(id => selIds.has(id));
+  const toggleAll  = () => setSelIds(allChecked ? new Set() : new Set(allIds));
+  const toggleOne  = (id: string) => setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const handleBulkAction = useCallback(async (action: 'active'|'inactive'|'banned'|'delete') => {
+    if (!selIds.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selIds);
+    try {
+      if (action === 'delete') {
+        await Promise.all(ids.map(id => adminUsersApi.delete(id)));
+        dispatch(showAdminToast({ message: `${ids.length} user(s) deleted`, type: 'warning' }));
+      } else {
+        await adminUsersApi.bulkUpdateStatus(ids, action);
+        dispatch(showAdminToast({ message: `${ids.length} user(s) set to ${action}`, type: 'success' }));
+      }
+      setSelIds(new Set()); setBulkConfirm(null); refetch();
+    } catch(err) {
+      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Bulk action failed', type: 'error' }));
+    } finally { setBulkWorking(false); }
+  }, [selIds, dispatch, refetch]);
+
   return (
     <>
       {error && <div style={{color:t.colors.danger,padding:'1rem',background:'#fff5f5',borderRadius:8,marginBottom:16}}>{error}</div>}
@@ -90,21 +135,37 @@ export const UsersPage: React.FC = () => {
           </SBar>
         }
         filterArea={
-          <FilterBtn>
-            <Filter size={14}/>
-            <select style={{border:'none',outline:'none',background:'transparent',fontSize:'0.875rem',cursor:'pointer',color:t.colors.textSecondary}} value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}}>
-              <option value="all">All Statuses</option>
-              {['active','inactive','banned'].map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
-            </select>
-          </FilterBtn>
+          <>
+          {selIds.size > 0 && (
+            <BulkBar>
+              <BulkCount><span>{selIds.size}</span> selected</BulkCount>
+              <BulkActionBtn $variant="success" disabled={bulkWorking} onClick={() => setBulkConfirm('active')}><CheckCircle size={12}/> Set Active</BulkActionBtn>
+              <BulkActionBtn $variant="warning" disabled={bulkWorking} onClick={() => setBulkConfirm('inactive')}><XCircle size={12}/> Set Inactive</BulkActionBtn>
+              <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('banned')} style={{background:'#fff7ed',color:'#ea580c',borderColor:'#fb923c'}}><Ban size={12}/> Ban</BulkActionBtn>
+              <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('delete')}><Trash2 size={12}/> Delete</BulkActionBtn>
+              <BulkActionBtn $variant="ghost" disabled={bulkWorking} onClick={() => setSelIds(new Set())}>✕ Clear</BulkActionBtn>
+            </BulkBar>
+          )}
+            <FilterBtn>
+              <Filter size={14}/>
+              <select style={{border:'none',outline:'none',background:'transparent',fontSize:'0.875rem',cursor:'pointer',color:t.colors.textSecondary}} value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}}>
+                <option value="all">All Statuses</option>
+                {['active','inactive','banned'].map(s=><option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
+              </select>
+            </FilterBtn>
+          </>
         }
         columns={USER_COLS}
+        selectable
+        allChecked={allChecked}
+        onToggleAll={toggleAll}
         rows={users??[]}
         loading={loading}
         emptyIcon={<MessageSquare size={36}/>}
         emptyTitle="No users found"
         renderRow={(u) => (
           <TR key={u.uid}>
+            <TD><CheckBox checked={selIds.has(u.uid)} onChange={() => toggleOne(u.uid)} /></TD>
             <TD>
               <PersonCell>
                 <Avatar>{u.name.split(' ').map((n:string)=>n[0]).join('').slice(0,2)}</Avatar>
@@ -162,6 +223,34 @@ export const UsersPage: React.FC = () => {
           <ModalFooter><AdminBtn $variant="ghost" onClick={()=>setDeleteId(null)}>Cancel</AdminBtn><AdminBtn $variant="danger" onClick={()=>handleDelete(u.uid,u.name)}>Delete</AdminBtn></ModalFooter>
         </ModalBox></ModalBackdrop>
       );})()}
+
+      {bulkConfirm && (
+        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+          <ModalBox $width="420px" onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{fontWeight:700,fontSize:'1rem',color:t.colors.textPrimary}}>
+                {bulkConfirm === 'delete' ? 'Delete Selected Users' : bulkConfirm === 'banned' ? 'Ban Selected Users' : bulkConfirm === 'active' ? 'Set Users Active' : 'Set Users Inactive'}
+              </span>
+              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{color:t.colors.textSecondary,fontSize:'0.875rem',lineHeight:1.6,margin:0}}>
+                {bulkConfirm === 'delete'
+                  ? <>Permanently delete <strong>{selIds.size} user(s)</strong>? This cannot be undone.</>
+                  : bulkConfirm === 'banned'
+                  ? <>Ban <strong>{selIds.size} user(s)</strong>? They won't be able to access the platform.</>
+                  : <>Set <strong>{selIds.size} user(s)</strong> to <strong>{bulkConfirm}</strong>?</>}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={() => setBulkConfirm(null)} disabled={bulkWorking}>Cancel</AdminBtn>
+              <AdminBtn $variant={bulkConfirm === 'delete' || bulkConfirm === 'banned' ? 'danger' : 'primary'} disabled={bulkWorking} onClick={() => handleBulkAction(bulkConfirm)}>
+                {bulkWorking ? 'Processing…' : bulkConfirm === 'delete' ? `Delete ${selIds.size}` : bulkConfirm === 'banned' ? `Ban ${selIds.size}` : `Set ${selIds.size} ${bulkConfirm}`}
+              </AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
     </>
   );
 };
@@ -562,6 +651,9 @@ export const BlogsPage: React.FC = () => {
   const [coverFile,   setCoverFile]   = useState<File|null>(null);
   const [coverPreview,setCoverPreview]= useState<string>('');
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [selIds,      setSelIds]      = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<'published'|'draft'|'delete'|null>(null);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search,status:statusF==='all'?undefined:statusF}),[page,search,statusF]);
   const { data:blogs, pagination, loading, error, refetch } = useAdminBlogs(query);
@@ -587,6 +679,29 @@ export const BlogsPage: React.FC = () => {
     setCoverFile(f);
     const r=new FileReader();r.onload=ev=>setCoverPreview(ev.target?.result as string);r.readAsDataURL(f);
   };
+
+  const allIds     = (blogs??[]).map(b => b.id);
+  const allChecked = allIds.length > 0 && allIds.every(id => selIds.has(id));
+  const toggleAll  = () => setSelIds(allChecked ? new Set() : new Set(allIds));
+  const toggleOne  = (id: string) => setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const handleBulkAction = useCallback(async (action: 'published'|'draft'|'delete') => {
+    if (!selIds.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selIds);
+    try {
+      if (action === 'delete') {
+        await adminBlogsApi.bulkDelete(ids);
+        dispatch(showAdminToast({ message: `${ids.length} post(s) deleted`, type: 'warning' }));
+      } else {
+        await adminBlogsApi.bulkUpdateStatus(ids, action);
+        dispatch(showAdminToast({ message: `${ids.length} post(s) set to ${action}`, type: 'success' }));
+      }
+      setSelIds(new Set()); setBulkConfirm(null); refetch();
+    } catch(err) {
+      dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Bulk action failed', type: 'error' }));
+    } finally { setBulkWorking(false); }
+  }, [selIds, dispatch, refetch]);
 
   const openCreate=()=>{
     closeAllDropdowns();
@@ -681,23 +796,38 @@ export const BlogsPage: React.FC = () => {
           <SBar><Search size={14}/><SInp placeholder="Search posts…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></SBar>
         }
         filterArea={
-          <FilterBtn>
-            <Filter size={14}/>
-            <select style={{border:'none',outline:'none',background:'transparent',fontSize:'0.875rem',cursor:'pointer',color:t.colors.textSecondary}} value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}}>
-              <option value="all">All Statuses</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
-            </select>
-          </FilterBtn>
+          <>
+          {selIds.size > 0 && (
+            <BulkBar>
+              <BulkCount><span>{selIds.size}</span> selected</BulkCount>
+              <BulkActionBtn $variant="success" disabled={bulkWorking} onClick={() => setBulkConfirm('published')}><CheckCircle size={12}/> Publish</BulkActionBtn>
+              <BulkActionBtn $variant="warning" disabled={bulkWorking} onClick={() => setBulkConfirm('draft')}><XCircle size={12}/> Set Draft</BulkActionBtn>
+              <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('delete')}><Trash2 size={12}/> Delete</BulkActionBtn>
+              <BulkActionBtn $variant="ghost" disabled={bulkWorking} onClick={() => setSelIds(new Set())}>✕ Clear</BulkActionBtn>
+            </BulkBar>
+          )}
+            <FilterBtn>
+              <Filter size={14}/>
+              <select style={{border:'none',outline:'none',background:'transparent',fontSize:'0.875rem',cursor:'pointer',color:t.colors.textSecondary}} value={statusF} onChange={e=>{setStatusF(e.target.value);setPage(1);}}>
+                <option value="all">All Statuses</option>
+                <option value="published">Published</option>
+                <option value="draft">Draft</option>
+                <option value="archived">Archived</option>
+              </select>
+            </FilterBtn>
+          </>
         }
         columns={BLOG_COLS}
+        selectable
+        allChecked={allChecked}
+        onToggleAll={toggleAll}
         rows={blogs??[]}
         loading={loading}
         emptyIcon={<BookOpen size={36}/>}
         emptyTitle="No posts found"
         renderRow={(b) => (
           <TR key={b.id}>
+            <TD><CheckBox checked={selIds.has(b.id)} onChange={() => toggleOne(b.id)} /></TD>
             <TD style={{padding:'10px 8px 10px 16px'}}>
               {b.cover && b.cover.startsWith('http')
                 ? <img src={b.cover} alt={b.title} style={{width:44,height:44,borderRadius:8,objectFit:'cover',border:`1px solid ${t.colors.border}`,display:'block'}} onError={e=>{(e.target as HTMLImageElement).style.display='none';}}/>
@@ -800,6 +930,32 @@ export const BlogsPage: React.FC = () => {
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>Cancel</AdminBtn>
               <AdminBtn $variant="danger" onClick={handleDelete} disabled={saving} style={{background:t.colors.danger,color:'white'}}>{saving?'Deleting…':'Delete Post'}</AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
+
+      {bulkConfirm && (
+        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+          <ModalBox $width="420px" onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{fontWeight:700,fontSize:'1rem',color:t.colors.textPrimary}}>
+                {bulkConfirm === 'delete' ? 'Delete Selected Posts' : bulkConfirm === 'published' ? 'Publish Selected Posts' : 'Set Posts to Draft'}
+              </span>
+              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{color:t.colors.textSecondary,fontSize:'0.875rem',lineHeight:1.6,margin:0}}>
+                {bulkConfirm === 'delete'
+                  ? <>Are you sure you want to delete <strong>{selIds.size} post(s)</strong>? This cannot be undone.</>
+                  : <>Set <strong>{selIds.size} post(s)</strong> to <strong>{bulkConfirm}</strong>?</>}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={() => setBulkConfirm(null)} disabled={bulkWorking}>Cancel</AdminBtn>
+              <AdminBtn $variant={bulkConfirm === 'delete' ? 'danger' : 'primary'} disabled={bulkWorking} onClick={() => handleBulkAction(bulkConfirm)}>
+                {bulkWorking ? 'Processing…' : bulkConfirm === 'delete' ? `Delete ${selIds.size}` : bulkConfirm === 'published' ? `Publish ${selIds.size}` : `Draft ${selIds.size}`}
+              </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>

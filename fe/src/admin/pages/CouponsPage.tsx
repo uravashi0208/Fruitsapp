@@ -4,7 +4,7 @@
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
-import { Plus, Trash2, Edit2, Tag, RefreshCw, Search, Copy, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Tag, RefreshCw, Search, Copy, CheckCircle, XCircle } from 'lucide-react';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminFlex, AdminBtn, IconBtn, ToggleTrack, ToggleThumb,
@@ -15,7 +15,7 @@ import { useAdminDispatch, showAdminToast } from '../store';
 import { adminCouponsApi, AdminCoupon } from '../../api/storefront';
 import { ApiError } from '../../api/client';
 import { formatDate } from '../utils/formatDate';
-import AdminDataTable, { TR, TD, ColDef } from '../components/AdminDataTable';
+import AdminDataTable, { TR, TD, ColDef, CheckBox } from '../components/AdminDataTable';
 
 // ── Styled ─────────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,25 @@ const SwitchWrap = styled.label`
 
 const SearchBar2   = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
 const SearchInput2 = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
+
+const BulkBar = styled.div`
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:4px 6px 4px 12px;border-radius:10px;
+  background:${t.colors.primaryGhost};border:1.5px solid ${t.colors.primary};
+  box-shadow:0 2px 8px ${t.colors.primaryGhost};
+  animation:bulkSlideIn 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+  @keyframes bulkSlideIn{from{opacity:0;transform:scale(0.95) translateY(-3px);}to{opacity:1;transform:scale(1) translateY(0);}}
+`;
+const BulkCount = styled.span`font-size:0.8rem;font-weight:700;color:${t.colors.primary};padding-right:10px;border-right:1.5px solid ${t.colors.border};white-space:nowrap;span{font-size:0.9rem;font-weight:800;}`;
+const BulkActionBtn = styled.button<{ $variant?: 'success'|'warning'|'danger'|'ghost' }>`
+  display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:7px;
+  font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all 0.15s ease;white-space:nowrap;
+  ${({$variant})=>$variant==='success'&&`background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='warning'&&`background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>$variant==='danger'&&`background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
+  ${({$variant})=>(!$variant||$variant==='ghost')&&`background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
+  &:disabled{opacity:0.5;cursor:not-allowed;}
+`;
 
 const PAGE_SIZE = 10;
 
@@ -100,6 +119,9 @@ export const CouponsPage: React.FC = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [copied,   setCopied]   = useState<string | null>(null);
+  const [selIds,   setSelIds]   = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<'active'|'inactive'|'delete'|null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -163,6 +185,29 @@ export const CouponsPage: React.FC = () => {
   const field = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }));
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
+  const allIds     = coupons.map(c => c.id);
+  const allChecked = allIds.length > 0 && allIds.every(id => selIds.has(id));
+  const toggleAll  = () => setSelIds(allChecked ? new Set() : new Set(allIds));
+  const toggleOne  = (id: string) => setSelIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const handleBulkAction = useCallback(async (action: 'active' | 'inactive' | 'delete') => {
+    if (!selIds.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selIds);
+    try {
+      if (action === 'delete') {
+        await adminCouponsApi.bulkDelete(ids);
+        dispatch(showAdminToast({ message: `${ids.length} coupon(s) deleted`, type: 'warning' }));
+      } else {
+        await adminCouponsApi.bulkUpdateStatus(ids, action);
+        dispatch(showAdminToast({ message: `${ids.length} coupon(s) set to ${action}`, type: 'success' }));
+      }
+      setSelIds(new Set()); setBulkConfirm(null); load();
+    } catch (err: any) {
+      dispatch(showAdminToast({ message: err?.message || 'Bulk action failed', type: 'error' }));
+    } finally { setBulkWorking(false); }
+  }, [selIds, dispatch, load]);
+
   return (
     <div style={{ animation: 'adminFadeIn 0.3s ease both' }}>
       <AdminDataTable
@@ -183,6 +228,15 @@ export const CouponsPage: React.FC = () => {
         }
         filterArea={
           <>
+          {selIds.size > 0 && (
+            <BulkBar>
+              <BulkCount><span>{selIds.size}</span> selected</BulkCount>
+              <BulkActionBtn $variant="success" disabled={bulkWorking} onClick={() => setBulkConfirm('active')}><CheckCircle size={12} /> Set Active</BulkActionBtn>
+              <BulkActionBtn $variant="warning" disabled={bulkWorking} onClick={() => setBulkConfirm('inactive')}><XCircle size={12} /> Set Inactive</BulkActionBtn>
+              <BulkActionBtn $variant="danger" disabled={bulkWorking} onClick={() => setBulkConfirm('delete')}><Trash2 size={12} /> Delete</BulkActionBtn>
+              <BulkActionBtn $variant="ghost" disabled={bulkWorking} onClick={() => setSelIds(new Set())}>✕ Clear</BulkActionBtn>
+            </BulkBar>
+          )}
             <AdminSelect value={statusF} onChange={e => { setStatusF(e.target.value); setPage(1); }} style={{ width: 140, height: 40, borderRadius: 10 }}>
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -191,6 +245,9 @@ export const CouponsPage: React.FC = () => {
           </>
         }
         columns={COLUMNS}
+        selectable
+        allChecked={allChecked}
+        onToggleAll={toggleAll}
         rows={coupons}
         loading={loading}
         emptyIcon={<Tag size={32} color={t.colors.textMuted} />}
@@ -201,6 +258,7 @@ export const CouponsPage: React.FC = () => {
           const usagePct = coupon.maxUses ? (coupon.usedCount / coupon.maxUses) * 100 : 0;
           return (
             <TR key={coupon.id}>
+              <TD><CheckBox checked={selIds.has(coupon.id)} onChange={() => toggleOne(coupon.id)} /></TD>
               <TD>
                 <CodeBadge onClick={() => copyCode(coupon.code)}>
                   {coupon.code}
@@ -317,6 +375,33 @@ export const CouponsPage: React.FC = () => {
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={() => setDeleteId(null)}>Cancel</AdminBtn>
               <AdminBtn $variant="danger" onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</AdminBtn>
+            </ModalFooter>
+          </ModalBox>
+        </ModalBackdrop>
+      )}
+
+      {/* Bulk confirm */}
+      {bulkConfirm && (
+        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+          <ModalBox $width="420px" onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <span style={{ fontWeight: 700, color: t.colors.textPrimary }}>
+                {bulkConfirm === 'delete' ? 'Delete Selected Coupons' : bulkConfirm === 'active' ? 'Set Coupons Active' : 'Set Coupons Inactive'}
+              </span>
+              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ color: t.colors.textSecondary, lineHeight: 1.6, margin: 0 }}>
+                {bulkConfirm === 'delete'
+                  ? <>Are you sure you want to delete <strong>{selIds.size} coupon(s)</strong>? This cannot be undone.</>
+                  : <>Set <strong>{selIds.size} coupon(s)</strong> to <strong>{bulkConfirm}</strong>?</>}
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <AdminBtn $variant="ghost" onClick={() => setBulkConfirm(null)} disabled={bulkWorking}>Cancel</AdminBtn>
+              <AdminBtn $variant={bulkConfirm === 'delete' ? 'danger' : 'primary'} disabled={bulkWorking} onClick={() => handleBulkAction(bulkConfirm)}>
+                {bulkWorking ? 'Processing…' : bulkConfirm === 'delete' ? `Delete ${selIds.size}` : `Set ${selIds.size} ${bulkConfirm}`}
+              </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
