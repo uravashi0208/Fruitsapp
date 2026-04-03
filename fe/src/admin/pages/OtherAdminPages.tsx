@@ -6,8 +6,10 @@ import {
   Search, Trash2, Eye, Plus, Edit2,
   Mail, CreditCard, CheckCircle, Ban,
   MessageSquare, FileText, MoreHorizontal,
-  Star, BookOpen, RefreshCw, Download, Filter, XCircle,
+  Star, BookOpen, RefreshCw, Filter, XCircle,
 } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminFlex, AdminBtn, IconBtn, StatusPill,
@@ -78,6 +80,7 @@ export const UsersPage: React.FC = () => {
   const [selIds,   setSelIds]   = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<'active'|'inactive'|'banned'|'delete'|null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const query = useMemo(()=>({page,limit:PAGE_SIZE,search,status:statusF==='all'?'':statusF}),[page,search,statusF]);
   const { data:users, pagination, loading, error, refetch } = useAdminUsers(query);
@@ -128,7 +131,40 @@ export const UsersPage: React.FC = () => {
       <AdminDataTable
         title="Users List"
         subtitle="Manage user accounts and roles"
-        actions={<IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16}/></IconBtn>}
+        actions={
+          <>
+            <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'users', [
+                  { label: 'UserName',       key: 'name' },
+                  { label: 'Email',          key: 'email' },
+                  { label: 'Role',           key: 'role'},
+                  { label: 'Phone Number',   key: 'phone'},
+                  { label: 'Status',         resolve: (row) => {
+                      const iso = row['status'] as string;
+                      return iso === 'active' ? 'Active' : 'Inactive';
+                    }
+                  },
+                  { label: 'Joined At',      resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      if (!iso) return '—';
+                      return formatDate(iso);
+                    } },
+                  { label: 'Last Login',     resolve: (row) => {
+                      const iso = row['lastLogin'] as string;
+                      if (!iso) return '—';
+                      return formatDate(iso);
+                    }
+                  },
+                ], (users ?? []) as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
+            <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16}/></IconBtn>
+          </>}
         searchArea={
           <SBar>
             <Search size={14}/><SInp placeholder="Name or email…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/>
@@ -294,6 +330,7 @@ export const OrdersPage: React.FC = () => {
   const [search, setSearch]   = useState('');
   const [statusF, setStatusF] = useState('all');
   const [page, setPage]       = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const query = useMemo(()=>({page, limit:PAGE_SIZE, search, status: statusF==='all'?'':statusF}), [page,search,statusF]);
   const { data:orders, pagination, loading, error, refetch } = useAdminOrders(query);
@@ -322,7 +359,44 @@ export const OrdersPage: React.FC = () => {
         subtitle="All orders with payment & card details"
         actions={
           <>
-          <AdminBtn $variant="ghost"><Download size={15}/> Export</AdminBtn>
+          <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'orders', [
+                  { label: 'Customer',       key: 'userName' },
+                  { label: 'Email',          key: 'userEmail' },
+                  { label: 'Tracking Number', resolve: (row) => {
+                      const r = row as any;
+                      return r.trackingCode
+                        ? `#${r.orderNumber || r.id?.slice(0,8) || '—'} 🚚 ${r.trackingCode}`
+                        : `#${r.orderNumber || r.id?.slice(0,8) || '—'}`;
+                    }
+                  },
+                  { label: 'Payment',        key: 'paymentMethod' },
+                  { label: 'Created At',     resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      if (!iso) return '—';
+                      return formatDate(iso);
+                    } 
+                  },
+                  { label: 'Due Date', resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      if (!iso) return '—';
+                      return addDays(iso, 5);
+                    }
+                  },
+                  { label: 'Total ($)',      resolve: (row) => {
+                      const r = row as any;
+                      return `$${(r.total || 0).toFixed(2) || '—'}`;
+                    } },
+                  { label: 'Payment Status', key: 'paymentStatus' },
+                  { label: 'Order Status',   key: 'status' },
+                ], (orders ?? []) as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
           <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16}/></IconBtn>
           </>
         }
@@ -632,7 +706,7 @@ const BLOG_COLS: ColDef[] = [
   { key: 'category', label: 'Category' },
   { key: 'status',   label: 'Status', thProps: { $center: true } },
   { key: 'views',    label: 'Views', thProps: { $center: true } },
-  { key: 'updated',  label: 'Updated' },
+  { key: 'createdAt',  label: 'Created At' },
   { key: 'actions',  label: 'Actions', sortable: false, thProps: { $width: '150px' } },
 ];
 
@@ -641,6 +715,7 @@ export const BlogsPage: React.FC = () => {
   const [search,      setSearch]      = useState('');
   const [statusF,     setStatusF]     = useState('all');
   const [page,        setPage]        = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
   const [blogModal,   setBlogModal]   = useState<BlogModalMode>(null);
   const [editTarget,  setEditTarget]  = useState<AdminBlogPost|null>(null);
   const [deleteTarget,setDeleteTarget]= useState<AdminBlogPost|null>(null);
@@ -788,6 +863,31 @@ export const BlogsPage: React.FC = () => {
         subtitle="Create and manage blog content"
         actions={
           <>
+          <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'blog-posts', [
+                  { label: 'Cover',      imageKey: 'cover' },
+                  { label: 'Title' ,     key: 'title'},
+                  { label: 'Author',     key: 'author' },
+                  { label: 'Category',   key: 'category'},
+                  { label: 'Status',        resolve: (row) => {
+                      const iso = row['status'] as string;
+                      return iso === 'published' ? 'Published' : iso === 'draft' ? 'Draft' : 'Archived';
+                    }
+                  },
+                  {label: 'Views',       key: 'views', },
+                  { label: 'Created At', resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      return iso ? formatDate(iso) : '—';
+                    }
+                  },
+                ], (blogs ?? []) as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
           <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15}/> New Post</AdminBtn>
           <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16}/></IconBtn>
           </>
@@ -853,7 +953,7 @@ export const BlogsPage: React.FC = () => {
                 <Star size={12} style={{color:'#FFC107'}}/>{b.views?.toLocaleString()||0}
               </div>
             </TD>
-            <TD style={{fontSize:'0.8rem'}}>{formatDate(b.updatedAt)}</TD>
+            <TD style={{fontSize:'0.8rem'}}>{formatDate(b.createdAt)}</TD>
             <TD style={{textAlign:'center'}} onClick={e=>e.stopPropagation()}>
               <PortalDropdown>
                 <MenuItem onClick={()=>openView(b)}><Eye size={13}/> View</MenuItem>

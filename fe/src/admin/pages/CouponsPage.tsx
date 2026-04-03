@@ -5,6 +5,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { Plus, Trash2, Edit2, Tag, RefreshCw, Search, Copy, CheckCircle, XCircle } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminFlex, AdminBtn, IconBtn, ToggleTrack, ToggleThumb,
@@ -122,6 +124,7 @@ export const CouponsPage: React.FC = () => {
   const [selIds,   setSelIds]   = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<'active'|'inactive'|'delete'|null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -215,6 +218,25 @@ export const CouponsPage: React.FC = () => {
         subtitle={`${total} coupon(s) total`}
         actions={
           <>
+            <ExportDropdown
+              loading={exportLoading}
+              onExport={async (fmt) => {
+                setExportLoading(true);
+                try {
+                  await exportData(fmt, 'coupons', [
+                    { key: 'code',        label: 'Code' },
+                    { key: 'type',        label: 'Type' },
+                    { key: 'value',       label: 'Value' },
+                    { key: 'minOrder',    label: 'Min Order ($)' },
+                    { key: 'maxUses',     label: 'Max Uses' },
+                    { key: 'usedCount',   label: 'Used' },
+                    { key: 'status',      label: 'Status' },
+                    { key: 'expiresAt',   label: 'Expires At' },
+                    { key: 'createdAt',   label: 'Created At' },
+                  ], coupons as unknown as Record<string, unknown>[]);
+                } finally { setExportLoading(false); }
+              }}
+            />
             <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15} /> Create Coupon</AdminBtn>
             <IconBtn title="Refresh" onClick={load}><RefreshCw size={14} /></IconBtn>
           </>

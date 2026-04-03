@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { Search, Trash2, Star, RefreshCw, Package } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminCard, AdminFlex, AdminBtn, IconBtn, StatusPill,
-  SearchBar, SearchInput,
   ModalBackdrop, ModalBox, ModalHeader, ModalBody, ModalFooter,
 } from '../styles/adminShared';
 import { useAdminDispatch, showAdminToast } from '../store';
@@ -29,7 +30,8 @@ const CommentCell = styled.div`
   max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   color:${t.colors.textSecondary};font-size:0.8125rem;
 `;
-
+const SearchBars = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:50px;min-width:350px;`;
+const SearchInp = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
 const PAGE_SIZE = 10;
 
 const Stars: React.FC<{rating:number}> = ({rating}) => (
@@ -60,6 +62,7 @@ export const ReviewsPage: React.FC = () => {
   const [ratingFilter, setRatingFilter] = useState(0);
   const [deleteId, setDeleteId] = useState<string|null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const searchProducts = useCallback(async () => {
     if (!productSearch.trim()) return;
@@ -117,10 +120,11 @@ export const ReviewsPage: React.FC = () => {
       <AdminCard style={{marginBottom:24}}>
         <div style={{fontWeight:600,fontSize:'0.875rem',marginBottom:12,color:t.colors.textPrimary}}>Select a Product</div>
         <ProductSearch>
-          <SearchBar style={{flex:1,border:`1px solid ${t.colors.border}`,borderRadius:10,background:t.colors.surfaceAlt}}>
+          <SearchBars style={{border:`1px solid ${t.colors.border}`,borderRadius:10,background:t.colors.surfaceAlt}}>
             <Search size={16} color={t.colors.textMuted}/>
-            <SearchInput placeholder="Search product by name…" value={productSearch} onChange={e=>setProductSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchProducts()}/>
-          </SearchBar>
+            <SearchInp placeholder="Search product by name…" value={productSearch} onChange={e=>setProductSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchProducts()}/>
+          </SearchBars>
+          
           <AdminBtn $variant="primary" onClick={searchProducts} disabled={productLoading}>
             {productLoading?<RefreshCw size={14} style={{animation:'adminSpin 0.8s linear infinite'}}/>:<Search size={14}/>} Search
           </AdminBtn>
@@ -159,6 +163,25 @@ export const ReviewsPage: React.FC = () => {
           </AdminFlex>
 
           <AdminDataTable
+            title="Reviews"
+            subtitle="All product reviews from customers"
+            actions={
+              <ExportDropdown
+                loading={exportLoading}
+                onExport={async (fmt) => {
+                  setExportLoading(true);
+                  try {
+                    await exportData(fmt, 'reviews', [
+                      { key: 'userName',   label: 'User' },
+                      { key: 'rating',     label: 'Rating' },
+                      { key: 'comment',    label: 'Comment' },
+                      { key: 'isGuest',    label: 'Guest' },
+                      { key: 'createdAt',  label: 'Date' },
+                    ], filtered as unknown as Record<string, unknown>[]);
+                  } finally { setExportLoading(false); }
+                }}
+              />
+            }
             columns={REVIEW_COLS}
             rows={filtered}
             loading={loading}

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Heart, Search, Trash2, User, ShoppingCart, Package, RefreshCw } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminCard, AdminFlex, AdminBtn, IconBtn,
@@ -34,6 +36,7 @@ export const AdminWishlistPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const [search,     setSearch]     = useState('');
   const [userFilter, setUserFilter] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
   const { data, loading, error, refetch } = useAdminWishlist({ search, userId: userFilter || undefined });
   const entries  = data?.entries || [];
@@ -80,6 +83,22 @@ export const AdminWishlistPage: React.FC = () => {
             </select>
           )}
           <IconBtn onClick={refetch} title="Refresh"><RefreshCw size={14}/></IconBtn>
+          <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'wishlist', [
+                  { key: 'userName',    label: 'User' },
+                  { key: 'userEmail',   label: 'Email' },
+                  { key: 'productName', label: 'Product' },
+                  { key: 'productSku',  label: 'SKU' },
+                  { key: 'price',       label: 'Price ($)' },
+                  { key: 'addedAt',     label: 'Added At' },
+                ], entries as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
         </AdminFlex>
       </AdminFlex>
 

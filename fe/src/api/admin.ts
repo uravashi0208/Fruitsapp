@@ -612,7 +612,7 @@ export const adminSlidersApi = {
     api.put<Ok<AdminSlider>>(`/api/admin/sliders/${id}`, formData),
 
   setStatus: (id: string, status: AdminSlider['status']) =>
-    api.put<Ok<AdminSlider>>(`/api/admin/sliders/${id}`, { status }),
+    api.patch<Ok<AdminSlider>>(`/api/admin/sliders/${id}/status`, { status }),
 
   delete: (id: string) =>
     api.delete<Ok<{ message: string }>>(`/api/admin/sliders/${id}`),

@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import { Plus, Trash2, RefreshCw, Search, Edit2, Image as ImageIcon, Filter, CheckCircle, XCircle } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminBtn, IconBtn, ToggleTrack, ToggleThumb,
@@ -14,6 +16,7 @@ import { useAdminSliders } from '../../hooks/useAdminApi';
 import { adminSlidersApi, AdminSlider } from '../../api/admin';
 import { ApiError, API_BASE } from '../../api/client';
 import AdminDataTable, { TR, TD, ColDef, CheckBox } from '../components/AdminDataTable';
+import { formatDate } from '../utils/formatDate';
 
 const SliderCell  = styled.div`display:flex;align-items:center;gap:12px;`;
 const SliderThumb = styled.img`width:64px;height:40px;border-radius:6px;object-fit:cover;border:1px solid ${t.colors.border};flex-shrink:0;`;
@@ -61,6 +64,7 @@ const COLUMNS: ColDef[] = [
   { key: 'button',  label: 'Button' },
   { key: 'order',   label: 'Order' },
   { key: 'status',  label: 'Status' },
+  { key: 'createdAt',  label: 'Created At' },
   { key: 'actions', label: 'Action', sortable: false, thProps: { $width: '200px' } },
 ];
 const PER_PAGE = 10;
@@ -79,6 +83,7 @@ export const SlidersPage: React.FC = () => {
   const [imgPreview, setImgPreview]       = useState<string>('');
   const [saving, setSaving]               = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [exportLoading, setExportLoading] = useState(false);
   const [selIds, setSelIds]               = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking]     = useState(false);
   const [bulkConfirm, setBulkConfirm]    = useState<'active'|'inactive'|'delete'|null>(null);
@@ -89,7 +94,7 @@ export const SlidersPage: React.FC = () => {
     setToggling(s.id);
     try {
       await adminSlidersApi.setStatus(s.id, next as AdminSlider['status']);
-      dispatch(showAdminToast({ message: `Slider set to ${next}`, type: 'info' }));
+      dispatch(showAdminToast({ message: `Slider set to ${next}`, type: 'success' }));
       refetch();
     } catch (e) {
       dispatch(showAdminToast({ message: e instanceof ApiError ? e.message : 'Update failed', type: 'error' }));
@@ -176,6 +181,32 @@ export const SlidersPage: React.FC = () => {
         subtitle="Manage hero / banner sliders with images"
         actions={
           <>
+          <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'sliders', [
+                  { label: 'Image',         imageKey: 'image'},
+                  { label: 'Title',         key: 'title'},
+                  { label: 'Subtitle',      key: 'subtitle'},
+                  { label: 'Button Name',   key: 'buttonText'},
+                  { label: 'Link',          key: 'buttonLink' },
+                  { label: 'Order',         key: 'sortOrder'},
+                  { label: 'Status',        resolve: (row) => {
+                      const iso = row['status'] as string;
+                      return iso === 'active' ? 'Active' : 'Inactive';
+                    }
+                  },
+                  { label: 'Created At',    resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      return iso ? formatDate(iso) : '—';
+                    }
+                  },
+                ], sliders as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
           <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15} /> Add Slider</AdminBtn>
           <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
           </>
@@ -235,6 +266,7 @@ export const SlidersPage: React.FC = () => {
                 <ToggleThumb $on={s.status === 'active'} />
               </ToggleTrack>
             </TD>
+            <TD style={{fontSize:'0.8rem'}}>{formatDate(s.createdAt)}</TD>
             <TD onClick={e => e.stopPropagation()}>
               <PortalDropdown>
                 <MenuItem onClick={() => openView(s)}><Edit2 size={13} /> View</MenuItem>

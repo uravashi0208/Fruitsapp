@@ -2,6 +2,8 @@ import React, { useState, useRef } from 'react';
 import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import { Plus, Trash2, RefreshCw, Search, Star, Edit2, User, Filter } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
@@ -14,6 +16,7 @@ import { useAdminTestimonials } from '../../hooks/useAdminApi';
 import { adminTestimonialsApi, AdminTestimonial } from '../../api/admin';
 import { ApiError, API_BASE } from '../../api/client';
 import AdminDataTable, { TR, TD, ColDef } from '../components/AdminDataTable';
+import { formatDate } from '../utils/formatDate';
 
 const PersonCell  = styled.div`display:flex;align-items:center;gap:12px;`;
 const AvatarImg   = styled.img`width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid ${t.colors.border};flex-shrink:0;`;
@@ -59,7 +62,8 @@ const COLUMNS: ColDef[] = [
   { key: 'person',  label: 'Person' },
   { key: 'message', label: 'Message' },
   { key: 'rating',  label: 'Rating' },
-  { key: 'status',  label: 'Status', thProps: { $center: true } },
+  { key: 'status',  label: 'Status'},
+  { key: 'createdAt',  label: 'Created At' },
   { key: 'actions', label: 'Actions', sortable: false, thProps: {$width: '200px' } },
 ];
 const PER_PAGE = 10;
@@ -73,6 +77,7 @@ export const TestimonialsPage: React.FC = () => {
   const [search, setSearch]               = useState('');
   const [statusFilter, setStatusFilter]   = useState<'' | 'active' | 'inactive'>('');
   const [page, setPage]                   = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
   const PER = PER_PAGE;
   const [mode, setMode]                   = useState<ModalMode>(null);
   const [selected, setSelected]           = useState<AdminTestimonial | null>(null);
@@ -155,6 +160,31 @@ export const TestimonialsPage: React.FC = () => {
         subtitle="Manage customer reviews and testimonials"
         actions={
           <>
+          <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'testimonials', [
+                  { label: 'Image',       imageKey: 'avatar'},
+                  {label: 'Name',         key: 'name', },
+                  {label: 'Position',     key: 'position', },
+                  {label: 'Message',      key: 'message', },
+                  {label: 'Rating',       key: 'rating', },
+                  { label: 'Status',        resolve: (row) => {
+                      const iso = row['status'] as string;
+                      return iso === 'active' ? 'Active' : 'Inactive';
+                    }
+                  },
+                  { label: 'Created At',    resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      return iso ? formatDate(iso) : '—';
+                    }
+                  },
+                ], items as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
           <AdminBtn $variant="primary" onClick={openCreate}><Plus size={15} /> Add Testimonial</AdminBtn>
           <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
           </>
@@ -191,11 +221,12 @@ export const TestimonialsPage: React.FC = () => {
             </TD>
             <TD><MsgPreview>"{item.message}"</MsgPreview></TD>
             <TD><Stars rating={item.rating} /></TD>
-            <TD style={{ textAlign: 'center' }}>
+            <TD>
               <ToggleTrack $on={(localStatus[item.id] ?? item.status) === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(item); }} title="Toggle status">
                 <ToggleThumb $on={(localStatus[item.id] ?? item.status) === 'active'} />
               </ToggleTrack>
             </TD>
+            <TD style={{fontSize:'0.8rem'}}>{formatDate(item.createdAt)}</TD>
             <TD style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
               <PortalDropdown>
                 <MenuItem onClick={() => { closeAllDropdowns(); openView(item); }}><Edit2 size={13} /> View</MenuItem>

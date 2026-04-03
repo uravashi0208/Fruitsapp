@@ -5,6 +5,8 @@ import React, { useState } from 'react';
 import { PortalDropdown, MenuItem } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import { Mail, Trash2, RefreshCw, Search, Send, Users, Filter } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminBtn, IconBtn, ToggleTrack, ToggleThumb,
@@ -16,6 +18,7 @@ import { useAdminNewsletter } from '../../hooks/useAdminApi';
 import { adminNewsletterApi, NewsletterSubscriber } from '../../api/admin';
 import { ApiError } from '../../api/client';
 import AdminDataTable, { TR, TD, ColDef } from '../components/AdminDataTable';
+import { formatDate } from '../utils/formatDate';
 
 /* ── Styled ─────────────────────────────────────────────────── */
 const StatsRow  = styled.div`display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;`;
@@ -103,6 +106,7 @@ export const NewsletterPage: React.FC = () => {
   const [message,    setMessage]    = useState('');
   const [sending,    setSending]    = useState(false);
   const [sendResult, setSendResult] = useState<{ sent: number; failed: number; total: number } | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const MAX_MSG = 2000;
 
@@ -146,6 +150,28 @@ export const NewsletterPage: React.FC = () => {
         subtitle="Manage subscribers and send email campaigns"
         actions={
           <>
+          <ExportDropdown
+            loading={exportLoading}
+            onExport={async (fmt) => {
+              setExportLoading(true);
+              try {
+                await exportData(fmt, 'newsletter-subscribers', [
+                  { label: 'Email',           key: 'email'},
+                  { label: 'Name',            key: 'name'},
+                  { label: 'Status',          resolve: (row) => {
+                      const iso = row['status'] as string;
+                      return iso === 'active' ? 'Active' : 'Inactive';
+                    }
+                  },
+                  { label: 'Subscribed At',   resolve: (row) => {
+                      const iso = row['createdAt'] as string;
+                      return iso ? formatDate(iso) : '—';
+                    }
+                  },
+                ], (allSubs ?? []) as unknown as Record<string, unknown>[]);
+              } finally { setExportLoading(false); }
+            }}
+          />
           <AdminBtn $variant="primary" onClick={() => { setSendOpen(true); setSendResult(null); }}><Send size={15} /> Send Email</AdminBtn>
           <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
           </>
@@ -184,11 +210,7 @@ export const NewsletterPage: React.FC = () => {
               </EmailCell>
             </TD>
             <TD>{s.name || '—'}</TD>
-            <TD>
-              {s.createdAt
-                ? new Date(s.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                : '—'}
-            </TD>
+            <TD style={{fontSize:'0.8rem'}}>{formatDate(s.createdAt)}</TD>
             <TD>
               <ToggleTrack $on={(localStatus[s.id] ?? s.status) === 'active'} onClick={e => { e.stopPropagation(); toggleStatus(s); }} title="Toggle status">
                 <ToggleThumb $on={(localStatus[s.id] ?? s.status) === 'active'} />

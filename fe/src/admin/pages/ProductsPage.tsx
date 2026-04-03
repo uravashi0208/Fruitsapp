@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
 import {
-  Plus, Search, Trash2, Package, RefreshCw, Edit2, Eye, Download, Filter, Upload,
+  Plus, Search, Trash2, Package, RefreshCw, Edit2, Eye, Upload,
   AlertTriangle, TrendingDown, CheckCircle,
 } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb, AdminInput, AdminSelect, AdminTextarea,
@@ -181,6 +183,7 @@ export const ProductsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [page,         setPage]         = useState(1);
   const [selected,     setSelected]     = useState<Set<string>>(new Set());
+  const [exportLoading, setExportLoading] = useState(false);
   const [modalOpen,    setModalOpen]    = useState(false);
   const [viewId,       setViewId]       = useState<string|null>(null);
   const [deleteId,     setDeleteId]     = useState<string|null>(null);
@@ -303,7 +306,7 @@ export const ProductsPage: React.FC = () => {
     setToggling(p.id);
     try {
       await adminProductsApi.updateStatus(p.id, next as AdminProduct['status']);
-      dispatch(showAdminToast({ message: `"${p.name}" set to ${next}`, type: 'info' }));
+      dispatch(showAdminToast({ message: `"${p.name}" set to ${next}`, type: 'success' }));
       refetch();
     } catch (err) {
       dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Update failed', type: 'error' }));
@@ -408,7 +411,38 @@ export const ProductsPage: React.FC = () => {
         subtitle="Track your store's progress to boost your sales."
         actions={
           <>
-            <ExportBtn><Download size={15} /> Export</ExportBtn>
+            <ExportDropdown
+              loading={exportLoading}
+              onExport={async (fmt) => {
+                setExportLoading(true);
+                try {
+                  await exportData(fmt, 'products', [
+                    { label: 'Image',       imageKey: 'image'},
+                    { label: 'Name',        key: 'name'},
+                    { label: 'SKU',         key: 'sku'},
+                    { label: 'Category',    key: 'category'},
+                    { label: 'Price ($)',   resolve: (row) => {
+                        const p = row as any;
+                        return `$${(p.price || 0).toFixed(2) || '—'}`;
+                      }
+                    },
+                    { label: 'Stock',       key: 'stock'},
+                    { label: 'Status',      resolve: (row) => {
+                        const iso = row['status'] as string;
+                        return iso === 'active' ? 'Active' : 'Inactive';
+                      }
+                    },
+                    { label: 'Badge',       key: 'badge'},
+                    { label: 'Rating',      key: 'rating'},
+                    { label: 'Created At',  resolve: (row) => {
+                        const iso = row['createdAt'] as string;
+                        return iso ? formatDate(iso) : '—';
+                      }
+                    },
+                  ], (products ?? []) as unknown as Record<string, unknown>[]);
+                } finally { setExportLoading(false); }
+              }}
+            />
             <input ref={importRef} type="file" accept=".xlsx,.xls,.csv" style={{ display:'none' }} onChange={handleImport} />
             <ExportBtn onClick={() => importRef.current?.click()} style={{ cursor:'pointer' }} title="Import products from Excel/CSV">
               {importing ? <><RefreshCw size={14} style={{ animation:'spin 0.8s linear infinite' }}/> Importing…</> : <><Upload size={15} /> Import</>}
@@ -453,7 +487,6 @@ export const ProductsPage: React.FC = () => {
               <option value="inactive">Inactive</option>
               <option value="draft">Draft</option>
             </AdminSelect>
-            <FilterBtn onClick={refetch}><Filter size={15} /> Filter</FilterBtn>
           </>
         }
         columns={COLUMNS}

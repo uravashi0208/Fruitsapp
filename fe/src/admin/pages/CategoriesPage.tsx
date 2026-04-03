@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { PortalDropdown, MenuItem, closeAllDropdowns } from '../components/PortalDropdown';
 import styled from 'styled-components';
-import { Plus, Trash2, Tag, Edit2, Eye, Download, Filter, Search, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Trash2, Tag, Edit2, Eye, Search, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminBtn, IconBtn, StatusPill, ToggleTrack, ToggleThumb,
@@ -14,6 +16,7 @@ import { useAdminCategories } from '../../hooks/useAdminApi';
 import { adminCategoriesApi, AdminCategory } from '../../api/admin';
 import { ApiError, API_BASE } from '../../api/client';
 import AdminDataTable, { TR, TD, CheckBox, ColDef } from '../components/AdminDataTable';
+import { formatDate } from '../utils/formatDate';
 
 const CatCell   = styled.div`display:flex;align-items:center;gap:12px;`;
 const CatThumb  = styled.img`width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid ${t.colors.border};flex-shrink:0;`;
@@ -21,7 +24,6 @@ const CatPh     = styled.div`width:44px;height:44px;border-radius:8px;background
 const CatName   = styled.div`font-weight:600;color:${t.colors.textPrimary};font-size:0.875rem;`;
 const SearchBar = styled.div`display:flex;align-items:center;gap:8px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 12px;background:white;height:40px;min-width:200px;`;
 const SearchInp = styled.input`border:none;outline:none;font-size:0.875rem;background:transparent;flex:1;color:${t.colors.textPrimary};&::placeholder{color:${t.colors.textMuted};}`;
-const FilterBtn = styled.button`display:flex;align-items:center;gap:6px;border:1px solid ${t.colors.border};border-radius:10px;padding:0 14px;height:40px;background:white;font-size:0.875rem;font-weight:500;color:${t.colors.textSecondary};cursor:pointer;&:hover{background:${t.colors.surfaceAlt};}`;
 const UploadBox = styled.label`display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed ${t.colors.border};border-radius:12px;padding:24px;cursor:pointer;gap:8px;text-align:center;transition:border-color 0.15s,background 0.15s;&:hover{border-color:${t.colors.primary};background:${t.colors.primaryGhost};}`;
 const UploadInput = styled.input`display:none;`;
 const PreviewImg  = styled.img`width:72px;height:72px;border-radius:10px;object-fit:cover;border:1px solid ${t.colors.border};`;
@@ -53,6 +55,7 @@ const COLUMNS: ColDef[] = [
   { key: 'description', label: 'Description' },
   { key: 'order',       label: 'Order' },
   { key: 'status',      label: 'Status'},
+  { key: 'createdAt',   label: 'Created At' },
   { key: 'actions',     label: 'Actions', sortable: false, thProps: { $width: '200px' } },
 ];
 const emptyForm = (): Partial<AdminCategory> & { imageFile?: File | null } => ({
@@ -68,6 +71,7 @@ export const CategoriesPage: React.FC = () => {
   const [statusF, setStatusF]       = useState('all');
   const [page, setPage]             = useState(1);
   const [selIds, setSelIds]         = useState<Set<string>>(new Set());
+  const [exportLoading, setExportLoading] = useState(false);
   const [modalOpen, setModalOpen]   = useState(false);
   const [viewCat, setViewCat]       = useState<AdminCategory | null>(null);
   const [deleteId, setDeleteId]     = useState<string | null>(null);
@@ -146,7 +150,7 @@ export const CategoriesPage: React.FC = () => {
     const next = c.status === 'active' ? 'inactive' : 'active';
     try {
       await adminCategoriesApi.setStatus(c.id, next as AdminCategory['status']);
-      dispatch(showAdminToast({ message: `"${c.name}" set to ${next}`, type: 'info' }));
+      dispatch(showAdminToast({ message: `"${c.name}" set to ${next}`, type: 'success' }));
       refetch();
     } catch (err) {
       dispatch(showAdminToast({ message: err instanceof ApiError ? err.message : 'Update failed', type: 'error' }));
@@ -181,7 +185,30 @@ export const CategoriesPage: React.FC = () => {
         subtitle="Manage and organise your product categories."
         actions={
           <>
-            <FilterBtn onClick={refetch}><Download size={15} /> Export</FilterBtn>
+            <ExportDropdown
+              loading={exportLoading}
+              onExport={async (fmt) => {
+                setExportLoading(true);
+                try {
+                  await exportData(fmt, 'categories', [
+                    { label: 'Name',          key: 'name'},
+                    { label: 'Slug',          key: 'slug'},
+                    { label: 'Description' ,  key: 'description'},
+                    { label: 'Sort Order',    key: 'sortOrder'},
+                    { label: 'Status',        resolve: (row) => {
+                        const iso = row['status'] as string;
+                        return iso === 'active' ? 'Active' : 'Inactive';
+                      }
+                    },
+                    { label: 'Created At',    resolve: (row) => {
+                        const iso = row['createdAt'] as string;
+                        return iso ? formatDate(iso) : '—';
+                      }
+                    },
+                  ], cats as unknown as Record<string, unknown>[]);
+                } finally { setExportLoading(false); }
+              }}
+            />
             <AdminBtn $variant="primary" onClick={openAdd}><Plus size={15} /> Add Category</AdminBtn>
             <IconBtn title="Refresh" onClick={refetch}><RefreshCw size={16} /></IconBtn>
           </>
@@ -208,7 +235,6 @@ export const CategoriesPage: React.FC = () => {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </AdminSelect>
-            <FilterBtn onClick={refetch}><Filter size={15} /> Filter</FilterBtn>
           </>
         }
         columns={COLUMNS}
@@ -240,6 +266,7 @@ export const CategoriesPage: React.FC = () => {
                 <ToggleThumb $on={c.status === 'active'} />
               </ToggleTrack>
             </TD>
+            <TD style={{fontSize:'0.8rem'}}>{formatDate(c.createdAt)}</TD>
             <TD style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
               <PortalDropdown>
                 <MenuItem onClick={() => { closeAllDropdowns(); setViewCat(c); }}><Eye size={14} /> View</MenuItem>

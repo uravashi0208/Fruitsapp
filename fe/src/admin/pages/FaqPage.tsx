@@ -8,6 +8,8 @@ import {
   Plus, Search, Trash2, Edit2,
   ChevronUp, ChevronDown, HelpCircle, RefreshCw, CheckCircle, XCircle,
 } from 'lucide-react';
+import { ExportDropdown } from '../components/ExportDropdown';
+import { exportData } from '../utils/exportUtils';
 import { adminTheme as t } from '../styles/adminTheme';
 import {
   AdminCard, AdminFlex, AdminBtn, IconBtn, ToggleTrack, ToggleThumb,
@@ -19,6 +21,7 @@ import {
 import { useAdminDispatch, showAdminToast } from '../store';
 import { adminFaqsApi, AdminFaq } from '../../api/admin';
 import { ApiError } from '../../api/client';
+import { formatDate } from '../utils/formatDate';
 
 // ── Styled extras ──────────────────────────────────────────────────────────────
 const PageHeader = styled.div`
@@ -62,11 +65,10 @@ const FaqAnswer = styled.div`
   white-space: pre-wrap;
 `;
 const FaqMeta = styled.div`
-  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 15px; flex-shrink: 0;
 `;
 const CategoryTag = styled.span`
-  font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px;
-  background: ${t.colors.surfaceAlt}; color: ${t.colors.textMuted};
+  font-size: 1rem; font-weight: 600; padding: 2px 80px;  color: ${t.colors.textMuted};
 `;
 
 const FaqCheckbox = styled.input`
@@ -108,6 +110,7 @@ export const FaqPage: React.FC = () => {
   const [search,    setSearch]    = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [statFilter,setStatFilter]= useState('');
+  const [exportLoading, setExportLoading] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing,   setEditing]   = useState<AdminFaq | null>(null);
@@ -256,6 +259,30 @@ export const FaqPage: React.FC = () => {
           <PageSub>{faqs.length} questions total · {activeCount} active · {inactiveCount} inactive</PageSub>
         </div>
         <AdminFlex $gap="10px" $wrap>
+        <ExportDropdown
+          loading={exportLoading}
+          onExport={async (fmt) => {
+            setExportLoading(true);
+            try {
+              await exportData(fmt, 'faqs', [
+                { label: 'Question',         key: 'question'},
+                { label: 'Answer',           key: 'answer'},
+                { label: 'Category',         key: 'category'},
+                { label: 'Order',            key: 'sortOrder'},
+                { label: 'Status',           resolve: (row) => {
+                    const iso = row['status'] as string;
+                    return iso === 'active' ? 'Active' : 'Inactive';
+                  }
+                },
+                { label: 'Subscribed At',    resolve: (row) => {
+                    const iso = row['createdAt'] as string;
+                    return iso ? formatDate(iso) : '—';
+                  }
+                },
+              ], filtered as unknown as Record<string, unknown>[]);
+            } finally { setExportLoading(false); }
+          }}
+        />
         <AdminBtn $variant="primary" onClick={openAdd} style={{ gap: 6 }}><Plus size={15} /> Add FAQ</AdminBtn>
         <AdminBtn $variant="ghost" onClick={load} style={{ gap: 6 }}><RefreshCw size={14} /></AdminBtn>
         </AdminFlex>
