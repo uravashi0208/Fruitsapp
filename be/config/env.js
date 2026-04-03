@@ -28,4 +28,9 @@ module.exports = {
   // Stripe
   STRIPE_SECRET_KEY:      process.env.STRIPE_SECRET_KEY      || '',
   STRIPE_WEBHOOK_SECRET:  process.env.STRIPE_WEBHOOK_SECRET  || '',
+  // Google Pay (direct — no Stripe)
+  GPAY_MERCHANT_ID:            process.env.GPAY_MERCHANT_ID            || 'TEST',
+  GPAY_MERCHANT_NAME:          process.env.GPAY_MERCHANT_NAME          || 'My Shop',
+  GPAY_GATEWAY:                process.env.GPAY_GATEWAY                || '',
+  GPAY_GATEWAY_MERCHANT_ID:    process.env.GPAY_GATEWAY_MERCHANT_ID    || '',
 };

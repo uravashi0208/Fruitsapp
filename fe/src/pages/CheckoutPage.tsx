@@ -41,14 +41,24 @@ import {
 } from '../styles/shared';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 import {
-  ordersApi, stripeApi, OrderPayment,
+  ordersApi, stripeApi, gpayApi, OrderPayment,
 } from '../api/storefront';
+import { GooglePayButton } from '../components/ui/GooglePayButton';
 import { ApiError } from '../api/client';
 
 // ─── Stripe publishable key ────────────────────────────────────────────────────
 const stripePromise = loadStripe(
   process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || ''
 );
+
+// ─── Apple Pay test mode detection ───────────────────────────────────────────
+const isApplePayAvailable = (): boolean => {
+  // ApplePaySession is only available in Safari / WebKit
+  return typeof (window as any).ApplePaySession !== 'undefined' &&
+    (window as any).ApplePaySession.canMakePayments?.() === true;
+};
+
+const isTestMode = (process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '').startsWith('pk_test_');
 
 // ─── Animations ───────────────────────────────────────────────────────────────
 const spin        = keyframes`to { transform: rotate(360deg); }`;
@@ -190,6 +200,28 @@ const SuccessWrap = styled.div`
   background: #fff; border: 1px solid #f0f0f0;
 `;
 
+// ─── Apple Pay test mode banner ───────────────────────────────────────────────
+const TestModeBanner = styled.div`
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #795548;
+  margin-bottom: 12px;
+  line-height: 1.6;
+  strong { color: #5d4037; }
+`;
+const ApplePayNote = styled.div`
+  background: #f3e5f5;
+  border: 1px solid #ce93d8;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #4a148c;
+  margin-top: 8px;
+  line-height: 1.6;
+`;
 // ─── Payment methods data ──────────────────────────────────────────────────────
 type PayMethod =
   | 'card' | 'apple_pay' | 'google_pay'
@@ -213,7 +245,7 @@ const METHODS: MethodDef[] = [
   { id: 'apple_pay',  label: 'Apple Pay',                 icon: '🍎', group: 'digital',
     info: 'Tap to pay with Face ID / Touch ID. Available on Safari & iOS devices.' },
   { id: 'google_pay', label: 'Google Pay',                icon: '🔵', group: 'digital',
-    info: 'One-tap checkout using your saved Google Pay card.' },
+    info: 'One-tap checkout with your saved Google Pay card. Powered directly by the Google Pay API — no Stripe required.' },
   { id: 'paypal',     label: 'PayPal',                    icon: '🅿️', badge: 'Popular', group: 'bnpl',
     info: 'Pay now or use PayPal Pay Later. You will be redirected to PayPal.' },
   { id: 'klarna',     label: 'Klarna — Pay in 3',         icon: '🟣', badge: 'Buy now, pay later', group: 'bnpl',
@@ -419,12 +451,21 @@ const StripePaymentForm: React.FC<StripeFormProps> = ({
 
   return (
     <div>
-      {/* Stripe PaymentElement renders the correct UI per payment method */}
+      {/* Stripe PaymentElement renders the correct UI per payment method.
+          Apple Pay / Google Pay wallet buttons appear here automatically
+          when the browser/device supports them — no extra code needed. */}
       <StripeBox>
         <PaymentElement
           options={{
-            layout:    'tabs',
-            wallets:   { applePay: 'auto', googlePay: 'auto' },
+            // 'tabs' layout shows each PM as a tab; 'accordion' stacks them.
+            // google_pay is handled outside Stripe — this block never runs for it.
+            layout: payMethod === 'apple_pay'
+              ? { type: 'tabs', defaultCollapsed: false }
+              : 'tabs',
+            wallets: {
+              applePay:  'auto',   // show if browser supports it
+              googlePay: 'auto',
+            },
           }}
         />
       </StripeBox>
@@ -477,15 +518,29 @@ const CheckoutPage: React.FC = () => {
   const [payMethod, setPayMethod] = useState<PayMethod>('card');
   const [submitted, setSubmitted] = useState(false);
   const [successInfo, setSuccessInfo] = useState({ orderNum: '', firstName: '', email: '' });
+  const [applePayAvailable, setApplePayAvailable] = useState<boolean | null>(null);
+
+  // Detect Apple Pay availability on mount
+  useEffect(() => {
+    setApplePayAvailable(isApplePayAvailable());
+  }, []);
 
   const [form, setForm] = useState(INITIAL_FORM);
 
-  // Stripe Elements options — deferred intent pattern (no clientSecret at mount time)
-  // ✅ Must NOT specify payment_method_types here — backend uses automatic_payment_methods
+  // Stripe Elements options — deferred intent pattern (no clientSecret at mount time).
+  // ✅ Must NOT specify payment_method_types here — backend uses automatic_payment_methods.
+  // The key prop on <Elements> ensures Stripe re-initialises when payment method changes,
+  // which is critical for Apple Pay — it needs Elements to know the amount upfront.
   const elementsOptions: StripeElementsOptions = {
     mode:     'payment',
     amount:   Math.round(total * 100),
     currency: 'usd',
+    // Hint to Stripe which PM the user selected so it can pre-populate the Element.
+    // For apple_pay Stripe will show the wallet button inside PaymentElement.
+    // google_pay is handled by the native GooglePayButton component — not Stripe.
+    ...(payMethod !== 'cod' && payMethod !== 'google_pay' && {
+      paymentMethodCreationParams: undefined, // let Stripe decide from automatic_payment_methods
+    }),
     appearance: {
       theme: 'stripe',
       variables: {
@@ -712,6 +767,23 @@ const CheckoutPage: React.FC = () => {
                           <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{m.icon}</span>
                           <PayLabel>{m.label}</PayLabel>
                           {m.badge && <PayBadge>{m.badge}</PayBadge>}
+                          {/* Show TEST badge for Apple Pay in Stripe test mode */}
+                          {isTestMode && m.id === 'apple_pay' && (
+                            <PayBadge style={{ background: 'rgba(103,58,183,0.12)', color: '#673ab7' }}>
+                              TEST
+                            </PayBadge>
+                          )}
+                          {/* Google Pay TEST badge — always shown (direct GPay API has its own test mode) */}
+                          {m.id === 'google_pay' && (
+                            <PayBadge style={{ background: 'rgba(66,133,244,0.12)', color: '#1a73e8' }}>
+                              TEST
+                            </PayBadge>
+                          )}
+                          {/* Show ⚠️ if Apple Pay is not available on this device/browser */}
+                          {m.id === 'apple_pay' && applePayAvailable === false && (
+                            <span style={{ fontSize: 11, color: '#e65100' }} title="Apple Pay not available on this browser">⚠️</span>
+                          )}
+
                         </PayOption>
                         {payMethod === m.id && (
                           <InfoBox>ℹ️ {m.info}</InfoBox>
@@ -727,7 +799,50 @@ const CheckoutPage: React.FC = () => {
             <FormCard>
               <CardTitle><Lock size={18} /> Payment Details</CardTitle>
 
-              {payMethod === 'cod' ? (
+              {/* ── Test mode banner ── */}
+              {isTestMode && (
+                <TestModeBanner>
+                  🧪 <strong>Stripe Test Mode</strong> — No real charges. Use test card{' '}
+                  <strong>4242 4242 4242 4242</strong>, any future expiry, any CVC.
+                </TestModeBanner>
+              )}
+
+              {/* ── Apple Pay specific guidance ── */}
+              {payMethod === 'apple_pay' && (
+                <ApplePayNote>
+                  {applePayAvailable === true ? (
+                    <>✅ <strong>Apple Pay detected</strong> — the Apple Pay button will appear below.
+                    Tap it to pay with Face ID / Touch ID using your saved card.</>
+                  ) : applePayAvailable === false ? (
+                    <>⚠️ <strong>Apple Pay not available</strong> on this browser/device.
+                    Apple Pay requires <strong>Safari</strong> on macOS/iOS with at least one card
+                    added to your Wallet. The Stripe PaymentElement will fall back to a card form.
+                    {isTestMode && <><br />🧪 <em>Test mode: works on any Safari with Apple Pay configured.</em></>}
+                    </>
+                  ) : (
+                    <>🔍 Checking Apple Pay availability…</>
+                  )}
+                </ApplePayNote>
+              )}
+
+              {/* ── Google Pay (direct — no Stripe) ── */}
+              {payMethod === 'google_pay' ? (
+                <div>
+                  <InfoBox>
+                    🔵 <strong>Google Pay</strong> — powered directly by the Google Pay API.
+                    No Stripe or third-party processor required. Click the button to open
+                    the native Google Pay sheet.
+                  </InfoBox>
+                  <GooglePayButton
+                    total={total}
+                    currency="USD"
+                    items={items}
+                    billing={form}
+                    onSuccess={(orderNum) => handleSuccess(orderNum, form.firstName, form.email)}
+                    onError={handleError}
+                  />
+                </div>
+              ) : payMethod === 'cod' ? (
                 <div>
                   <InfoBox>
                     💵 You will pay cash when the order is delivered to your door. No card needed.
@@ -740,7 +855,7 @@ const CheckoutPage: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <Elements stripe={stripePromise} options={elementsOptions}>
+                <Elements stripe={stripePromise} options={elementsOptions} key={payMethod}>
                   <StripePaymentForm
                     billing={form}
                     payMethod={payMethod}
@@ -795,7 +910,8 @@ const CheckoutPage: React.FC = () => {
             }}>
               <strong>Selected:</strong> {METHODS.find(m => m.id === payMethod)?.label}
               <br />
-              {payMethod !== 'cod' && '🔒 Payment secured by Stripe'}
+              {payMethod === 'google_pay' && '🔵 Powered by Google Pay API'}
+              {payMethod !== 'cod' && payMethod !== 'google_pay' && '🔒 Payment secured by Stripe'}
             </div>
           </OrderSummary>
 

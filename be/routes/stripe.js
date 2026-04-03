@@ -184,4 +184,73 @@ router.post(
   })
 );
 
+// ─── GET /api/stripe/google-pay/test-status ──────────────────────────────────
+// Google Pay test-mode info. No Google/merchant account required.
+// Stripe test mode auto-provides a test payment instrument in Chrome/Edge.
+router.get(
+  '/google-pay/test-status',
+  asyncHandler(async (req, res) => {
+    const isTestMode = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_');
+    success(res, {
+      testMode: isTestMode,
+      note: isTestMode
+        ? 'Google Pay is in Stripe test mode. Open in Chrome/Edge — Stripe auto-injects a ' +
+          'test instrument. No real Google Pay account or card needed.'
+        : 'Live mode — enable Google Pay at dashboard.stripe.com/settings/payment_methods',
+      requirements: [
+        'Chrome, Edge, Brave, or any Chromium-based browser',
+        'window.PaymentRequest API must be available (all modern Chromium browsers)',
+        'Stripe PaymentElement rendered with wallets: { googlePay: "auto" }',
+        'HTTPS or localhost (test mode allows localhost)',
+        'In test mode: Stripe auto-provides test instrument — no real Google account needed',
+      ],
+      testMode_steps: [
+        '1. Open checkout in Chrome (any OS — Windows, macOS, Linux, Android)',
+        '2. Select "Google Pay" as payment method',
+        '3. A Google Pay button appears inside the Stripe PaymentElement',
+        '4. Click it — Stripe shows a test overlay (no real Google account popup in test mode)',
+        '5. Confirm — order is placed, no real charge made',
+      ],
+      testCards: {
+        note:       'In Stripe test mode, GPay uses Stripe test instruments — no real card needed',
+        manualFallback: 'If GPay button does not appear, use card 4242 4242 4242 4242',
+        expiry:     'Any future date (e.g. 12/34)',
+        cvc:        'Any 3 digits',
+      },
+    });
+  })
+);
+
+// ─── GET /api/stripe/apple-pay/test-status ────────────────────────────────────
+// Returns Apple Pay availability info for test mode debugging.
+// In test mode, Apple Pay shows on Safari/iOS automatically via Stripe.js.
+// Requirements: HTTPS, Safari or iOS WebKit, Stripe.js loaded.
+router.get(
+  '/apple-pay/test-status',
+  asyncHandler(async (req, res) => {
+    const isTestMode = (process.env.STRIPE_SECRET_KEY || '').startsWith('sk_test_');
+    success(res, {
+      testMode: isTestMode,
+      note: isTestMode
+        ? 'Apple Pay is in Stripe test mode. Use Safari on macOS/iOS with a Stripe test card. ' +
+          'The Apple Pay button appears automatically in the Stripe PaymentElement when conditions are met.'
+        : 'Live mode — Apple Pay requires domain verification at dashboard.stripe.com/settings/payment_method_domains',
+      stripePublishableKeyPrefix: (process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY || '').slice(0, 14) + '...',
+      requirements: [
+        'HTTPS connection (or localhost for testing)',
+        'Safari browser on macOS or any browser on iOS',
+        'Device with Apple Pay configured (test cards work in Stripe test mode)',
+        'Stripe PaymentElement rendered with wallets: { applePay: "auto" }',
+      ],
+      testCards: {
+        visa:       '4242 4242 4242 4242',
+        mastercard: '5555 5555 5555 4444',
+        amex:       '3782 822463 10005',
+        expiry:     'Any future date (e.g. 12/34)',
+        cvc:        'Any 3 digits (4 for Amex)',
+      },
+    });
+  })
+);
+
 module.exports = router;

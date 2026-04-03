@@ -40,14 +40,32 @@ const normaliseBrand = (brand = '') => {
   return MAP[b] || b || 'visa';
 };
 
+// ─── Google Pay wallet type helpers ──────────────────────────────────────────
+/**
+ * Google Pay payments arrive as type 'card' with wallet.type = 'google_pay'.
+ * Apple Pay similarly uses wallet.type = 'apple_pay'.
+ * This helper normalises both into a friendly wallet label.
+ *
+ * @param {import('stripe').Stripe.PaymentMethod} pm
+ * @returns {'google_pay' | 'apple_pay' | 'card' | string}
+ */
+const resolveWalletType = (pm) => {
+  if (!pm) return 'card';
+  const walletType = pm.card?.wallet?.type;
+  if (walletType === 'google_pay') return 'google_pay';
+  if (walletType === 'apple_pay')  return 'apple_pay';
+  return pm.type || 'card';
+};
+
 // ─── Extract card details from a Stripe PaymentMethod object ──────────────────
 /**
  * Returns our internal CardDetails shape from any Stripe PM object.
- * Works for card, apple_pay (card_present), google_pay, etc.
+ * Works for card, apple_pay, google_pay (all arrive as pm.type='card' with
+ * pm.card.wallet.type = 'apple_pay' | 'google_pay').
  *
  * @param {import('stripe').Stripe.PaymentMethod} pm
  * @param {string} [cardholderName]  — billing name from billing_details
- * @returns {{ cardholderName, last4, expiryMonth, expiryYear, cardType, brand } | null}
+ * @returns {{ cardholderName, last4, expiryMonth, expiryYear, cardType, brand, wallet } | null}
  */
 const extractCardDetails = (pm, cardholderName = '') => {
   if (!pm) return null;
@@ -65,6 +83,8 @@ const extractCardDetails = (pm, cardholderName = '') => {
     fingerprint:    card.fingerprint || '',  // for dedup in cards collection
     funding:        card.funding || '',      // credit | debit | prepaid
     network:        card.networks?.preferred || card.brand || '',
+    // Wallet type — 'google_pay' | 'apple_pay' | null (plain card)
+    wallet:         card.wallet?.type || null,
   };
 };
 
@@ -72,6 +92,9 @@ const extractCardDetails = (pm, cardholderName = '') => {
 const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId }) => {
   const amountCents = Math.round(amount * 100);
 
+  // Apple Pay & Google Pay are wallet wrappers around a card PM — Stripe handles
+  // them automatically when automatic_payment_methods is enabled. No special
+  // payment_method_types configuration is needed.
   const intentParams = {
     amount:   amountCents,
     currency: CURRENCY,
@@ -124,6 +147,7 @@ module.exports = {
   retrievePaymentMethod,
   extractCardDetails,
   normaliseBrand,
+  resolveWalletType,
   constructWebhookEvent,
   CURRENCY,
 };

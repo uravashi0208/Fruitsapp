@@ -107,6 +107,7 @@ const { publicRouter: reviewPublic, adminRouter: reviewAdmin } = require('./rout
 const { publicRouter: calPublic, adminRouter: calAdmin } = require('./routes/calendar');
 const dashboardRouter = require('./routes/dashboard');
 const stripeRouter    = require('./routes/stripe');
+const gpayRouter      = require('./routes/gpay');
 const { publicRouter: trackPublic, adminRouter: trackAdmin } = require('./routes/tracking');
 const { publicRouter: couponPublic, adminRouter: couponAdmin } = require('./routes/coupons');
 const notificationsRouter = require('./routes/notifications');
@@ -149,6 +150,16 @@ app.get('/health', (req, res) =>
   res.json({ status: 'ok', env: process.env.NODE_ENV, ts: Date.now() })
 );
 
+// ── Apple Pay domain verification ─────────────────────────────────────────────
+// Required for Apple Pay to work on a custom domain.
+// In Stripe test-mode, this file is served automatically by Stripe's JS SDK,
+// but serving it here ensures it works for custom backend domains too.
+// File source: https://stripe.com/docs/stripe-js/elements/payment-request-button#verifying-your-domain
+app.use(
+  '/.well-known',
+  express.static(path.join(__dirname, '.well-known'), { dotfiles: 'allow' })
+);
+
 // ── Public API ────────────────────────────────────────────────────────────────
 app.use('/api/tracking',     trackPublic);
 app.use('/api/settings',     settPublic);
@@ -169,6 +180,9 @@ app.use('/api/auth', userAuthRouter);
 
 // ── Stripe ────────────────────────────────────────────────────────────────────
 app.use('/api/stripe', stripeRouter);
+
+// ── Google Pay (direct — no Stripe) ──────────────────────────────────────────
+app.use('/api/gpay', gpayRouter);
 
 // ── User Protected ────────────────────────────────────────────────────────────
 app.use('/api/wishlist', wishUser);

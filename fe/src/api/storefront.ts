@@ -237,6 +237,25 @@ export const stripeApi = {
       `/api/stripe/payment-method/${pmId}${cardholderName ? `?name=${encodeURIComponent(cardholderName)}` : ''}`,
       { noAuth: true }
     ),
+
+  /** Dev/test helper — returns Apple Pay mode, requirements & test cards */
+  getApplePayTestStatus: () =>
+    api.get<ApiOk<{
+      testMode: boolean;
+      note: string;
+      requirements: string[];
+      testCards: Record<string, string>;
+    }>>('/api/stripe/apple-pay/test-status', { noAuth: true }),
+
+  /** Dev/test helper — returns Google Pay mode, requirements & test steps */
+  getGooglePayTestStatus: () =>
+    api.get<ApiOk<{
+      testMode: boolean;
+      note: string;
+      requirements: string[];
+      testMode_steps: string[];
+      testCards: Record<string, string>;
+    }>>('/api/stripe/google-pay/test-status', { noAuth: true }),
 };
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
@@ -449,4 +468,35 @@ export const adminCouponsApi = {
     api.patch<ApiOk<{ updated: number }>>('/api/admin/coupons/bulk/status', { ids, status }),
   bulkDelete: (ids: string[]) =>
     api.delete<ApiOk<{ deleted: number }>>('/api/admin/coupons/bulk', { body: { ids } }),
+};
+// ─── Google Pay (direct — no Stripe) ─────────────────────────────────────────
+export interface GPayConfig {
+  environment:              'TEST' | 'PRODUCTION';
+  merchantId:               string;
+  merchantName:             string;
+  allowedCardNetworks:      string[];
+  allowedAuthMethods:       string[];
+  tokenizationSpecification: object;
+}
+
+export interface GPayProcessBody {
+  paymentData: object;       // raw PaymentData from PaymentsClient.loadPaymentData()
+  billing: {
+    firstName: string; lastName: string; email: string; phone?: string;
+    address: string; city: string; state?: string; zip?: string; country?: string;
+  };
+  items: Array<{
+    productId: string | number;
+    name: string; price: number; quantity: number; image?: string;
+  }>;
+}
+
+export const gpayApi = {
+  /** Fetch merchant config (environment, merchantId, tokenization spec) */
+  getConfig: () =>
+    api.get<ApiOk<GPayConfig>>('/api/gpay/config', { noAuth: true }),
+
+  /** Send GPay PaymentData + order to backend, get order confirmation back */
+  processPayment: (body: GPayProcessBody) =>
+    api.post<ApiOk<{ orderNumber: string; orderId: string }>>('/api/gpay/process', body, { noAuth: true }),
 };
