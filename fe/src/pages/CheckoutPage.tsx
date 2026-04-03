@@ -41,7 +41,7 @@ import {
 } from '../styles/shared';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 import {
-  ordersApi, stripeApi, gpayApi, OrderPayment,
+  ordersApi, stripeApi, OrderPayment,
 } from '../api/storefront';
 import { GooglePayButton } from '../components/ui/GooglePayButton';
 import { ApiError } from '../api/client';
