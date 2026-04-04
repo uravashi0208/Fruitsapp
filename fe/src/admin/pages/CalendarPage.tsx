@@ -29,6 +29,8 @@ import {
   EventType,
 } from "../../api/calendar";
 import { useAdminDispatch, showAdminToast } from "../store";
+import AdminDatePicker from "../components/AdminDatePicker";
+import AdminTimePicker from "../components/AdminTimePicker";
 import AdminDropdown from "../components/AdminDropdown";
 
 // ── Global keyframes ──────────────────────────────────────────
@@ -207,20 +209,100 @@ const DayName = styled.div`
 `;
 
 const CalBody = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+// Each week row
+const WeekRow = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  position: relative;
 `;
 
 const Cell = styled.div<{ $other?: boolean; $today?: boolean }>`
-  min-height: 150px;
+  min-height: 140px;
   border-right: 1px solid ${t.colors.border};
   border-bottom: 1px solid ${t.colors.border};
-  padding: 10px 15px 6px;
+  padding: 10px 8px 6px;
   background: ${({ $today, $other }) =>
     $today ? `${t.colors.primary}08` : $other ? t.colors.surfaceAlt : "white"};
   transition: background 0.1s;
+  overflow: hidden;
   &:nth-child(7n) {
     border-right: none;
+  }
+`;
+
+// Overlay for multi-day spanning bars inside each WeekRow
+const WeekEventLayer = styled.div`
+  position: absolute;
+  top: 34px;
+  left: 15px;
+  right: 40px;
+  pointer-events: none;
+  z-index: 3;
+`;
+
+const SpanningBar = styled.div<{
+  $bg: string;
+  $text: string;
+  $border: string;
+  $colStart: number;
+  $span: number;
+  $track: number;
+}>`
+  position: absolute;
+  pointer-events: all;
+  cursor: pointer;
+  height: 35px;
+  top: ${({ $track }) => $track * 30}px;
+  left: calc(${({ $colStart }) => $colStart} * (100% / 7) + 4px);
+  width: calc(${({ $span }) => $span} * (100% / 7) - 8px);
+  max-width: calc(${({ $span }) => $span} * (100% / 7) - 8px);
+  background: ${({ $bg }) => $bg};
+  color: ${({ $text }) => $text};
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px 0 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 0.12s;
+  box-sizing: border-box;
+  letter-spacing: -0.01em;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: ${({ $border }) => $border};
+    border-radius: 6px 0 0 6px;
+    flex-shrink: 0;
+  }
+  &:hover {
+    opacity: 0.8;
+  }
+
+  span.bar-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  span.bar-time {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    opacity: 0.65;
+    margin-right: 2px;
   }
 `;
 
@@ -249,24 +331,42 @@ const DayNum = styled.div<{ $today?: boolean }>`
 const EventPill = styled.div<{ $bg: string; $text: string; $border: string }>`
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.6875rem;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
   font-weight: 500;
   color: ${({ $text }) => $text};
   background: ${({ $bg }) => $bg};
   border-left: 3px solid ${({ $border }) => $border};
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   cursor: pointer;
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   animation: calFadeIn 0.2s ease;
   transition: opacity 0.12s;
   &:hover {
-    opacity: 0.75;
+    opacity: 0.8;
+  }
+
+  span.pill-time {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+  span.pill-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 `;
 
@@ -386,7 +486,6 @@ const Input = styled.input`
     box-shadow: ${t.shadows.focus};
   }
 `;
-
 const Textarea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
@@ -484,7 +583,61 @@ const TypeBadge = styled.span<{ $bg: string; $text: string; $border: string }>`
 `;
 
 // ── Helpers ───────────────────────────────────────────────────
-const toYMD = (d: Date) => d.toISOString().slice(0, 10);
+// ── Colour picker ─────────────────────────────────────────────
+const SwatchGrid = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+`;
+
+const Swatch = styled.button<{ $color: string; $active: boolean }>`
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: ${({ $color }) => $color};
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  box-shadow: ${({ $active, $color }) =>
+    $active
+      ? `0 0 0 2px white, 0 0 0 4px ${$color}`
+      : `0 1px 3px rgba(0,0,0,0.18)`};
+  transform: ${({ $active }) => ($active ? "scale(1.13)" : "scale(1)")};
+
+  &:hover {
+    transform: scale(1.13);
+    box-shadow:
+      0 0 0 2px white,
+      0 0 0 4px ${({ $color }) => $color};
+  }
+
+  &::after {
+    content: ${({ $active }) => ($active ? "'✓'" : "''")};
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 30px;
+    pointer-events: none;
+  }
+`;
+
+const toYMD = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
 const formatTime = (t: string): string => {
   if (!t) return "";
@@ -520,12 +673,28 @@ const buildCalendar = (year: number, month: number) => {
   return cells;
 };
 
-const eventsForDate = (events: CalendarEvent[], date: string) =>
-  events.filter(
-    (e) => date >= e.startDate && date <= (e.endDate || e.startDate),
-  );
+// Map each COLOR_SWATCH hex to a proper readable palette (bg tint, text, border)
+// matching the same quality as TYPE_COLORS entries.
+const SWATCH_PALETTES: Record<
+  string,
+  { bg: string; text: string; border: string }
+> = {
+  "#465fff": { bg: "#ecf3ff", text: "#3641f5", border: "#465fff" },
+  "#0ba5ec": { bg: "#f0f9ff", text: "#026aa2", border: "#0ba5ec" },
+  "#9e77ed": { bg: "#f3e8ff", text: "#6941c6", border: "#9e77ed" },
+  "#f79009": { bg: "#fffaeb", text: "#b54708", border: "#f79009" },
+  "#f04438": { bg: "#fff1f0", text: "#b42318", border: "#f04438" },
+  "#12b76a": { bg: "#ecfdf3", text: "#027a48", border: "#12b76a" },
+};
 
-const getColors = (type: EventType) => TYPE_COLORS[type] ?? TYPE_COLORS.other;
+// FIX: getColors now accepts an optional custom color (ev.color).
+// Looks up the swatch palette for a proper readable bg/text/border combo —
+// falls back to type-based palette if the color is not a known swatch.
+const getColors = (type: EventType, color?: string) => {
+  const base = TYPE_COLORS[type] ?? TYPE_COLORS.other;
+  if (!color) return base;
+  return SWATCH_PALETTES[color.toLowerCase()] ?? base;
+};
 
 const emptyForm = (): CreateEventBody => ({
   title: "",
@@ -679,6 +848,73 @@ export const CalendarPage: React.FC = () => {
   const cells = buildCalendar(year, month);
   const todayYMD = toYMD(today);
 
+  // Build multi-day layout grouped by week row
+  const multiDayByRow = React.useMemo(() => {
+    const numRows = Math.ceil(cells.length / 7);
+    const colTracks: Map<number, Set<number>>[] = Array.from(
+      { length: numRows },
+      () => new Map(),
+    );
+
+    const result: Map<
+      number,
+      { ev: CalendarEvent; colStart: number; span: number; track: number }[]
+    > = new Map();
+    for (let r = 0; r < numRows; r++) result.set(r, []);
+
+    const multiDay = events.filter(
+      (ev) => ev.endDate && ev.endDate !== ev.startDate,
+    );
+
+    for (const ev of multiDay) {
+      const covered = cells
+        .map((c, i) => ({ ...c, idx: i }))
+        .filter(
+          (c) =>
+            c.date >= ev.startDate && c.date <= (ev.endDate || ev.startDate),
+        );
+      if (!covered.length) continue;
+
+      const byRow: Record<number, typeof covered> = {};
+      for (const c of covered) {
+        const row = Math.floor(c.idx / 7);
+        if (!byRow[row]) byRow[row] = [];
+        byRow[row].push(c);
+      }
+
+      for (const [rowStr, rowCells] of Object.entries(byRow)) {
+        const rowIdx = Number(rowStr);
+        const colStart = rowCells[0].idx % 7;
+        const span = rowCells.length;
+        const rowColTracks = colTracks[rowIdx];
+
+        let track = 0;
+        outer: while (true) {
+          for (let col = colStart; col < colStart + span; col++) {
+            if (rowColTracks.get(col)?.has(track)) {
+              track++;
+              continue outer;
+            }
+          }
+          break;
+        }
+        for (let col = colStart; col < colStart + span; col++) {
+          if (!rowColTracks.has(col)) rowColTracks.set(col, new Set());
+          rowColTracks.get(col)!.add(track);
+        }
+        result.get(rowIdx)!.push({ ev, colStart, span, track });
+      }
+    }
+    return result;
+  }, [cells, events]);
+
+  // Single-day events per cell (excluding multi-day)
+  const singleEventsForDate = (date: string) =>
+    events.filter(
+      (ev) =>
+        ev.startDate === date && (!ev.endDate || ev.endDate === ev.startDate),
+    );
+
   // ── Shared form JSX ───────────────────────────────────────────
   const EventForm = (
     <>
@@ -697,18 +933,18 @@ export const CalendarPage: React.FC = () => {
       <FormRow $cols={2}>
         <div>
           <Label>Start Date *</Label>
-          <Input
-            type="date"
+          <AdminDatePicker
             value={form.startDate}
-            onChange={(e) => setField("startDate", e.target.value)}
+            onChange={(val) => setField("startDate", val)}
+            placeholder="Start date"
           />
         </div>
         <div>
           <Label>End Date</Label>
-          <Input
-            type="date"
+          <AdminDatePicker
             value={form.endDate}
-            onChange={(e) => setField("endDate", e.target.value)}
+            onChange={(val) => setField("endDate", val)}
+            placeholder="End date"
           />
         </div>
       </FormRow>
@@ -716,18 +952,18 @@ export const CalendarPage: React.FC = () => {
       <FormRow $cols={2}>
         <div>
           <Label>Start Time</Label>
-          <Input
-            type="time"
+          <AdminTimePicker
             value={form.startTime}
-            onChange={(e) => setField("startTime", e.target.value)}
+            onChange={(val) => setField("startTime", val)}
+            placeholder="Start time"
           />
         </div>
         <div>
           <Label>End Time</Label>
-          <Input
-            type="time"
+          <AdminTimePicker
             value={form.endTime}
-            onChange={(e) => setField("endTime", e.target.value)}
+            onChange={(val) => setField("endTime", val)}
+            placeholder="End time"
           />
         </div>
       </FormRow>
@@ -746,29 +982,19 @@ export const CalendarPage: React.FC = () => {
           />
         </div>
         <div>
-          <Label>Colour</Label>
-          <div style={{ display: "flex", gap: 7, marginTop: 7 }}>
+          <Label>Color</Label>
+          <SwatchGrid>
             {COLOR_SWATCHES.map((c) => (
-              <div
+              <Swatch
                 key={c}
+                type="button"
+                $color={c}
+                $active={form.color === c}
                 onClick={() => setField("color", c)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  background: c,
-                  cursor: "pointer",
-                  flexShrink: 0,
-                  border:
-                    form.color === c
-                      ? "3px solid #101828"
-                      : "2px solid transparent",
-                  transition: "border 0.12s",
-                  boxSizing: "border-box",
-                }}
+                title={c}
               />
             ))}
-          </div>
+          </SwatchGrid>
         </div>
       </FormRow>
 
@@ -890,48 +1116,108 @@ export const CalendarPage: React.FC = () => {
             ))}
           </DayHeader>
           <CalBody>
-            {cells.map((cell) => {
-              const dayEvents = eventsForDate(events, cell.date);
-              return (
-                <Cell
-                  key={cell.date}
-                  $other={cell.otherMonth}
-                  $today={cell.date === todayYMD}
-                  onClick={() => !cell.otherMonth && openAdd(cell.date)}
-                  style={{ cursor: cell.otherMonth ? "default" : "pointer" }}
-                >
-                  <DayNum $today={cell.date === todayYMD}>{cell.day}</DayNum>
+            {Array.from(
+              { length: Math.ceil(cells.length / 7) },
+              (_, rowIdx) => {
+                const weekCells = cells.slice(rowIdx * 7, rowIdx * 7 + 7);
+                const rowBars = multiDayByRow.get(rowIdx) ?? [];
+                const maxTrack = rowBars.reduce(
+                  (m, b) => Math.max(m, b.track),
+                  -1,
+                );
+                const extraPad = (maxTrack + 1) * 30;
 
-                  {dayEvents.slice(0, 3).map((ev) => {
-                    const c = getColors(ev.type);
-                    return (
-                      <EventPill
-                        key={ev.id + cell.date}
-                        $bg={c.bg}
-                        $text={c.text}
-                        $border={c.border}
-                        title={ev.title}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEvent(ev);
-                        }}
-                      >
-                        {ev.startTime && !ev.allDay && (
-                          <span style={{ opacity: 0.65, flexShrink: 0 }}>
-                            {formatTime(ev.startTime)}
-                          </span>
-                        )}
-                        {ev.title}
-                      </EventPill>
-                    );
-                  })}
+                return (
+                  <WeekRow key={rowIdx}>
+                    {/* 7 day cells */}
+                    {weekCells.map((cell) => {
+                      const singleEvs = singleEventsForDate(cell.date);
+                      return (
+                        <Cell
+                          key={cell.date}
+                          $other={cell.otherMonth}
+                          $today={cell.date === todayYMD}
+                          onClick={() => !cell.otherMonth && openAdd(cell.date)}
+                          style={{
+                            cursor: cell.otherMonth ? "default" : "pointer",
+                          }}
+                        >
+                          <DayNum $today={cell.date === todayYMD}>
+                            {cell.day}
+                          </DayNum>
 
-                  {dayEvents.length > 3 && (
-                    <MoreLabel>+{dayEvents.length - 3} more</MoreLabel>
-                  )}
-                </Cell>
-              );
-            })}
+                          {extraPad > 0 && (
+                            <div
+                              style={{ height: extraPad + 6, flexShrink: 0 }}
+                            />
+                          )}
+
+                          {/* FIX: pass ev.color as second arg so custom colour is used */}
+                          {singleEvs.slice(0, 3).map((ev) => {
+                            const c = getColors(ev.type, ev.color);
+                            return (
+                              <EventPill
+                                key={ev.id}
+                                $bg={c.bg}
+                                $text={c.text}
+                                $border={c.border}
+                                title={ev.title}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEvent(ev);
+                                }}
+                              >
+                                {ev.startTime && !ev.allDay && (
+                                  <span className="pill-time">
+                                    {formatTime(ev.startTime)}
+                                  </span>
+                                )}
+                                {/* FIX: removed stray "ss" typo */}
+                                <span className="pill-title">{ev.title}</span>
+                              </EventPill>
+                            );
+                          })}
+                          {singleEvs.length > 3 && (
+                            <MoreLabel>+{singleEvs.length - 3} more</MoreLabel>
+                          )}
+                        </Cell>
+                      );
+                    })}
+
+                    {/* Multi-day spanning bars for this row */}
+                    <WeekEventLayer>
+                      {/* FIX: pass ev.color as second arg for spanning bars too */}
+                      {rowBars.map(({ ev, colStart, span, track }) => {
+                        const c = getColors(ev.type, ev.color);
+                        return (
+                          <SpanningBar
+                            key={ev.id + "-" + rowIdx}
+                            $bg={c.bg}
+                            $text={c.text}
+                            $border={c.border}
+                            $colStart={colStart}
+                            $span={span}
+                            $track={track}
+                            title={ev.title}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEvent(ev);
+                            }}
+                          >
+                            {ev.startTime && !ev.allDay && (
+                              <span className="bar-time">
+                                {formatTime(ev.startTime)}
+                              </span>
+                            )}
+                            <span className="bar-title">{ev.title}</span>
+                          </SpanningBar>
+                        );
+                      })}
+                    </WeekEventLayer>
+                  </WeekRow>
+                );
+              },
+            )}
           </CalBody>
         </Grid>
 
@@ -973,12 +1259,13 @@ export const CalendarPage: React.FC = () => {
           <Modal onClick={(e) => e.stopPropagation()}>
             <ModalHead>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {/* FIX: view modal colour dot now uses selected.color */}
                 <div
                   style={{
                     width: 12,
                     height: 12,
                     borderRadius: "50%",
-                    background: getColors(selected.type).border,
+                    background: getColors(selected.type, selected.color).border,
                     flexShrink: 0,
                   }}
                 />
@@ -993,12 +1280,12 @@ export const CalendarPage: React.FC = () => {
               <div
                 style={{ display: "flex", flexDirection: "column", gap: 14 }}
               >
-                {/* Type badge + reminder badge */}
+                {/* FIX: TypeBadge now uses selected.color */}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <TypeBadge
-                    $bg={getColors(selected.type).bg}
-                    $text={getColors(selected.type).text}
-                    $border={getColors(selected.type).border}
+                    $bg={getColors(selected.type, selected.color).bg}
+                    $text={getColors(selected.type, selected.color).text}
+                    $border={getColors(selected.type, selected.color).border}
                   >
                     {selected.type}
                   </TypeBadge>
