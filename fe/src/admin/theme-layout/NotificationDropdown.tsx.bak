@@ -1,59 +1,129 @@
-import React, { useState } from 'react';
+/**
+ * src/admin/theme-layout/NotificationDropdown.tsx
+ * Live notification bell — polls /api/admin/notifications every 30s
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dropdown } from '../theme-components/ui/dropdown/Dropdown';
+import { adminNotificationsApi, AdminNotification } from '../../api/storefront';
+
+const iconFor = (type: string) => ({ order: '🛒', stock: '📦', contact: '✉️' }[type] || '🔔');
 
 const NotificationDropdown: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [notifying, setNotifying] = useState(true);
+  const navigate  = useNavigate();
+  const [isOpen,  setIsOpen]  = useState(false);
+  const [items,   setItems]   = useState<AdminNotification[]>([]);
+  const [unread,  setUnread]  = useState(0);
 
-  const handleClick = () => {
-    setIsOpen(!isOpen);
-    setNotifying(false);
+  const load = useCallback(async () => {
+    try {
+      const [listRes, countRes] = await Promise.all([
+        adminNotificationsApi.list(),
+        adminNotificationsApi.unread(),
+      ]);
+      if (listRes.success)  setItems(listRes.data);
+      if (countRes.success) setUnread(countRes.data.count);
+    } catch { /* silently ignore */ }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const id = setInterval(load, 30_000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const handleOpen = async () => {
+    setIsOpen(o => !o);
+    if (!isOpen && unread > 0) {
+      try {
+        await adminNotificationsApi.markAllRead();
+        setUnread(0);
+        setItems(prev => prev.map(n => ({ ...n, read: true })));
+      } catch { /* ignore */ }
+    }
+  };
+
+  const timeAgo = (iso: string) => {
+    const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
   };
 
   return (
     <div style={{ position: 'relative' }}>
       <button
         className="dropdown-toggle"
-        onClick={handleClick}
+        onClick={handleOpen}
         style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          border: '1px solid var(--color-gray-200)',
-          background: 'white',
-          color: 'var(--color-gray-500)',
-          cursor: 'pointer',
-          transition: 'background 0.15s ease',
+          position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          width: 42, height: 42, borderRadius: '50%', border: '1.5px solid #e4e7ec',
+          background: 'white', color: '#475467', cursor: 'pointer',
+          transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
+          boxShadow: '0 1px 3px rgba(16,24,40,0.06)',
         }}
+        onMouseEnter={e => { Object.assign((e.currentTarget as HTMLButtonElement).style, { borderColor: '#465fff', color: '#465fff', boxShadow: '0 0 0 3px rgba(70,95,255,0.10)' }); }}
+        onMouseLeave={e => { Object.assign((e.currentTarget as HTMLButtonElement).style, { borderColor: '#e4e7ec', color: '#475467', boxShadow: '0 1px 3px rgba(16,24,40,0.06)' }); }}
       >
-        {notifying && (
-          <span
-            style={{
-              position: 'absolute',
-              right: 2,
-              top: 2,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: '#fb923c',
-              zIndex: 10,
-            }}
-          />
+        {unread > 0 && (
+          <span style={{
+            position: 'absolute', right: -2, top: -2,
+            minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
+            background: '#f04438', color: 'white', fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10, fontFamily: 'Outfit,sans-serif', border: '2px solid white',
+          }}>{unread > 99 ? '99+' : unread}</span>
         )}
         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
           <path fillRule="evenodd" clipRule="evenodd" d="M10.75 2.29248C10.75 1.87827 10.4143 1.54248 10 1.54248C9.58583 1.54248 9.25004 1.87827 9.25004 2.29248V2.83613C6.08266 3.20733 3.62504 5.9004 3.62504 9.16748V14.4591H3.33337C2.91916 14.4591 2.58337 14.7949 2.58337 15.2091C2.58337 15.6234 2.91916 15.9591 3.33337 15.9591H4.37504H15.625H16.6667C17.0809 15.9591 17.4167 15.6234 17.4167 15.2091C17.4167 14.7949 17.0809 14.4591 16.6667 14.4591H16.375V9.16748C16.375 5.9004 13.9174 3.20733 10.75 2.83613V2.29248ZM14.875 14.4591V9.16748C14.875 6.47509 12.6924 4.29248 10 4.29248C7.30765 4.29248 5.12504 6.47509 5.12504 9.16748V14.4591H14.875ZM8.00004 17.7085C8.00004 18.1228 8.33583 18.4585 8.75004 18.4585H11.25C11.6643 18.4585 12 18.1228 12 17.7085C12 17.2943 11.6643 16.9585 11.25 16.9585H8.75004C8.33583 16.9585 8.00004 17.2943 8.00004 17.7085Z" />
         </svg>
       </button>
+
       <Dropdown isOpen={isOpen} onClose={() => setIsOpen(false)}>
-        <div style={{ padding: '12px 16px', minWidth: 280 }}>
-          <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-gray-900)', marginBottom: 8 }}>
-            Notifications
-          </p>
-          <p style={{ fontSize: 13, color: 'var(--color-gray-500)' }}>No new notifications</p>
+        <div style={{ minWidth: 320, maxWidth: 360 }}>
+          <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #f5f7ff 0%, #f9fafb 100%)' }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#101828' }}>
+              Notifications {unread > 0 && <span style={{ color: '#f04438' }}>({unread})</span>}
+            </span>
+            {items.length > 0 && (
+              <button onClick={async () => { await adminNotificationsApi.markAllRead(); setUnread(0); setItems(p => p.map(n => ({...n, read: true}))); }}
+                style={{ fontSize: 11, color: '#465fff', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}>
+                Mark all read
+              </button>
+            )}
+          </div>
+          <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+            {items.length === 0 ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: '#98a2b3', fontSize: 13 }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🔔</div>No notifications yet
+              </div>
+            ) : items.slice(0, 20).map(n => (
+              <div key={n.id}
+                onClick={() => { setIsOpen(false); if (n.link) navigate(n.link); }}
+                style={{ padding: '12px 16px', borderBottom: '1px solid #f9fafb', cursor: n.link ? 'pointer' : 'default',
+                  background: n.read ? 'transparent' : '#f5f7ff', display: 'flex', gap: 12, alignItems: 'flex-start' }}
+              >
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{iconFor(n.type)}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: '#101828', marginBottom: 2 }}>{n.title}</div>
+                  <div style={{ fontSize: 12, color: '#475467', lineHeight: 1.4 }}>{n.message}</div>
+                  <div style={{ fontSize: 11, color: '#98a2b3', marginTop: 4 }}>{timeAgo(n.createdAt)}</div>
+                </div>
+                <button onClick={async e => { e.stopPropagation(); await adminNotificationsApi.delete(n.id); setItems(p => p.filter(x => x.id !== n.id)); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#98a2b3', fontSize: 16, padding: 2, flexShrink: 0 }}
+                  title="Dismiss">×</button>
+              </div>
+            ))}
+          </div>
+          {items.length > 0 && (
+            <div style={{ padding: '10px 16px', borderTop: '1px solid #f0f0f0', textAlign: 'center' }}>
+              <button onClick={load} style={{ fontSize: 12, color: '#465fff', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Outfit,sans-serif', fontWeight: 600, letterSpacing: '-0.01em' }}>
+                Refresh
+              </button>
+            </div>
+          )}
         </div>
       </Dropdown>
     </div>

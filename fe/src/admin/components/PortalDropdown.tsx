@@ -27,9 +27,11 @@ export const closeAllDropdowns = () =>
 /* ── Styled ─────────────────────────────────────────────────── */
 const TriggerBtn = styled.button`
   background: none; border: none; cursor: pointer;
-  color: ${t.colors.textMuted}; padding: 4px; border-radius: 6px;
+  color: ${t.colors.textMuted}; padding: 6px; border-radius: 8px;
   display: flex; align-items: center;
-  &:hover { background: ${t.colors.border}; color: ${t.colors.textPrimary}; }
+  transition: background 0.12s ease, color 0.12s ease;
+  &:hover { background: #f0f2f5; color: ${t.colors.textPrimary}; }
+  &:active { background: #e8eaee; }
 `;
 
 const Menu = styled.div<{ $top: number; $right: number }>`
@@ -37,12 +39,21 @@ const Menu = styled.div<{ $top: number; $right: number }>`
   top: ${({ $top }) => $top}px;
   right: ${({ $right }) => $right}px;
   background: white;
-  border: 1px solid ${t.colors.border};
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  min-width: 150px;
+  border: 1.5px solid #e4e7ec;
+  border-radius: 14px;
+  box-shadow:
+    0 4px 6px -2px rgba(16, 24, 40, 0.03),
+    0 12px 30px -4px rgba(16, 24, 40, 0.10),
+    0 0 0 1px rgba(70, 95, 255, 0.04);
+  min-width: 155px;
   z-index: 99999;
   overflow: hidden;
+  animation: portalFadeIn 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+  @keyframes portalFadeIn {
+    from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  }
 `;
 
 export const MenuItem = styled.button<{ $danger?: boolean }>`
@@ -50,8 +61,14 @@ export const MenuItem = styled.button<{ $danger?: boolean }>`
   width: 100%; padding: 10px 14px;
   background: none; border: none; cursor: pointer;
   font-size: 0.8125rem; font-weight: 500;
+  letter-spacing: -0.01em;
   color: ${({ $danger }) => $danger ? t.colors.danger : t.colors.textSecondary};
-  &:hover { background: ${({ $danger }) => $danger ? '#fef3f2' : t.colors.surfaceAlt}; }
+  transition: background 0.12s ease, color 0.12s ease, padding-left 0.12s ease;
+  &:hover {
+    background: ${({ $danger }) => $danger ? '#fef3f2' : '#f5f7ff'};
+    color: ${({ $danger }) => $danger ? t.colors.danger : '#465fff'};
+    padding-left: 18px;
+  }
 `;
 
 /* ── Component ───────────────────────────────────────────────── */

@@ -65,19 +65,22 @@ const Wrapper = styled.div`position: relative; display: inline-block;`;
 
 const TriggerBtn = styled.button<{ $disabled?: boolean; $loading?: boolean }>`
   display: flex; align-items: center; gap: 6px;
-  border: 1px solid ${t.colors.border}; border-radius: 10px;
+  border: 1.5px solid ${t.colors.border}; border-radius: 10px;
   padding: 0 14px; height: 40px; background: white;
   font-size: 0.875rem; font-weight: 500; color: ${t.colors.textSecondary};
   cursor: ${({ $disabled, $loading }) => ($disabled || $loading ? 'not-allowed' : 'pointer')};
   opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
   user-select: none; white-space: nowrap;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
   &:hover:not(:disabled) {
-    background: ${t.colors.surfaceAlt};
+    background: #f5f7ff;
     border-color: ${t.colors.primary};
     color: ${t.colors.primary};
+    box-shadow: 0 0 0 3px rgba(70, 95, 255, 0.10);
   }
-  svg.chevron { margin-left: 2px; transition: transform 0.2s; }
+  svg.chevron { margin-left: 2px; transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1); }
   &[data-open='true'] svg.chevron { transform: rotate(180deg); }
   ${({ $loading }) => $loading && css`
     color: ${t.colors.primary};
@@ -90,17 +93,22 @@ const SpinIcon = styled(Loader)`animation: ${spin} 0.8s linear infinite;`;
 
 const Menu = styled.div`
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 9999;
-  background: white; border: 1px solid ${t.colors.border}; border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(16,24,40,0.12), 0 2px 8px rgba(16,24,40,0.06);
+  background: white;
+  border: 1.5px solid #e4e7ec;
+  border-radius: 14px;
+  box-shadow:
+    0 4px 6px -2px rgba(16, 24, 40, 0.03),
+    0 12px 30px -4px rgba(16, 24, 40, 0.10),
+    0 0 0 1px rgba(70, 95, 255, 0.04);
   min-width: 175px; overflow: hidden;
   animation: ${fadeIn} 0.18s cubic-bezier(0.34,1.56,0.64,1) both;
 `;
 
 const MenuHeader = styled.div`
   padding: 10px 14px 8px;
-  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: ${t.colors.textMuted};
-  border-bottom: 1px solid ${t.colors.border};
+  border-bottom: 1px solid #f0f2f5;
 `;
 
 const MenuItem = styled.button<{ $color?: string }>`
@@ -109,8 +117,13 @@ const MenuItem = styled.button<{ $color?: string }>`
   background: none; border: none; cursor: pointer;
   font-size: 0.875rem; font-weight: 500;
   color: ${({ $color }) => $color ?? t.colors.textSecondary};
-  transition: background 0.12s, color 0.12s; text-align: left;
-  &:hover { background: ${t.colors.surfaceAlt}; color: ${({ $color }) => $color ?? t.colors.textPrimary}; }
+  transition: background 0.12s ease, color 0.12s ease, padding-left 0.12s ease;
+  text-align: left; letter-spacing: -0.01em;
+  &:hover {
+    background: #f5f7ff;
+    color: ${({ $color }) => $color ?? t.colors.textPrimary};
+    padding-left: 18px;
+  }
 `;
 
 const Divider = styled.div`height: 1px; background: ${t.colors.border}; margin: 2px 0;`;

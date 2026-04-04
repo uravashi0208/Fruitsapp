@@ -31,13 +31,15 @@ const UserDropdown: React.FC = () => {
           alignItems: 'center',
           gap: 8,
           background: 'transparent',
-          border: 'none',
+          border: '1.5px solid transparent',
           cursor: 'pointer',
-          padding: '4px 8px',
-          borderRadius: 8,
-          transition: 'background 0.15s ease',
+          padding: '4px 10px 4px 6px',
+          borderRadius: 24,
+          transition: 'background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
           fontFamily: 'var(--font-outfit)',
         }}
+        onMouseEnter={e => { Object.assign((e.currentTarget as HTMLButtonElement).style, { background: '#f5f7ff', borderColor: '#e4e7ec', boxShadow: '0 0 0 2px rgba(70,95,255,0.08)' }); }}
+        onMouseLeave={e => { Object.assign((e.currentTarget as HTMLButtonElement).style, { background: 'transparent', borderColor: 'transparent', boxShadow: 'none' }); }}
       >
         <span
           style={{
@@ -89,13 +91,20 @@ const UserDropdown: React.FC = () => {
         onClose={() => setIsOpen(false)}
         className=""
       >
-        <div style={{ padding: 12, minWidth: 220 }}>
-          <div style={{ padding: '4px 12px 12px', borderBottom: '1px solid var(--color-gray-100)', marginBottom: 4 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-gray-900)', fontFamily: 'var(--font-outfit)' }}>
+        <div style={{ padding: 10, minWidth: 230 }}>
+          <div style={{
+            padding: '8px 12px 12px',
+            borderBottom: '1px solid #f0f2f5',
+            marginBottom: 6,
+            background: 'linear-gradient(135deg, #f5f7ff 0%, #f9fafb 100%)',
+            borderRadius: '8px 8px 0 0',
+            margin: '-10px -10px 6px',
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#101828', fontFamily: 'var(--font-outfit)', letterSpacing: '-0.01em' }}>
               {displayName}
             </div>
             {displayEmail && (
-              <div style={{ fontSize: 12, color: 'var(--color-gray-500)', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: '#98a2b3', marginTop: 2, letterSpacing: '-0.01em' }}>
                 {displayEmail}
               </div>
             )}
@@ -113,25 +122,28 @@ const UserDropdown: React.FC = () => {
             Profile
           </DropdownItem>
 
-          <div style={{ borderTop: '1px solid var(--color-gray-100)', marginTop: 4, paddingTop: 4 }}>
+          <div style={{ borderTop: '1px solid #f0f2f5', marginTop: 4, paddingTop: 4 }}>
             <button
               onClick={handleLogout}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#fef3f2'; (e.currentTarget as HTMLButtonElement).style.paddingLeft = '18px'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.paddingLeft = '12px'; }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                padding: '8px 12px',
+                gap: 10,
+                padding: '9px 12px',
                 borderRadius: 8,
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: 'pointer',
-                transition: 'background 0.15s ease',
+                transition: 'background 0.12s ease, padding-left 0.12s ease, color 0.12s ease',
                 color: '#f04438',
                 width: '100%',
                 border: 'none',
                 background: 'transparent',
                 textAlign: 'left',
                 fontFamily: 'var(--font-outfit)',
+                letterSpacing: '-0.01em',
               }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>

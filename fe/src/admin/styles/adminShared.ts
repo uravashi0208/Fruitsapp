@@ -125,21 +125,27 @@ export const AdminInput = styled.input`
 
 export const AdminSelect = styled.select`
   width: 100%;
-  padding: 0.625rem 2rem 0.625rem 0.875rem;
-  border: 1px solid ${t.colors.border};
-  border-radius: ${t.radii.lg};
+  padding: 0.625rem 2.25rem 0.625rem 0.875rem;
+  border: 1.5px solid ${t.colors.border};
+  border-radius: 10px;
   font-family: ${t.fonts.body};
   font-size: 0.875rem;
+  font-weight: 500;
   color: ${t.colors.textPrimary};
-  background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2398a2b3' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center / 16px;
+  background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23465fff' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center / 14px;
   appearance: none;
   outline: none;
   cursor: pointer;
-  box-shadow: ${t.shadows.xs};
-  transition: border-color ${t.transitions.fast}, background 0.2s ease;
-  &:focus { border-color: ${t.colors.primary}; box-shadow: ${t.shadows.focus}; }
-  html.dark & { background-color: #252e42; border-color: #2a3347; color: #f0f4fa; }
-  html.dark &:focus { border-color: #465fff; }
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  letter-spacing: -0.01em;
+  &:hover { border-color: ${t.colors.primaryLight}; }
+  &:focus {
+    border-color: ${t.colors.primary};
+    box-shadow: 0 0 0 3px rgba(70, 95, 255, 0.12);
+  }
+  html.dark & { background-color: #1e293b; border-color: #334155; color: #f0f4fa; }
+  html.dark &:focus { border-color: #465fff; box-shadow: 0 0 0 3px rgba(70, 95, 255, 0.2); }
 `;
 
 export const AdminTextarea = styled.textarea`

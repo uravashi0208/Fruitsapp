@@ -159,10 +159,6 @@ const InfoBox       = styled.div`
   background: rgba(130,174,70,0.06);
   border-radius: 4px; line-height: 1.6;
 `;
-const PayGroupTitle = styled.p`
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .7px; color: #bbb; margin: 14px 0 6px;
-`;
 const SpinIcon = styled(Loader)`animation: ${spin} 0.8s linear infinite;`;
 
 // Stripe PaymentElement wrapper styles
@@ -248,37 +244,11 @@ const METHODS: MethodDef[] = [
     info: 'One-tap checkout with your saved Google Pay card. Powered directly by the Google Pay API — no Stripe required.' },
   { id: 'paypal',     label: 'PayPal',                    icon: '🅿️', badge: 'Popular', group: 'bnpl',
     info: 'Pay now or use PayPal Pay Later. You will be redirected to PayPal.' },
-  { id: 'klarna',     label: 'Klarna — Pay in 3',         icon: '🟣', badge: 'Buy now, pay later', group: 'bnpl',
-    info: 'Split into 3 interest-free instalments. Available across the EU.' },
-  { id: 'revolut',    label: 'Revolut Pay',               icon: '🔷', group: 'bnpl',
-    info: 'Instant payment via your Revolut account.' },
-  { id: 'sepa_debit', label: 'SEPA Direct Debit',         icon: '🏦', group: 'bank',
-    info: 'Direct debit from any EU bank account via Stripe.' },
-  { id: 'ideal',      label: 'iDEAL',                     icon: '🇳🇱', group: 'bank',
-    info: 'Netherlands — pay directly from your Dutch bank account.' },
-  { id: 'bancontact', label: 'Bancontact',                icon: '🇧🇪', badge: 'Belgium', group: 'bank',
-    info: "Belgium's most popular payment method — instant bank transfer." },
-  { id: 'sofort',     label: 'SOFORT / Klarna Pay Now',   icon: '⚡', group: 'bank',
-    info: 'Instant bank transfer — Germany, Austria & Switzerland.' },
-  { id: 'giropay',    label: 'Giropay',                   icon: '🇩🇪', group: 'bank',
-    info: 'Germany — secure online bank transfer via Stripe.' },
-  { id: 'eps',        label: 'EPS Transfer',              icon: '🇦🇹', group: 'bank',
-    info: 'Austria — electronic payment standard.' },
-  { id: 'przelewy24', label: 'Przelewy24',                icon: '🇵🇱', badge: 'Poland', group: 'local',
-    info: "Poland's most popular gateway — Stripe powered." },
   { id: 'blik',       label: 'BLIK',                      icon: '📱', badge: 'Poland', group: 'local',
     info: 'Poland — generate a 6-digit code in your banking app.' },
   { id: 'cod',        label: 'Cash on Delivery',          icon: '💵', group: 'offline',
     info: 'Pay in cash when your order arrives. No card needed.' },
 ];
-
-const GROUP_LABELS: Record<string, string> = {
-  digital: '💳 Cards & Digital Wallets',
-  bnpl:    '🛍️ Pay Later & E-Wallets',
-  bank:    '🏦 European Bank Transfers',
-  local:   '🌍 Local Payment Methods',
-  offline: '📦 Offline',
-};
 const GROUP_ORDER = ['digital', 'bnpl', 'bank', 'local', 'offline'] as const;
 
 // ─── Stripe Payment Form (inner — uses hooks that need <Elements>) ─────────────
@@ -752,7 +722,6 @@ const CheckoutPage: React.FC = () => {
                 const methods = METHODS.filter(m => m.group === group);
                 return (
                   <div key={group}>
-                    <PayGroupTitle>{GROUP_LABELS[group]}</PayGroupTitle>
                     {methods.map(m => (
                       <React.Fragment key={m.id}>
                         <PayOption $active={payMethod === m.id}>
