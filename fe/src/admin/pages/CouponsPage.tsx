@@ -1,8 +1,13 @@
 /**
  * src/admin/pages/CouponsPage.tsx
- * Admin: full coupon / promo code management — uses shared AdminDataTable.
+ * Admin: full coupon / promo code management — refactored to match TestimonialsPage pattern.
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState } from "react";
+import {
+  PortalDropdown,
+  MenuItem,
+  closeAllDropdowns,
+} from "../components/PortalDropdown";
 import styled from "styled-components";
 import {
   Plus,
@@ -14,12 +19,13 @@ import {
   Copy,
   CheckCircle,
   XCircle,
+  Percent,
+  DollarSign,
 } from "lucide-react";
 import { ExportDropdown } from "../components/ExportDropdown";
 import { exportData } from "../utils/exportUtils";
 import { adminTheme as t } from "../styles/adminTheme";
 import {
-  AdminFlex,
   AdminBtn,
   IconBtn,
   ToggleTrack,
@@ -35,7 +41,7 @@ import {
   ModalFooter,
 } from "../styles/adminShared";
 import { useAdminDispatch, showAdminToast } from "../store";
-import { adminCouponsApi, AdminCoupon } from "../../api/storefront";
+import { adminCouponsApi, AdminCoupon } from "../../api/admin";
 import { ApiError } from "../../api/client";
 import { formatDate } from "../utils/formatDate";
 import AdminDataTable, {
@@ -45,8 +51,9 @@ import AdminDataTable, {
   CheckBox,
 } from "../components/AdminDataTable";
 import AdminDropdown from "../components/AdminDropdown";
+import { useAdminCoupons } from "../../hooks/useAdminApi";
 
-// ── Styled ─────────────────────────────────────────────────────────────────────
+// ── Page-specific styled components ───────────────────────────────────────────
 
 const CodeBadge = styled.div`
   display: inline-flex;
@@ -60,6 +67,7 @@ const CodeBadge = styled.div`
   padding: 3px 10px;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.15s;
   &:hover {
     background: rgba(70, 95, 255, 0.15);
   }
@@ -80,6 +88,140 @@ const ProgressBar = styled.div<{ $pct: number }>`
       $pct >= 90 ? t.colors.danger : t.colors.primary};
     border-radius: 3px;
   }
+`;
+
+const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid ${t.colors.border};
+  border-radius: 10px;
+  padding: 0 12px;
+  background: white;
+  height: 40px;
+  min-width: 200px;
+`;
+
+const SearchInp = styled.input`
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  background: transparent;
+  flex: 1;
+  color: ${t.colors.textPrimary};
+  &::placeholder {
+    color: ${t.colors.textMuted};
+  }
+`;
+
+const BulkBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 6px 4px 12px;
+  border-radius: 10px;
+  background: ${t.colors.primaryGhost};
+  border: 1.5px solid ${t.colors.primary};
+  box-shadow: 0 2px 8px ${t.colors.primaryGhost};
+  animation: bulkSlideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  @keyframes bulkSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-3px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+`;
+
+const BulkCount = styled.span`
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: ${t.colors.primary};
+  padding-right: 10px;
+  border-right: 1.5px solid ${t.colors.border};
+  white-space: nowrap;
+  span {
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
+`;
+
+const BulkActionBtn = styled.button<{
+  $variant?: "success" | "warning" | "danger" | "ghost";
+}>`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  ${({ $variant }) =>
+    $variant === "success" &&
+    `background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
+  ${({ $variant }) =>
+    $variant === "warning" &&
+    `background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
+  ${({ $variant }) =>
+    $variant === "danger" &&
+    `background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
+  ${({ $variant }) =>
+    (!$variant || $variant === "ghost") &&
+    `background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const TypeToggle = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+`;
+
+const TypeBtn = styled.button<{ $active: boolean }>`
+  height: 38px;
+  border-radius: ${t.radii.lg};
+  border: 1.5px solid
+    ${({ $active }) => ($active ? t.colors.primary : t.colors.border)};
+  background: ${({ $active }) => ($active ? t.colors.primaryGhost : "white")};
+  color: ${({ $active }) =>
+    $active ? t.colors.primary : t.colors.textSecondary};
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+  font-family: ${t.fonts.body};
+  &:hover {
+    border-color: ${t.colors.primary};
+    color: ${t.colors.primary};
+  }
+`;
+
+const PreviewBanner = styled.div`
+  padding: 10px 14px;
+  background: ${t.colors.primaryGhost};
+  border: 1px solid ${t.colors.primary}30;
+  border-radius: ${t.radii.lg};
+  font-size: 0.8125rem;
+  color: ${t.colors.primary};
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
 const SwitchWrap = styled.label`
@@ -118,99 +260,11 @@ const SwitchWrap = styled.label`
   }
 `;
 
-const SearchBar2 = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid ${t.colors.border};
-  border-radius: 10px;
-  padding: 0 12px;
-  background: white;
-  height: 40px;
-  min-width: 200px;
-`;
-const SearchInput2 = styled.input`
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  background: transparent;
-  flex: 1;
-  color: ${t.colors.textPrimary};
-  &::placeholder {
-    color: ${t.colors.textMuted};
-  }
-`;
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-const BulkBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 4px 6px 4px 12px;
-  border-radius: 10px;
-  background: ${t.colors.primaryGhost};
-  border: 1.5px solid ${t.colors.primary};
-  box-shadow: 0 2px 8px ${t.colors.primaryGhost};
-  animation: bulkSlideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  @keyframes bulkSlideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(-3px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-`;
-const BulkCount = styled.span`
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: ${t.colors.primary};
-  padding-right: 10px;
-  border-right: 1.5px solid ${t.colors.border};
-  white-space: nowrap;
-  span {
-    font-size: 0.9rem;
-    font-weight: 800;
-  }
-`;
-const BulkActionBtn = styled.button<{
-  $variant?: "success" | "warning" | "danger" | "ghost";
-}>`
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  ${({ $variant }) =>
-    $variant === "success" &&
-    `background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "warning" &&
-    `background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "danger" &&
-    `background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    (!$variant || $variant === "ghost") &&
-    `background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
+const PER_PAGE = 10; // ← same name as TestimonialsPage
 
-const PAGE_SIZE = 10;
-
-const emptyForm: Partial<AdminCoupon> & { code: string } = {
+const emptyForm = (): Partial<AdminCoupon> & { code: string } => ({
   code: "",
   type: "percent",
   value: 10,
@@ -218,7 +272,7 @@ const emptyForm: Partial<AdminCoupon> & { code: string } = {
   maxUses: null,
   expiresAt: null,
   status: "active",
-};
+});
 
 const COLUMNS: ColDef[] = [
   { key: "code", label: "Code" },
@@ -227,82 +281,88 @@ const COLUMNS: ColDef[] = [
   { key: "usage", label: "Usage" },
   { key: "expires", label: "Expires" },
   { key: "status", label: "Status" },
-  { key: "actions", label: "Actions" },
+  { key: "actions", label: "Actions", thProps: { $width: "100px" } },
 ];
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export const CouponsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
+  // ── Data (same pattern as TestimonialsPage) ────────────────────────────────
+  const { data: rawData, loading, error, refetch } = useAdminCoupons();
+
+  // ── Filter / search / pagination state (same pattern) ─────────────────────
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">(
+    "",
+  );
+  const [page, setPage] = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // ── Modal / form state ─────────────────────────────────────────────────────
+  const [mode, setMode] = useState<"create" | "edit" | "delete" | null>(null);
+  const [selected, setSelected] = useState<AdminCoupon | null>(null);
+  const [form, setForm] = useState(emptyForm());
+  const [saving, setSaving] = useState(false);
+
+  // ── Inline toggle optimistic state (same pattern) ─────────────────────────
   const [localStatus, setLocalStatus] = useState<
     Record<string, "active" | "inactive">
   >({});
 
-  const toggleStatus = async (coupon: AdminCoupon) => {
-    const current = localStatus[coupon.id] ?? coupon.status;
-    const next = current === "active" ? "inactive" : "active";
-    setLocalStatus((prev) => ({ ...prev, [coupon.id]: next }));
-    try {
-      await adminCouponsApi.update(coupon.id, { status: next });
-    } catch {
-      setLocalStatus((prev) => ({ ...prev, [coupon.id]: current }));
-      dispatch(
-        showAdminToast({ message: "Failed to update status", type: "error" }),
-      );
-    }
-  };
-
-  const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("");
-  const [modal, setModal] = useState(false);
-  const [editing, setEditing] = useState<AdminCoupon | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
-  const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  // ── Copy state ─────────────────────────────────────────────────────────────
   const [copied, setCopied] = useState<string | null>(null);
+
+  // ── Bulk selection state ───────────────────────────────────────────────────
   const [selIds, setSelIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<
     "active" | "inactive" | "delete" | null
   >(null);
-  const [exportLoading, setExportLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await adminCouponsApi.list({
-        page,
-        limit: PAGE_SIZE,
-        search,
-        status: statusF,
-      });
-      setCoupons(res.success ? res.data : []);
-      setTotal(res.pagination?.total ?? 0);
-    } catch {
-      setCoupons([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, statusF]);
+  // ── Client-side filtering (same pattern as TestimonialsPage) ──────────────
+  const items = (rawData ?? ([] as AdminCoupon[])).filter(
+    (item: AdminCoupon) => {
+      const q = search.toLowerCase();
+      const matchQ = !q || item.code.toLowerCase().includes(q);
+      const matchS = !statusFilter || item.status === statusFilter;
+      return matchQ && matchS;
+    },
+  );
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const totalPages = Math.max(1, Math.ceil(items.length / PER_PAGE));
+  const paged = items.slice((page - 1) * PER_PAGE, page * PER_PAGE); // ← same as TestimonialsPage
+
+  // ── Modal helpers ──────────────────────────────────────────────────────────
 
   const openCreate = () => {
-    setEditing(null);
-    setForm({ ...emptyForm });
-    setModal(true);
+    setSelected(null);
+    setForm(emptyForm());
+    setMode("create");
   };
-  const openEdit = (c: AdminCoupon) => {
-    setEditing(c);
-    setForm({ ...c });
-    setModal(true);
+
+  const openEdit = (coupon: AdminCoupon) => {
+    setSelected(coupon);
+    setForm({ ...coupon });
+    setMode("edit");
   };
+
+  const openDelete = (coupon: AdminCoupon) => {
+    setSelected(coupon);
+    setMode("delete");
+  };
+
+  const closeModal = () => {
+    setMode(null);
+    setSelected(null);
+    setForm(emptyForm());
+  };
+
+  const setField = (k: string, v: unknown) =>
+    setForm((f: typeof form) => ({ ...f, [k]: v }));
+
+  // ── API: Create / Update ───────────────────────────────────────────────────
 
   const handleSave = async () => {
     if (!form.code?.trim()) {
@@ -322,23 +382,19 @@ export const CouponsPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      if (editing) {
-        const res = await adminCouponsApi.update(editing.id, form);
-        setCoupons((prev) =>
-          prev.map((c) => (c.id === editing.id ? res.data : c)),
-        );
+      if (mode === "edit" && selected) {
+        await adminCouponsApi.update(selected.id, form);
         dispatch(
           showAdminToast({ message: "Coupon updated", type: "success" }),
         );
       } else {
-        const res = await adminCouponsApi.create(form);
-        setCoupons((prev) => [res.data, ...prev]);
-        setTotal((t) => t + 1);
+        await adminCouponsApi.create(form);
         dispatch(
           showAdminToast({ message: "Coupon created", type: "success" }),
         );
       }
-      setModal(false);
+      closeModal();
+      refetch(); // ← same as TestimonialsPage
     } catch (e) {
       dispatch(
         showAdminToast({
@@ -351,14 +407,16 @@ export const CouponsPage: React.FC = () => {
     }
   };
 
+  // ── API: Delete ────────────────────────────────────────────────────────────
+
   const handleDelete = async () => {
-    if (!deleteId) return;
-    setDeleting(true);
+    if (!selected) return;
+    setSaving(true);
     try {
-      await adminCouponsApi.delete(deleteId);
-      setCoupons((prev) => prev.filter((c) => c.id !== deleteId));
-      setTotal((t) => t - 1);
+      await adminCouponsApi.delete(selected.id);
       dispatch(showAdminToast({ message: "Coupon deleted", type: "success" }));
+      closeModal();
+      refetch(); // ← same as TestimonialsPage
     } catch (e) {
       dispatch(
         showAdminToast({
@@ -367,10 +425,33 @@ export const CouponsPage: React.FC = () => {
         }),
       );
     } finally {
-      setDeleting(false);
-      setDeleteId(null);
+      setSaving(false);
     }
   };
+
+  // ── Inline status toggle (same pattern as TestimonialsPage) ───────────────
+
+  const toggleStatus = async (coupon: AdminCoupon) => {
+    const current = localStatus[coupon.id] ?? coupon.status;
+    const next = current === "active" ? "inactive" : "active";
+    try {
+      await adminCouponsApi.update(coupon.id, { status: next });
+      dispatch(
+        showAdminToast({
+          message: `"${coupon.code}" set to ${next}`,
+          type: "info",
+        }),
+      );
+      refetch(); // ← same as TestimonialsPage
+    } catch {
+      setLocalStatus((prev) => ({ ...prev, [coupon.id]: current }));
+      dispatch(
+        showAdminToast({ message: "Failed to update status", type: "error" }),
+      );
+    }
+  };
+
+  // ── Copy code ──────────────────────────────────────────────────────────────
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code).then(() => {
@@ -379,12 +460,14 @@ export const CouponsPage: React.FC = () => {
     });
   };
 
-  const field = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  // ── Bulk selection helpers ─────────────────────────────────────────────────
 
-  const allIds = coupons.map((c) => c.id);
-  const allChecked = allIds.length > 0 && allIds.every((id) => selIds.has(id));
+  const allIds = paged.map((c: AdminCoupon) => c.id);
+  const allChecked =
+    allIds.length > 0 && allIds.every((id: string) => selIds.has(id));
+
   const toggleAll = () => setSelIds(allChecked ? new Set() : new Set(allIds));
+
   const toggleOne = (id: string) =>
     setSelIds((prev) => {
       const s = new Set(prev);
@@ -392,51 +475,66 @@ export const CouponsPage: React.FC = () => {
       return s;
     });
 
-  const handleBulkAction = useCallback(
-    async (action: "active" | "inactive" | "delete") => {
-      if (!selIds.size) return;
-      setBulkWorking(true);
-      const ids = Array.from(selIds);
-      try {
-        if (action === "delete") {
-          await adminCouponsApi.bulkDelete(ids);
-          dispatch(
-            showAdminToast({
-              message: `${ids.length} coupon(s) deleted`,
-              type: "warning",
-            }),
-          );
-        } else {
-          await adminCouponsApi.bulkUpdateStatus(ids, action);
-          dispatch(
-            showAdminToast({
-              message: `${ids.length} coupon(s) set to ${action}`,
-              type: "success",
-            }),
-          );
-        }
-        setSelIds(new Set());
-        setBulkConfirm(null);
-        load();
-      } catch (err: any) {
+  // ── API: Bulk actions ──────────────────────────────────────────────────────
+
+  const handleBulkAction = async (action: "active" | "inactive" | "delete") => {
+    if (!selIds.size) return;
+    setBulkWorking(true);
+    const ids = Array.from(selIds);
+    try {
+      if (action === "delete") {
+        await adminCouponsApi.bulkDelete(ids);
         dispatch(
           showAdminToast({
-            message: err?.message || "Bulk action failed",
-            type: "error",
+            message: `${ids.length} coupon(s) deleted`,
+            type: "warning",
           }),
         );
-      } finally {
-        setBulkWorking(false);
+      } else {
+        await adminCouponsApi.bulkUpdateStatus(ids, action);
+        dispatch(
+          showAdminToast({
+            message: `${ids.length} coupon(s) set to ${action}`,
+            type: "success",
+          }),
+        );
       }
-    },
-    [selIds, dispatch, load],
-  );
+      setSelIds(new Set());
+      setBulkConfirm(null);
+      refetch(); // ← same as TestimonialsPage
+    } catch (err: any) {
+      dispatch(
+        showAdminToast({
+          message: err?.message || "Bulk action failed",
+          type: "error",
+        }),
+      );
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ animation: "adminFadeIn 0.3s ease both" }}>
+    <>
+      {error && (
+        <div
+          style={{
+            color: t.colors.danger,
+            padding: "1rem",
+            background: "#fff5f5",
+            borderRadius: 8,
+            marginBottom: 16,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       <AdminDataTable
         title="Coupons & Promo Codes"
-        subtitle={`${total} coupon(s) total`}
+        subtitle="Manage discount codes and promotions"
         actions={
           <>
             <ExportDropdown
@@ -454,11 +552,29 @@ export const CouponsPage: React.FC = () => {
                       { key: "minOrder", label: "Min Order ($)" },
                       { key: "maxUses", label: "Max Uses" },
                       { key: "usedCount", label: "Used" },
-                      { key: "status", label: "Status" },
-                      { key: "expiresAt", label: "Expires At" },
-                      { key: "createdAt", label: "Created At" },
+                      {
+                        label: "Status",
+                        resolve: (row) => {
+                          const iso = row["status"] as string;
+                          return iso === "active" ? "Active" : "Inactive";
+                        },
+                      },
+                      {
+                        label: "Expires At",
+                        resolve: (row) => {
+                          const iso = row["expiresAt"] as string;
+                          return iso ? formatDate(iso) : "Never";
+                        },
+                      },
+                      {
+                        label: "Created At",
+                        resolve: (row) => {
+                          const iso = row["createdAt"] as string;
+                          return iso ? formatDate(iso) : "—";
+                        },
+                      },
                     ],
-                    coupons as unknown as Record<string, unknown>[],
+                    items as unknown as Record<string, unknown>[],
                   );
                 } finally {
                   setExportLoading(false);
@@ -468,21 +584,15 @@ export const CouponsPage: React.FC = () => {
             <AdminBtn $variant="primary" onClick={openCreate}>
               <Plus size={15} /> Create Coupon
             </AdminBtn>
-            <IconBtn title="Refresh" onClick={load}>
+            <IconBtn title="Refresh" onClick={refetch}>
               <RefreshCw size={14} />
             </IconBtn>
           </>
         }
         searchArea={
-          <SearchBar2
-            style={{
-              border: `1px solid ${t.colors.border}`,
-              borderRadius: 10,
-              background: t.colors.surfaceAlt,
-            }}
-          >
-            <Search size={16} color={t.colors.textMuted} />
-            <SearchInput2
+          <SearchBar>
+            <Search size={15} color={t.colors.textMuted} />
+            <SearchInp
               placeholder="Search coupon code…"
               value={search}
               onChange={(e) => {
@@ -490,7 +600,7 @@ export const CouponsPage: React.FC = () => {
                 setPage(1);
               }}
             />
-          </SearchBar2>
+          </SearchBar>
         }
         filterArea={
           <>
@@ -529,12 +639,11 @@ export const CouponsPage: React.FC = () => {
                 </BulkActionBtn>
               </BulkBar>
             )}
-
             <AdminDropdown
               style={{ minWidth: 150 }}
-              value={statusF}
+              value={statusFilter}
               onChange={(val) => {
-                setStatusF(val as any);
+                setStatusFilter(val as any);
                 setPage(1);
               }}
               options={[
@@ -549,20 +658,25 @@ export const CouponsPage: React.FC = () => {
         selectable
         allChecked={allChecked}
         onToggleAll={toggleAll}
-        rows={coupons}
+        rows={paged} // ← same as TestimonialsPage
         loading={loading}
         emptyIcon={<Tag size={32} color={t.colors.textMuted} />}
         emptyTitle="No coupons found"
         emptyText="Create your first promo code!"
         emptyAction={
-          <AdminBtn $variant="primary" onClick={openCreate}>
+          <AdminBtn
+            $variant="primary"
+            onClick={openCreate}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
             <Plus size={14} /> Create Coupon
           </AdminBtn>
         }
-        renderRow={(coupon) => {
+        renderRow={(coupon: AdminCoupon) => {
           const usagePct = coupon.maxUses
             ? (coupon.usedCount / coupon.maxUses) * 100
             : 0;
+          const status = localStatus[coupon.id] ?? coupon.status;
           return (
             <TR key={coupon.id}>
               <TD>
@@ -623,93 +737,147 @@ export const CouponsPage: React.FC = () => {
               </TD>
               <TD>
                 <ToggleTrack
-                  $on={(localStatus[coupon.id] ?? coupon.status) === "active"}
+                  $on={status === "active"}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleStatus(coupon);
                   }}
                   title="Toggle status"
                 >
-                  <ToggleThumb
-                    $on={(localStatus[coupon.id] ?? coupon.status) === "active"}
-                  />
+                  <ToggleThumb $on={status === "active"} />
                 </ToggleTrack>
               </TD>
-              <TD>
-                <AdminFlex $gap="6px">
-                  <IconBtn title="Edit" onClick={() => openEdit(coupon)}>
-                    <Edit2 size={14} />
-                  </IconBtn>
-                  <IconBtn
-                    $variant="danger"
-                    title="Delete"
-                    onClick={() => setDeleteId(coupon.id)}
+              <TD onClick={(e) => e.stopPropagation()}>
+                <PortalDropdown>
+                  <MenuItem
+                    onClick={() => {
+                      closeAllDropdowns();
+                      openEdit(coupon);
+                    }}
                   >
-                    <Trash2 size={14} />
-                  </IconBtn>
-                </AdminFlex>
+                    <Edit2 size={13} /> Edit
+                  </MenuItem>
+                  <MenuItem
+                    $danger
+                    onClick={() => {
+                      closeAllDropdowns();
+                      openDelete(coupon);
+                    }}
+                  >
+                    <Trash2 size={13} /> Delete
+                  </MenuItem>
+                </PortalDropdown>
               </TD>
             </TR>
           );
         }}
         showPagination
-        paginationInfo={`${total} coupon(s) total`}
+        paginationInfo={
+          items.length > 0
+            ? `Showing ${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, items.length)} of ${items.length}` // ← same format as TestimonialsPage
+            : "0 coupons"
+        }
         currentPage={page}
         totalPages={totalPages}
         onPageChange={setPage}
       />
 
-      {/* Create / Edit Modal */}
-      {modal && (
-        <ModalBackdrop onClick={() => setModal(false)}>
+      {/* ── Create / Edit Modal ─────────────────────────────────────────────── */}
+      {(mode === "create" || mode === "edit") && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox
-            style={{ maxWidth: 520 }}
+            style={{ maxWidth: 540, width: "95%" }}
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <span>{editing ? "Edit Coupon" : "Create Coupon"}</span>
-              <IconBtn onClick={() => setModal(false)}>✕</IconBtn>
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  color: t.colors.textPrimary,
+                }}
+              >
+                {mode === "create" ? "Create New Coupon" : "Edit Coupon"}
+              </span>
+              <button
+                onClick={closeModal}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: t.colors.textMuted,
+                  fontSize: 20,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
             </ModalHeader>
-            <ModalBody>
+
+            <ModalBody
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              {/* Coupon Code */}
+              <FormGroup>
+                <FormLabel>Coupon Code *</FormLabel>
+                <AdminInput
+                  placeholder="e.g. SUMMER20"
+                  value={form.code}
+                  onChange={(e) =>
+                    setField("code", e.target.value.toUpperCase())
+                  }
+                  style={{
+                    fontFamily: "monospace",
+                    fontWeight: 700,
+                    letterSpacing: 1,
+                  }}
+                  disabled={mode === "edit"}
+                />
+              </FormGroup>
+
+              {/* Discount Type */}
+              <FormGroup>
+                <FormLabel>Discount Type</FormLabel>
+                <TypeToggle>
+                  <TypeBtn
+                    type="button"
+                    $active={form.type === "percent"}
+                    onClick={() => setField("type", "percent")}
+                  >
+                    <Percent size={14} /> Percentage (%)
+                  </TypeBtn>
+                  <TypeBtn
+                    type="button"
+                    $active={form.type === "fixed"}
+                    onClick={() => setField("type", "fixed")}
+                  >
+                    <DollarSign size={14} /> Fixed Amount ($)
+                  </TypeBtn>
+                </TypeToggle>
+              </FormGroup>
+
+              {/* Value + Min Order */}
               <FormGrid $cols={2}>
-                <FormGroup $span={2}>
-                  <FormLabel>Coupon Code *</FormLabel>
-                  <AdminInput
-                    placeholder="e.g. SUMMER20"
-                    value={form.code}
-                    onChange={(e) =>
-                      field("code", e.target.value.toUpperCase())
-                    }
-                    style={{
-                      fontFamily: "monospace",
-                      fontWeight: 700,
-                      letterSpacing: 1,
-                    }}
-                    disabled={!!editing}
-                  />
-                </FormGroup>
                 <FormGroup>
-                  <FormLabel>Discount Type</FormLabel>
-                  <AdminDropdown
-                    value={form.type ?? "percent"}
-                    onChange={(val) => field("type", val)}
-                    options={[
-                      { value: "percent", label: "Percentage (%)" },
-                      { value: "fixed", label: "Fixed Amount ($)" },
-                    ]}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>Value *</FormLabel>
+                  <FormLabel>
+                    Value *{" "}
+                    <span
+                      style={{ color: t.colors.textMuted, fontWeight: 400 }}
+                    >
+                      {form.type === "percent"
+                        ? "(e.g. 10 = 10% off)"
+                        : "(e.g. 5 = $5 off)"}
+                    </span>
+                  </FormLabel>
                   <AdminInput
                     type="number"
                     min="0.01"
                     step="0.01"
-                    placeholder={
-                      form.type === "percent" ? "10 (= 10%)" : "5 (= $5 off)"
-                    }
+                    placeholder={form.type === "percent" ? "10" : "5.00"}
                     value={form.value || ""}
-                    onChange={(e) => field("value", parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setField("value", parseFloat(e.target.value))
+                    }
                   />
                 </FormGroup>
                 <FormGroup>
@@ -721,19 +889,23 @@ export const CouponsPage: React.FC = () => {
                     placeholder="0 = no minimum"
                     value={form.minOrder || ""}
                     onChange={(e) =>
-                      field("minOrder", parseFloat(e.target.value) || 0)
+                      setField("minOrder", parseFloat(e.target.value) || 0)
                     }
                   />
                 </FormGroup>
+              </FormGrid>
+
+              {/* Max Uses + Expires At */}
+              <FormGrid $cols={2}>
                 <FormGroup>
                   <FormLabel>Max Uses</FormLabel>
                   <AdminInput
                     type="number"
                     min="1"
-                    placeholder="Leave blank = unlimited"
+                    placeholder="Unlimited"
                     value={form.maxUses || ""}
                     onChange={(e) =>
-                      field(
+                      setField(
                         "maxUses",
                         e.target.value ? parseInt(e.target.value) : null,
                       )
@@ -749,53 +921,61 @@ export const CouponsPage: React.FC = () => {
                         ? (form.expiresAt as string).slice(0, 10)
                         : ""
                     }
-                    onChange={(e) => field("expiresAt", e.target.value || null)}
+                    onChange={(e) =>
+                      setField("expiresAt", e.target.value || null)
+                    }
                   />
                 </FormGroup>
-                <FormGroup $span={2}>
-                  <FormLabel>Status</FormLabel>
-                  <SwitchWrap>
-                    <input
-                      type="checkbox"
-                      checked={form.status === "active"}
-                      onChange={(e) =>
-                        field(
-                          "status",
-                          e.target.checked ? "active" : "inactive",
-                        )
-                      }
-                    />
-                    <span className="track" />
-                    <span
-                      style={{
-                        fontSize: "0.875rem",
-                        color: t.colors.textSecondary,
-                      }}
-                    >
-                      {form.status === "active" ? "Active" : "Inactive"}
-                    </span>
-                  </SwitchWrap>
-                </FormGroup>
               </FormGrid>
-              {form.type === "percent" && (form.value ?? 0) > 0 && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: "10px 14px",
-                    background: t.colors.primaryGhost,
-                    borderRadius: 8,
-                    fontSize: "0.8125rem",
-                    color: t.colors.primary,
-                  }}
-                >
-                  Preview: <strong>{form.value}% off</strong>
-                  {form.minOrder ? ` on orders over $${form.minOrder}` : ""}
-                  {form.expiresAt ? ` · expires ${form.expiresAt}` : ""}
-                </div>
+
+              {/* Status */}
+              <FormGroup>
+                <FormLabel>Status</FormLabel>
+                <SwitchWrap>
+                  <input
+                    type="checkbox"
+                    checked={form.status === "active"}
+                    onChange={(e) =>
+                      setField(
+                        "status",
+                        e.target.checked ? "active" : "inactive",
+                      )
+                    }
+                  />
+                  <span className="track" />
+                  <span
+                    style={{
+                      fontSize: "0.875rem",
+                      color: t.colors.textSecondary,
+                    }}
+                  >
+                    {form.status === "active"
+                      ? "Active — customers can use this code"
+                      : "Inactive — code is disabled"}
+                  </span>
+                </SwitchWrap>
+              </FormGroup>
+
+              {/* Preview */}
+              {(form.value ?? 0) > 0 && (
+                <PreviewBanner>
+                  <Tag size={13} />
+                  <span>
+                    Preview:{" "}
+                    <strong>
+                      {form.type === "percent"
+                        ? `${form.value}% off`
+                        : `$${form.value} off`}
+                    </strong>
+                    {form.minOrder ? ` on orders over $${form.minOrder}` : ""}
+                    {form.expiresAt ? ` · expires ${form.expiresAt}` : ""}
+                  </span>
+                </PreviewBanner>
               )}
             </ModalBody>
+
             <ModalFooter>
-              <AdminBtn $variant="ghost" onClick={() => setModal(false)}>
+              <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
                 Cancel
               </AdminBtn>
               <AdminBtn
@@ -805,64 +985,115 @@ export const CouponsPage: React.FC = () => {
               >
                 {saving
                   ? "Saving…"
-                  : editing
-                    ? "Update Coupon"
-                    : "Create Coupon"}
+                  : mode === "create"
+                    ? "Create Coupon"
+                    : "Save Changes"}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
       )}
 
-      {/* Delete confirm */}
-      {deleteId && (
-        <ModalBackdrop onClick={() => setDeleteId(null)}>
-          <ModalBox onClick={(e) => e.stopPropagation()}>
+      {/* ── Delete Modal ────────────────────────────────────────────────────── */}
+      {mode === "delete" && selected && (
+        <ModalBackdrop onClick={closeModal}>
+          <ModalBox
+            style={{ maxWidth: 420, width: "95%" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <ModalHeader>
-              <span>Delete Coupon</span>
-              <IconBtn onClick={() => setDeleteId(null)}>✕</IconBtn>
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  color: t.colors.danger,
+                }}
+              >
+                Delete Coupon
+              </span>
+              <button
+                onClick={closeModal}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: t.colors.textMuted,
+                  fontSize: 20,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
             </ModalHeader>
             <ModalBody>
-              <p style={{ color: t.colors.textSecondary }}>
-                Are you sure? This coupon will be permanently deleted.
+              <p
+                style={{
+                  color: t.colors.textSecondary,
+                  fontSize: "0.875rem",
+                  lineHeight: 1.6,
+                }}
+              >
+                Are you sure you want to delete the coupon{" "}
+                <strong>"{selected.code}"</strong>? This cannot be undone.
               </p>
             </ModalBody>
             <ModalFooter>
-              <AdminBtn $variant="ghost" onClick={() => setDeleteId(null)}>
+              <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
                 Cancel
               </AdminBtn>
               <AdminBtn
                 $variant="danger"
                 onClick={handleDelete}
-                disabled={deleting}
+                disabled={saving}
               >
-                {deleting ? "Deleting…" : "Delete"}
+                {saving ? "Deleting…" : "Delete Coupon"}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
       )}
 
-      {/* Bulk confirm */}
+      {/* ── Bulk Confirm Modal ──────────────────────────────────────────────── */}
       {bulkConfirm && (
         <ModalBackdrop onClick={() => setBulkConfirm(null)}>
           <ModalBox $width="420px" onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
-              <span style={{ fontWeight: 700, color: t.colors.textPrimary }}>
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  color:
+                    bulkConfirm === "delete"
+                      ? t.colors.danger
+                      : t.colors.textPrimary,
+                }}
+              >
                 {bulkConfirm === "delete"
                   ? "Delete Selected Coupons"
                   : bulkConfirm === "active"
                     ? "Set Coupons Active"
                     : "Set Coupons Inactive"}
               </span>
-              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+              <button
+                onClick={() => setBulkConfirm(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: t.colors.textMuted,
+                  fontSize: 20,
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
             </ModalHeader>
             <ModalBody>
               <p
                 style={{
                   color: t.colors.textSecondary,
+                  fontSize: "0.875rem",
                   lineHeight: 1.6,
-                  margin: 0,
                 }}
               >
                 {bulkConfirm === "delete" ? (
@@ -902,6 +1133,8 @@ export const CouponsPage: React.FC = () => {
           </ModalBox>
         </ModalBackdrop>
       )}
-    </div>
+    </>
   );
 };
+
+export default CouponsPage;

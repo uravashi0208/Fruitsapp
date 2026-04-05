@@ -31,7 +31,6 @@ import {
 import { useAdminDispatch, showAdminToast } from "../store";
 import AdminDatePicker from "../components/AdminDatePicker";
 import AdminTimePicker from "../components/AdminTimePicker";
-import AdminDropdown from "../components/AdminDropdown";
 
 // ── Global keyframes ──────────────────────────────────────────
 const GlobalStyle = createGlobalStyle`
@@ -239,8 +238,8 @@ const Cell = styled.div<{ $other?: boolean; $today?: boolean }>`
 const WeekEventLayer = styled.div`
   position: absolute;
   top: 34px;
-  left: 15px;
-  right: 40px;
+  left: 0;
+  right: 0;
   pointer-events: none;
   z-index: 3;
 `;
@@ -257,10 +256,10 @@ const SpanningBar = styled.div<{
   pointer-events: all;
   cursor: pointer;
   height: 35px;
-  top: ${({ $track }) => $track * 30}px;
-  left: calc(${({ $colStart }) => $colStart} * (100% / 7) + 4px);
-  width: calc(${({ $span }) => $span} * (100% / 7) - 8px);
-  max-width: calc(${({ $span }) => $span} * (100% / 7) - 8px);
+  top: ${({ $track }) => $track * 41}px;
+  left: calc(${({ $colStart }) => $colStart} * (100% / 7) + 8px);
+  width: calc(${({ $span }) => $span} * (100% / 7) - 16px);
+  max-width: calc(${({ $span }) => $span} * (100% / 7) - 16px);
   background: ${({ $bg }) => $bg};
   color: ${({ $text }) => $text};
   border-radius: 6px;
@@ -342,9 +341,11 @@ const EventPill = styled.div<{ $bg: string; $text: string; $border: string }>`
   margin-bottom: 4px;
   cursor: pointer;
   overflow: hidden;
-  width: 100%;
-  max-width: 100%;
+  width: calc(100% - 8px);
+  max-width: calc(100% - 8px);
   min-width: 0;
+  margin-left: 4px;
+  margin-right: 4px;
   box-sizing: border-box;
   animation: calFadeIn 0.2s ease;
   transition: opacity 0.12s;
@@ -486,6 +487,26 @@ const Input = styled.input`
     box-shadow: ${t.shadows.focus};
   }
 `;
+
+const Select = styled.select`
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid ${t.colors.border};
+  border-radius: ${t.radii.md};
+  font-size: 0.875rem;
+  color: ${t.colors.textPrimary};
+  background: white;
+  outline: none;
+  cursor: pointer;
+  box-sizing: border-box;
+  font-family: ${t.fonts.body};
+  &:focus {
+    border-color: ${t.colors.primary};
+    box-shadow: ${t.shadows.focus};
+  }
+`;
+
 const Textarea = styled.textarea`
   width: 100%;
   padding: 10px 12px;
@@ -971,18 +992,19 @@ export const CalendarPage: React.FC = () => {
       <FormRow $cols={2}>
         <div>
           <Label>Type</Label>
-          <AdminDropdown
-            style={{ minWidth: 230 }}
+          <Select
             value={form.type}
-            onChange={(val) => setField("type", val as EventType)}
-            options={EVENT_TYPES.map((et) => ({
-              value: et.value,
-              label: et.label,
-            }))}
-          />
+            onChange={(e) => setField("type", e.target.value as EventType)}
+          >
+            {EVENT_TYPES.map((et) => (
+              <option key={et.value} value={et.value}>
+                {et.label}
+              </option>
+            ))}
+          </Select>
         </div>
         <div>
-          <Label>Color</Label>
+          <Label>Colour</Label>
           <SwatchGrid>
             {COLOR_SWATCHES.map((c) => (
               <Swatch
@@ -1125,13 +1147,27 @@ export const CalendarPage: React.FC = () => {
                   (m, b) => Math.max(m, b.track),
                   -1,
                 );
-                const extraPad = (maxTrack + 1) * 30;
+                const extraPad = (maxTrack + 1) * 41;
+
+                // Build a set of column indices covered by spanning bars in this row
+                const coveredCols = new Set<number>();
+                for (const bar of rowBars) {
+                  for (
+                    let col = bar.colStart;
+                    col < bar.colStart + bar.span;
+                    col++
+                  ) {
+                    coveredCols.add(col);
+                  }
+                }
 
                 return (
                   <WeekRow key={rowIdx}>
                     {/* 7 day cells */}
-                    {weekCells.map((cell) => {
+                    {weekCells.map((cell, colIdx) => {
                       const singleEvs = singleEventsForDate(cell.date);
+                      // Only pad cells that are actually under a spanning bar
+                      const cellPad = coveredCols.has(colIdx) ? extraPad : 0;
                       return (
                         <Cell
                           key={cell.date}
@@ -1146,9 +1182,9 @@ export const CalendarPage: React.FC = () => {
                             {cell.day}
                           </DayNum>
 
-                          {extraPad > 0 && (
+                          {cellPad > 0 && (
                             <div
-                              style={{ height: extraPad + 6, flexShrink: 0 }}
+                              style={{ height: cellPad + 6, flexShrink: 0 }}
                             />
                           )}
 
