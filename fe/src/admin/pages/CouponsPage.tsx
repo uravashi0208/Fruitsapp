@@ -1,7 +1,15 @@
 /**
  * src/admin/pages/CouponsPage.tsx
- * Admin: full coupon / promo code management — refactored to match TestimonialsPage pattern.
+ * Admin: coupon / promo code management — full CRUD + bulk actions.
+ *
+ * Page structure (consistent across ALL admin list pages):
+ *   1. useState declarations  (data hooks → filter/pagination → selection/bulk → modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers  (openCreate, openEdit, openDelete, openBulkConfirm, closeModal)
+ *   4. API handlers   (handleSave, handleDelete, toggleStatus, handleBulkAction)
+ *   5. Return JSX     (ErrorBanner → AdminDataTable → modals)
  */
+
 import React, { useState } from "react";
 import {
   PortalDropdown,
@@ -40,6 +48,18 @@ import {
   ModalBody,
   ModalFooter,
 } from "../styles/adminShared";
+import {
+  PageSearchBar,
+  PageSearchInp,
+  BulkBar,
+  BulkCount,
+  BulkActionBtn,
+  ModalCloseBtn,
+  ModalTitle,
+  ModalTitleDanger,
+  ConfirmText,
+  ErrorBanner,
+} from "../styles/adminPageComponents";
 import { useAdminDispatch, showAdminToast } from "../store";
 import { adminCouponsApi, AdminCoupon } from "../../api/admin";
 import { ApiError } from "../../api/client";
@@ -53,7 +73,7 @@ import AdminDataTable, {
 import AdminDropdown from "../components/AdminDropdown";
 import { useAdminCoupons } from "../../hooks/useAdminApi";
 
-// ── Page-specific styled components ───────────────────────────────────────────
+// ── Page-specific styled components ──────────────────────────────────────────
 
 const CodeBadge = styled.div`
   display: inline-flex;
@@ -87,99 +107,6 @@ const ProgressBar = styled.div<{ $pct: number }>`
     background: ${({ $pct }) =>
       $pct >= 90 ? t.colors.danger : t.colors.primary};
     border-radius: 3px;
-  }
-`;
-
-const SearchBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid ${t.colors.border};
-  border-radius: 10px;
-  padding: 0 12px;
-  background: white;
-  height: 40px;
-  min-width: 200px;
-`;
-
-const SearchInp = styled.input`
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  background: transparent;
-  flex: 1;
-  color: ${t.colors.textPrimary};
-  &::placeholder {
-    color: ${t.colors.textMuted};
-  }
-`;
-
-const BulkBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 4px 6px 4px 12px;
-  border-radius: 10px;
-  background: ${t.colors.primaryGhost};
-  border: 1.5px solid ${t.colors.primary};
-  box-shadow: 0 2px 8px ${t.colors.primaryGhost};
-  animation: bulkSlideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  @keyframes bulkSlideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(-3px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-`;
-
-const BulkCount = styled.span`
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: ${t.colors.primary};
-  padding-right: 10px;
-  border-right: 1.5px solid ${t.colors.border};
-  white-space: nowrap;
-  span {
-    font-size: 0.9rem;
-    font-weight: 800;
-  }
-`;
-
-const BulkActionBtn = styled.button<{
-  $variant?: "success" | "warning" | "danger" | "ghost";
-}>`
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  ${({ $variant }) =>
-    $variant === "success" &&
-    `background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "warning" &&
-    `background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "danger" &&
-    `background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    (!$variant || $variant === "ghost") &&
-    `background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 `;
 
@@ -262,17 +189,9 @@ const SwitchWrap = styled.label`
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PER_PAGE = 10; // ← same name as TestimonialsPage
-
-const emptyForm = (): Partial<AdminCoupon> & { code: string } => ({
-  code: "",
-  type: "percent",
-  value: 10,
-  minOrder: 0,
-  maxUses: null,
-  expiresAt: null,
-  status: "active",
-});
+const PER_PAGE = 10;
+type ModalMode = "create" | "edit" | "delete" | "bulkConfirm" | null;
+type BulkAction = "active" | "inactive" | "delete";
 
 const COLUMNS: ColDef[] = [
   { key: "code", label: "Code" },
@@ -284,15 +203,25 @@ const COLUMNS: ColDef[] = [
   { key: "actions", label: "Actions", thProps: { $width: "100px" } },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const emptyForm = (): Partial<AdminCoupon> & { code: string } => ({
+  code: "",
+  type: "percent",
+  value: 10,
+  minOrder: 0,
+  maxUses: null,
+  expiresAt: null,
+  status: "active",
+});
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export const CouponsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
-  // ── Data (same pattern as TestimonialsPage) ────────────────────────────────
+  // 1a. Data hooks
   const { data: rawData, loading, error, refetch } = useAdminCoupons();
 
-  // ── Filter / search / pagination state (same pattern) ─────────────────────
+  // 1b. Filter / pagination
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">(
     "",
@@ -300,70 +229,81 @@ export const CouponsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [exportLoading, setExportLoading] = useState(false);
 
-  // ── Modal / form state ─────────────────────────────────────────────────────
-  const [mode, setMode] = useState<"create" | "edit" | "delete" | null>(null);
+  // 1c. Selection / bulk
+  const [selIds, setSelIds] = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [pendingBulk, setPendingBulk] = useState<BulkAction | null>(null);
+
+  // 1d. Modal / form
+  const [mode, setMode] = useState<ModalMode>(null);
   const [selected, setSelected] = useState<AdminCoupon | null>(null);
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
 
-  // ── Inline toggle optimistic state (same pattern) ─────────────────────────
+  // 1e. Copy feedback
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // 1f. Optimistic status
   const [localStatus, setLocalStatus] = useState<
     Record<string, "active" | "inactive">
   >({});
 
-  // ── Copy state ─────────────────────────────────────────────────────────────
-  const [copied, setCopied] = useState<string | null>(null);
-
-  // ── Bulk selection state ───────────────────────────────────────────────────
-  const [selIds, setSelIds] = useState<Set<string>>(new Set());
-  const [bulkWorking, setBulkWorking] = useState(false);
-  const [bulkConfirm, setBulkConfirm] = useState<
-    "active" | "inactive" | "delete" | null
-  >(null);
-
-  // ── Client-side filtering (same pattern as TestimonialsPage) ──────────────
+  // 2. Derived / filtered data
   const items = (rawData ?? ([] as AdminCoupon[])).filter(
     (item: AdminCoupon) => {
       const q = search.toLowerCase();
-      const matchQ = !q || item.code.toLowerCase().includes(q);
-      const matchS = !statusFilter || item.status === statusFilter;
-      return matchQ && matchS;
+      return (
+        (!q || item.code.toLowerCase().includes(q)) &&
+        (!statusFilter || item.status === statusFilter)
+      );
     },
   );
-
   const totalPages = Math.max(1, Math.ceil(items.length / PER_PAGE));
-  const paged = items.slice((page - 1) * PER_PAGE, page * PER_PAGE); // ← same as TestimonialsPage
+  const paged = items.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const allIds = paged.map((c: AdminCoupon) => c.id);
+  const allChecked =
+    allIds.length > 0 && allIds.every((id: string) => selIds.has(id));
 
-  // ── Modal helpers ──────────────────────────────────────────────────────────
+  const toggleAll = () => setSelIds(allChecked ? new Set() : new Set(allIds));
+  const toggleOne = (id: string) =>
+    setSelIds((prev) => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
 
+  // 3. Modal helpers
   const openCreate = () => {
     setSelected(null);
     setForm(emptyForm());
     setMode("create");
   };
-
   const openEdit = (coupon: AdminCoupon) => {
+    closeAllDropdowns();
     setSelected(coupon);
     setForm({ ...coupon });
     setMode("edit");
   };
-
   const openDelete = (coupon: AdminCoupon) => {
+    closeAllDropdowns();
     setSelected(coupon);
     setMode("delete");
   };
-
+  const openBulkConfirm = (action: BulkAction) => {
+    setPendingBulk(action);
+    setMode("bulkConfirm");
+  };
   const closeModal = () => {
     setMode(null);
     setSelected(null);
     setForm(emptyForm());
+    setPendingBulk(null);
   };
 
   const setField = (k: string, v: unknown) =>
     setForm((f: typeof form) => ({ ...f, [k]: v }));
 
-  // ── API: Create / Update ───────────────────────────────────────────────────
-
+  // 4a. Create / Update
   const handleSave = async () => {
     if (!form.code?.trim()) {
       dispatch(
@@ -394,7 +334,7 @@ export const CouponsPage: React.FC = () => {
         );
       }
       closeModal();
-      refetch(); // ← same as TestimonialsPage
+      refetch();
     } catch (e) {
       dispatch(
         showAdminToast({
@@ -407,8 +347,7 @@ export const CouponsPage: React.FC = () => {
     }
   };
 
-  // ── API: Delete ────────────────────────────────────────────────────────────
-
+  // 4b. Delete
   const handleDelete = async () => {
     if (!selected) return;
     setSaving(true);
@@ -416,7 +355,7 @@ export const CouponsPage: React.FC = () => {
       await adminCouponsApi.delete(selected.id);
       dispatch(showAdminToast({ message: "Coupon deleted", type: "success" }));
       closeModal();
-      refetch(); // ← same as TestimonialsPage
+      refetch();
     } catch (e) {
       dispatch(
         showAdminToast({
@@ -429,8 +368,7 @@ export const CouponsPage: React.FC = () => {
     }
   };
 
-  // ── Inline status toggle (same pattern as TestimonialsPage) ───────────────
-
+  // 4c. Inline status toggle
   const toggleStatus = async (coupon: AdminCoupon) => {
     const current = localStatus[coupon.id] ?? coupon.status;
     const next = current === "active" ? "inactive" : "active";
@@ -442,7 +380,7 @@ export const CouponsPage: React.FC = () => {
           type: "info",
         }),
       );
-      refetch(); // ← same as TestimonialsPage
+      refetch();
     } catch {
       setLocalStatus((prev) => ({ ...prev, [coupon.id]: current }));
       dispatch(
@@ -451,8 +389,7 @@ export const CouponsPage: React.FC = () => {
     }
   };
 
-  // ── Copy code ──────────────────────────────────────────────────────────────
-
+  // 4d. Copy code
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(code);
@@ -460,24 +397,8 @@ export const CouponsPage: React.FC = () => {
     });
   };
 
-  // ── Bulk selection helpers ─────────────────────────────────────────────────
-
-  const allIds = paged.map((c: AdminCoupon) => c.id);
-  const allChecked =
-    allIds.length > 0 && allIds.every((id: string) => selIds.has(id));
-
-  const toggleAll = () => setSelIds(allChecked ? new Set() : new Set(allIds));
-
-  const toggleOne = (id: string) =>
-    setSelIds((prev) => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
-
-  // ── API: Bulk actions ──────────────────────────────────────────────────────
-
-  const handleBulkAction = async (action: "active" | "inactive" | "delete") => {
+  // 4e. Bulk actions
+  const handleBulkAction = async (action: BulkAction) => {
     if (!selIds.size) return;
     setBulkWorking(true);
     const ids = Array.from(selIds);
@@ -500,8 +421,8 @@ export const CouponsPage: React.FC = () => {
         );
       }
       setSelIds(new Set());
-      setBulkConfirm(null);
-      refetch(); // ← same as TestimonialsPage
+      closeModal();
+      refetch();
     } catch (err: any) {
       dispatch(
         showAdminToast({
@@ -514,24 +435,13 @@ export const CouponsPage: React.FC = () => {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
+  // 5. Render
   return (
     <>
-      {error && (
-        <div
-          style={{
-            color: t.colors.danger,
-            padding: "1rem",
-            background: "#fff5f5",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {/* Error banner */}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
+      {/* ── Data Table ──────────────────────────────────────────────────── */}
       <AdminDataTable
         title="Coupons & Promo Codes"
         subtitle="Manage discount codes and promotions"
@@ -554,23 +464,21 @@ export const CouponsPage: React.FC = () => {
                       { key: "usedCount", label: "Used" },
                       {
                         label: "Status",
-                        resolve: (row) => {
-                          const iso = row["status"] as string;
-                          return iso === "active" ? "Active" : "Inactive";
-                        },
+                        resolve: (row) =>
+                          row["status"] === "active" ? "Active" : "Inactive",
                       },
                       {
                         label: "Expires At",
                         resolve: (row) => {
-                          const iso = row["expiresAt"] as string;
-                          return iso ? formatDate(iso) : "Never";
+                          const v = row["expiresAt"] as string;
+                          return v ? formatDate(v) : "Never";
                         },
                       },
                       {
                         label: "Created At",
                         resolve: (row) => {
-                          const iso = row["createdAt"] as string;
-                          return iso ? formatDate(iso) : "—";
+                          const v = row["createdAt"] as string;
+                          return v ? formatDate(v) : "—";
                         },
                       },
                     ],
@@ -590,9 +498,9 @@ export const CouponsPage: React.FC = () => {
           </>
         }
         searchArea={
-          <SearchBar>
+          <PageSearchBar>
             <Search size={15} color={t.colors.textMuted} />
-            <SearchInp
+            <PageSearchInp
               placeholder="Search coupon code…"
               value={search}
               onChange={(e) => {
@@ -600,7 +508,7 @@ export const CouponsPage: React.FC = () => {
                 setPage(1);
               }}
             />
-          </SearchBar>
+          </PageSearchBar>
         }
         filterArea={
           <>
@@ -612,21 +520,21 @@ export const CouponsPage: React.FC = () => {
                 <BulkActionBtn
                   $variant="success"
                   disabled={bulkWorking}
-                  onClick={() => setBulkConfirm("active")}
+                  onClick={() => openBulkConfirm("active")}
                 >
                   <CheckCircle size={12} /> Set Active
                 </BulkActionBtn>
                 <BulkActionBtn
                   $variant="warning"
                   disabled={bulkWorking}
-                  onClick={() => setBulkConfirm("inactive")}
+                  onClick={() => openBulkConfirm("inactive")}
                 >
                   <XCircle size={12} /> Set Inactive
                 </BulkActionBtn>
                 <BulkActionBtn
                   $variant="danger"
                   disabled={bulkWorking}
-                  onClick={() => setBulkConfirm("delete")}
+                  onClick={() => openBulkConfirm("delete")}
                 >
                   <Trash2 size={12} /> Delete
                 </BulkActionBtn>
@@ -658,7 +566,7 @@ export const CouponsPage: React.FC = () => {
         selectable
         allChecked={allChecked}
         onToggleAll={toggleAll}
-        rows={paged} // ← same as TestimonialsPage
+        rows={paged}
         loading={loading}
         emptyIcon={<Tag size={32} color={t.colors.textMuted} />}
         emptyTitle="No coupons found"
@@ -749,21 +657,10 @@ export const CouponsPage: React.FC = () => {
               </TD>
               <TD onClick={(e) => e.stopPropagation()}>
                 <PortalDropdown>
-                  <MenuItem
-                    onClick={() => {
-                      closeAllDropdowns();
-                      openEdit(coupon);
-                    }}
-                  >
+                  <MenuItem onClick={() => openEdit(coupon)}>
                     <Edit2 size={13} /> Edit
                   </MenuItem>
-                  <MenuItem
-                    $danger
-                    onClick={() => {
-                      closeAllDropdowns();
-                      openDelete(coupon);
-                    }}
-                  >
+                  <MenuItem $danger onClick={() => openDelete(coupon)}>
                     <Trash2 size={13} /> Delete
                   </MenuItem>
                 </PortalDropdown>
@@ -774,7 +671,7 @@ export const CouponsPage: React.FC = () => {
         showPagination
         paginationInfo={
           items.length > 0
-            ? `Showing ${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, items.length)} of ${items.length}` // ← same format as TestimonialsPage
+            ? `Showing ${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, items.length)} of ${items.length}`
             : "0 coupons"
         }
         currentPage={page}
@@ -782,7 +679,7 @@ export const CouponsPage: React.FC = () => {
         onPageChange={setPage}
       />
 
-      {/* ── Create / Edit Modal ─────────────────────────────────────────────── */}
+      {/* ── Create / Edit Modal ──────────────────────────────────────────── */}
       {(mode === "create" || mode === "edit") && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -790,34 +687,14 @@ export const CouponsPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
+              <ModalTitle>
                 {mode === "create" ? "Create New Coupon" : "Edit Coupon"}
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
-
             <ModalBody
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
-              {/* Coupon Code */}
               <FormGroup>
                 <FormLabel>Coupon Code *</FormLabel>
                 <AdminInput
@@ -834,8 +711,6 @@ export const CouponsPage: React.FC = () => {
                   disabled={mode === "edit"}
                 />
               </FormGroup>
-
-              {/* Discount Type */}
               <FormGroup>
                 <FormLabel>Discount Type</FormLabel>
                 <TypeToggle>
@@ -855,8 +730,6 @@ export const CouponsPage: React.FC = () => {
                   </TypeBtn>
                 </TypeToggle>
               </FormGroup>
-
-              {/* Value + Min Order */}
               <FormGrid $cols={2}>
                 <FormGroup>
                   <FormLabel>
@@ -894,8 +767,6 @@ export const CouponsPage: React.FC = () => {
                   />
                 </FormGroup>
               </FormGrid>
-
-              {/* Max Uses + Expires At */}
               <FormGrid $cols={2}>
                 <FormGroup>
                   <FormLabel>Max Uses</FormLabel>
@@ -927,8 +798,6 @@ export const CouponsPage: React.FC = () => {
                   />
                 </FormGroup>
               </FormGrid>
-
-              {/* Status */}
               <FormGroup>
                 <FormLabel>Status</FormLabel>
                 <SwitchWrap>
@@ -955,8 +824,6 @@ export const CouponsPage: React.FC = () => {
                   </span>
                 </SwitchWrap>
               </FormGroup>
-
-              {/* Preview */}
               {(form.value ?? 0) > 0 && (
                 <PreviewBanner>
                   <Tag size={13} />
@@ -973,7 +840,6 @@ export const CouponsPage: React.FC = () => {
                 </PreviewBanner>
               )}
             </ModalBody>
-
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
                 Cancel
@@ -994,7 +860,7 @@ export const CouponsPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
-      {/* ── Delete Modal ────────────────────────────────────────────────────── */}
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
       {mode === "delete" && selected && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -1002,40 +868,14 @@ export const CouponsPage: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.danger,
-                }}
-              >
-                Delete Coupon
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitleDanger>Delete Coupon</ModalTitleDanger>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                }}
-              >
+              <ConfirmText>
                 Are you sure you want to delete the coupon{" "}
                 <strong>"{selected.code}"</strong>? This cannot be undone.
-              </p>
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
@@ -1053,81 +893,56 @@ export const CouponsPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
-      {/* ── Bulk Confirm Modal ──────────────────────────────────────────────── */}
-      {bulkConfirm && (
-        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+      {/* ── Bulk Confirm Modal ───────────────────────────────────────────── */}
+      {mode === "bulkConfirm" && pendingBulk && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox $width="420px" onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color:
-                    bulkConfirm === "delete"
-                      ? t.colors.danger
-                      : t.colors.textPrimary,
-                }}
-              >
-                {bulkConfirm === "delete"
+              <ModalTitle>
+                {pendingBulk === "delete"
                   ? "Delete Selected Coupons"
-                  : bulkConfirm === "active"
+                  : pendingBulk === "active"
                     ? "Set Coupons Active"
                     : "Set Coupons Inactive"}
-              </span>
-              <button
-                onClick={() => setBulkConfirm(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                }}
-              >
-                {bulkConfirm === "delete" ? (
+              <ConfirmText>
+                {pendingBulk === "delete" ? (
                   <>
+                    {" "}
                     Are you sure you want to delete{" "}
                     <strong>{selIds.size} coupon(s)</strong>? This cannot be
-                    undone.
+                    undone.{" "}
                   </>
                 ) : (
                   <>
+                    {" "}
                     Set <strong>{selIds.size} coupon(s)</strong> to{" "}
-                    <strong>{bulkConfirm}</strong>?
+                    <strong>{pendingBulk}</strong>?{" "}
                   </>
                 )}
-              </p>
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
               <AdminBtn
                 $variant="ghost"
-                onClick={() => setBulkConfirm(null)}
+                onClick={closeModal}
                 disabled={bulkWorking}
               >
                 Cancel
               </AdminBtn>
               <AdminBtn
-                $variant={bulkConfirm === "delete" ? "danger" : "primary"}
+                $variant={pendingBulk === "delete" ? "danger" : "primary"}
                 disabled={bulkWorking}
-                onClick={() => handleBulkAction(bulkConfirm)}
+                onClick={() => handleBulkAction(pendingBulk)}
               >
                 {bulkWorking
                   ? "Processing…"
-                  : bulkConfirm === "delete"
+                  : pendingBulk === "delete"
                     ? `Delete ${selIds.size}`
-                    : `Set ${selIds.size} ${bulkConfirm}`}
+                    : `Set ${selIds.size} ${pendingBulk}`}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>

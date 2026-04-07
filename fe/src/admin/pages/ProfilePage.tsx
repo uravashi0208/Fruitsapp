@@ -1,3 +1,13 @@
+/**
+ * src/admin/pages/ProfilePage.tsx
+ * Admin: user profile — view and edit personal info, address, social links.
+ *
+ * Page structure (consistent across ALL admin pages):
+ *   1. useState declarations  (1a. data/form → 1b. UI/loading)
+ *   2. Data init              (useEffect — populate form from Redux user)
+ *   3. Action handlers        (save — useCallback)
+ *   4. Return JSX             (profile header → personal card → address card → social card)
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Edit2, Save, X } from 'lucide-react';
@@ -74,11 +84,14 @@ export const ProfilePage: React.FC = () => {
   const dispatch   = useAdminDispatch();
   const user       = useAdminSelector(s => s.adminAuth.user);
 
+  // 1a. Form data
   const [form,     setForm]     = useState<ProfileForm>(empty());
+
+  // 1b. UI / loading
   const [editMode, setEditMode] = useState<'personal' | 'address' | 'social' | null>(null);
   const [saving,   setSaving]   = useState(false);
 
-  /* Init form from user */
+  // 2. Data init
   useEffect(() => {
     if (!user) return;
     const nameParts = (user.name || '').split(' ');
@@ -103,6 +116,7 @@ export const ProfilePage: React.FC = () => {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [k]: e.target.value }));
 
+  // 3. Action handlers
   const save = useCallback(async () => {
     setSaving(true);
     try {
@@ -124,6 +138,7 @@ export const ProfilePage: React.FC = () => {
   const initials = `${form.firstName[0] || ''}${form.lastName[0] || ''}`.toUpperCase() || (user?.name?.[0] || 'U').toUpperCase();
   const fullName = [form.firstName, form.lastName].filter(Boolean).join(' ') || user?.name || 'Admin';
 
+  // 4. Render
   return (
     <PageWrap>
       {/* ── Top profile header card ── */}

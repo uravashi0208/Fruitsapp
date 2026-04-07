@@ -1,3 +1,15 @@
+/**
+ * src/admin/pages/TestimonialsPage.tsx
+ * Admin: customer testimonials management — full CRUD with image upload.
+ *
+ * Page structure (consistent across ALL admin list pages):
+ *   1. useState declarations  (data hooks → filter/pagination → modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers  (openCreate, openEdit, openView, openDelete, closeModal)
+ *   4. API handlers   (handleSave, handleDelete, toggleStatus)
+ *   5. Return JSX     (ErrorBanner → AdminDataTable → modals)
+ */
+
 import React, { useState, useRef } from "react";
 import {
   PortalDropdown,
@@ -34,6 +46,17 @@ import {
   ModalBody,
   ModalFooter,
 } from "../styles/adminShared";
+import {
+  PageSearchBar,
+  PageSearchInp,
+  UploadBox,
+  UploadInput,
+  ModalCloseBtn,
+  ModalTitle,
+  ModalTitleDanger,
+  ConfirmText,
+  ErrorBanner,
+} from "../styles/adminPageComponents";
 import { useAdminDispatch, showAdminToast } from "../store";
 import { useAdminTestimonials } from "../../hooks/useAdminApi";
 import { adminTestimonialsApi, AdminTestimonial } from "../../api/admin";
@@ -41,6 +64,8 @@ import { ApiError, API_BASE } from "../../api/client";
 import AdminDataTable, { TR, TD, ColDef } from "../components/AdminDataTable";
 import { formatDate } from "../utils/formatDate";
 import AdminDropdown from "../components/AdminDropdown";
+
+// ── Page-specific styled components ──────────────────────────────────────────
 
 const PersonCell = styled.div`
   display: flex;
@@ -89,50 +114,6 @@ const StarRow = styled.div`
   gap: 2px;
   align-items: center;
 `;
-const SearchBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid ${t.colors.border};
-  border-radius: 10px;
-  padding: 0 12px;
-  background: white;
-  height: 40px;
-  min-width: 200px;
-`;
-const SearchInp = styled.input`
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  background: transparent;
-  flex: 1;
-  color: ${t.colors.textPrimary};
-  &::placeholder {
-    color: ${t.colors.textMuted};
-  }
-`;
-const UploadBox = styled.label`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 2px dashed ${t.colors.border};
-  border-radius: 12px;
-  padding: 20px;
-  cursor: pointer;
-  gap: 8px;
-  text-align: center;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-  &:hover {
-    border-color: ${t.colors.primary};
-    background: ${t.colors.primaryGhost};
-  }
-`;
-const UploadInput = styled.input`
-  display: none;
-`;
 const AvatarPreview = styled.img`
   width: 88px;
   height: 88px;
@@ -142,6 +123,8 @@ const AvatarPreview = styled.img`
   display: block;
   margin: 0 auto 8px;
 `;
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 const StarPicker: React.FC<{
   value: number;
@@ -188,7 +171,11 @@ const Stars: React.FC<{ rating: number }> = ({ rating }) => (
   </StarRow>
 );
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const PER_PAGE = 10;
 type ModalMode = "create" | "edit" | "view" | "delete" | null;
+
 interface FormState {
   name: string;
   position: string;
@@ -196,6 +183,7 @@ interface FormState {
   rating: number;
   status: "active" | "inactive";
 }
+
 const emptyForm = (): FormState => ({
   name: "",
   position: "",
@@ -203,6 +191,7 @@ const emptyForm = (): FormState => ({
   rating: 5,
   status: "active",
 });
+
 const resolveAvatar = (avatar: string) => {
   if (!avatar) return "";
   if (avatar.startsWith("http") || avatar.startsWith("/images")) return avatar;
@@ -222,43 +211,52 @@ const COLUMNS: ColDef[] = [
     thProps: { $width: "200px" },
   },
 ];
-const PER_PAGE = 10;
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export const TestimonialsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
-  const [localStatus, setLocalStatus] = useState<
-    Record<string, "active" | "inactive">
-  >({});
 
+  // 1a. Data hooks
   const { data: rawData, loading, error, refetch } = useAdminTestimonials();
+
+  // 1b. Filter / pagination
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">(
     "",
   );
   const [page, setPage] = useState(1);
   const [exportLoading, setExportLoading] = useState(false);
-  const PER = PER_PAGE;
+
+  // 1c. Modal / form
   const [mode, setMode] = useState<ModalMode>(null);
   const [selected, setSelected] = useState<AdminTestimonial | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [imgFile, setImgFile] = useState<File | null>(null);
-  const [imgPreview, setImgPreview] = useState<string>("");
+  const [imgPreview, setImgPreview] = useState("");
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // 1d. Optimistic status
+  const [localStatus, setLocalStatus] = useState<
+    Record<string, "active" | "inactive">
+  >({});
+
+  // 2. Derived / filtered data
   const items = (rawData ?? []).filter((item) => {
     const q = search.toLowerCase();
-    const matchQ =
-      !q ||
-      item.name.toLowerCase().includes(q) ||
-      item.position.toLowerCase().includes(q) ||
-      item.message.toLowerCase().includes(q);
-    const matchS = !statusFilter || item.status === statusFilter;
-    return matchQ && matchS;
+    return (
+      (!q ||
+        item.name.toLowerCase().includes(q) ||
+        item.position.toLowerCase().includes(q) ||
+        item.message.toLowerCase().includes(q)) &&
+      (!statusFilter || item.status === statusFilter)
+    );
   });
-  const totalPages = Math.max(1, Math.ceil(items.length / PER));
-  const paged = items.slice((page - 1) * PER, page * PER);
+  const totalPages = Math.max(1, Math.ceil(items.length / PER_PAGE));
+  const paged = items.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
+  // 3. Modal helpers
   const openCreate = () => {
     setSelected(null);
     setForm(emptyForm());
@@ -301,6 +299,7 @@ export const TestimonialsPage: React.FC = () => {
     reader.readAsDataURL(f);
   };
 
+  // 4a. Create / Update
   const handleSave = async () => {
     if (!form.name.trim()) {
       dispatch(showAdminToast({ message: "Name is required", type: "error" }));
@@ -346,6 +345,7 @@ export const TestimonialsPage: React.FC = () => {
     }
   };
 
+  // 4b. Delete
   const handleDelete = async () => {
     if (!selected) return;
     setSaving(true);
@@ -368,6 +368,7 @@ export const TestimonialsPage: React.FC = () => {
     }
   };
 
+  // 4c. Inline status toggle
   const toggleStatus = async (item: AdminTestimonial) => {
     const current = localStatus[item.id] ?? item.status;
     const next = current === "active" ? "inactive" : "active";
@@ -380,7 +381,7 @@ export const TestimonialsPage: React.FC = () => {
         }),
       );
       refetch();
-    } catch (err) {
+    } catch {
       setLocalStatus((prev) => ({ ...prev, [item.id]: current }));
       dispatch(
         showAdminToast({ message: "Failed to update status", type: "error" }),
@@ -388,22 +389,13 @@ export const TestimonialsPage: React.FC = () => {
     }
   };
 
+  // 5. Render
   return (
     <>
-      {error && (
-        <div
-          style={{
-            color: t.colors.danger,
-            padding: "1rem",
-            background: "#fff5f5",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {/* Error banner */}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
+      {/* ── Data Table ──────────────────────────────────────────────────── */}
       <AdminDataTable
         title="Testimonials List"
         subtitle="Manage customer reviews and testimonials"
@@ -425,16 +417,14 @@ export const TestimonialsPage: React.FC = () => {
                       { label: "Rating", key: "rating" },
                       {
                         label: "Status",
-                        resolve: (row) => {
-                          const iso = row["status"] as string;
-                          return iso === "active" ? "Active" : "Inactive";
-                        },
+                        resolve: (row) =>
+                          row["status"] === "active" ? "Active" : "Inactive",
                       },
                       {
                         label: "Created At",
                         resolve: (row) => {
-                          const iso = row["createdAt"] as string;
-                          return iso ? formatDate(iso) : "—";
+                          const v = row["createdAt"] as string;
+                          return v ? formatDate(v) : "—";
                         },
                       },
                     ],
@@ -454,9 +444,9 @@ export const TestimonialsPage: React.FC = () => {
           </>
         }
         searchArea={
-          <SearchBar>
+          <PageSearchBar>
             <Search size={15} color={t.colors.textMuted} />
-            <SearchInp
+            <PageSearchInp
               placeholder="Search by name or message…"
               value={search}
               onChange={(e) => {
@@ -464,7 +454,7 @@ export const TestimonialsPage: React.FC = () => {
                 setPage(1);
               }}
             />
-          </SearchBar>
+          </PageSearchBar>
         }
         filterArea={
           <AdminDropdown
@@ -561,7 +551,7 @@ export const TestimonialsPage: React.FC = () => {
         showPagination
         paginationInfo={
           items.length > 0
-            ? `Showing ${(page - 1) * PER + 1}–${Math.min(page * PER, items.length)} of ${items.length}`
+            ? `Showing ${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, items.length)} of ${items.length}`
             : "0 testimonials"
         }
         currentPage={page}
@@ -569,6 +559,7 @@ export const TestimonialsPage: React.FC = () => {
         onPageChange={setPage}
       />
 
+      {/* ── Create / Edit Modal ──────────────────────────────────────────── */}
       {(mode === "create" || mode === "edit") && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -576,28 +567,10 @@ export const TestimonialsPage: React.FC = () => {
             style={{ maxWidth: 580, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
+              <ModalTitle>
                 {mode === "create" ? "Add New Testimonial" : "Edit Testimonial"}
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
@@ -728,6 +701,7 @@ export const TestimonialsPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
+      {/* ── View Modal ───────────────────────────────────────────────────── */}
       {mode === "view" && selected && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -735,28 +709,8 @@ export const TestimonialsPage: React.FC = () => {
             style={{ maxWidth: 480, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
-                Testimonial Details
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitle>Testimonial Details</ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody
               style={{
@@ -832,6 +786,7 @@ export const TestimonialsPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
       {mode === "delete" && selected && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -839,40 +794,14 @@ export const TestimonialsPage: React.FC = () => {
             style={{ maxWidth: 420, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.danger,
-                }}
-              >
-                Delete Testimonial
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitleDanger>Delete Testimonial</ModalTitleDanger>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                }}
-              >
+              <ConfirmText>
                 Are you sure you want to delete the testimonial from{" "}
                 <strong>"{selected.name}"</strong>? This cannot be undone.
-              </p>
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
@@ -882,7 +811,6 @@ export const TestimonialsPage: React.FC = () => {
                 $variant="danger"
                 onClick={handleDelete}
                 disabled={saving}
-                style={{ background: t.colors.danger, color: "white" }}
               >
                 {saving ? "Deleting…" : "Delete"}
               </AdminBtn>

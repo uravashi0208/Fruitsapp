@@ -1,3 +1,13 @@
+/**
+ * src/admin/pages/SettingsPage.tsx
+ * Admin: site settings — general, email, payment, shipping, SEO, appearance tabs.
+ *
+ * Page structure (consistent across ALL admin pages):
+ *   1. useState declarations  (1a. data hook → 1b. UI/loading → 1c. form)
+ *   2. Data init              (useEffect — populate form from server data)
+ *   3. Action handlers        (save, testEmail — useCallback)
+ *   4. Return JSX             (nav panel → content panel per tab)
+ */
 import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { Save } from "lucide-react";
@@ -215,11 +225,18 @@ type SettingsForm = typeof DEFAULTS;
 export const SettingsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const { data: srv, loading } = useAdminSettings();
-  const [active, setActive] = useState("overview");
-  const [saving, setSaving] = useState(false);
+  // 1a. Server data (hook)
+  // srv and loading come from useAdminSettings() above
+
+  // 1b. UI / loading
+  const [active,  setActive]  = useState("overview");
+  const [saving,  setSaving]  = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  // 1c. Form data
   const [form, setForm] = useState<SettingsForm>(DEFAULTS);
 
-  /* Populate from server on load */
+  // 2. Data init
   useEffect(() => {
     if (!srv) return;
     setForm((prev) => ({ ...prev, ...srv }));
@@ -242,7 +259,7 @@ export const SettingsPage: React.FC = () => {
   const toggle = (k: keyof SettingsForm) =>
     setForm((f) => ({ ...f, [k]: !f[k] }));
 
-  /* Save current tab fields */
+  // 3. Action handlers
   const save = useCallback(async () => {
     setSaving(true);
     try {
@@ -266,8 +283,7 @@ export const SettingsPage: React.FC = () => {
     }
   }, [form, dispatch]);
 
-  const [testing, setTesting] = useState(false);
-
+  // 3b. Test email
   const testEmail = useCallback(async () => {
     setTesting(true);
     try {

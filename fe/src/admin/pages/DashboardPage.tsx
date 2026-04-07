@@ -1,3 +1,12 @@
+/**
+ * src/admin/pages/DashboardPage.tsx
+ * Admin dashboard — overview metrics, sales charts, recent orders.
+ *
+ * Page structure:
+ *   1. Suspense boundary wrapping all lazy sub-components
+ *   2. Responsive 12-column grid layout
+ */
+
 import React, { Suspense } from 'react';
 import EcommerceMetrics from './dashboard/EcommerceMetrics';
 import MonthlySalesChart from './dashboard/MonthlySalesChart';

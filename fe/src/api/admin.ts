@@ -218,6 +218,22 @@ export interface WishlistByUser {
   items: WishlistAdminEntry[];
 }
 
+export type ChartPeriod = 'monthly' | 'quarterly' | 'annually';
+
+/** One data point in the revenue chart — shape varies by period */
+export interface ChartPoint {
+  /** Monthly label e.g. "Jan 2024" */
+  month?:   string;
+  /** Quarterly label e.g. "Q1 2024" */
+  quarter?: string;
+  /** Annual label e.g. "2024" */
+  year?:    string;
+  /** Daily/weekly label for custom range e.g. "Apr 1" */
+  date?:    string;
+  revenue:  number;
+  orders:   number;
+}
+
 export interface DashboardStats {
   revenue: { total: number; orders: number };
   orders: {
@@ -235,7 +251,8 @@ export interface DashboardStats {
     draft: number;
     outOfStock: number;
   };
-  revenueChart: Array<{ month: string; revenue: number; orders: number }>;
+  revenueChart: ChartPoint[];
+  meta?: { period: ChartPeriod; startDate: string | null; endDate: string | null };
   topProducts: Array<{
     productId: string;
     name: string;
@@ -312,7 +329,14 @@ export const adminAuthApi = {
 
 // ─── DASHBOARD ────────────────────────────────────────────────
 export const adminDashboardApi = {
-  getStats: () => api.get<Ok<DashboardStats>>("/api/admin/dashboard"),
+  getStats: (params?: { period?: ChartPeriod; startDate?: string; endDate?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.period)    qs.set('period',    params.period);
+    if (params?.startDate) qs.set('startDate', params.startDate);
+    if (params?.endDate)   qs.set('endDate',   params.endDate);
+    const query = qs.toString();
+    return api.get<Ok<DashboardStats>>(`/api/admin/dashboard${query ? '?' + query : ''}`);
+  },
 };
 
 // ─── PRODUCTS ─────────────────────────────────────────────────

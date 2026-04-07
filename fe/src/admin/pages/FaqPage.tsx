@@ -1,7 +1,15 @@
 /**
  * src/admin/pages/FaqPage.tsx
- * Admin FAQ management — full CRUD with category grouping
+ * Admin: FAQ management — full CRUD with category grouping + bulk actions.
+ *
+ * Page structure (consistent across ALL admin list pages):
+ *   1. useState declarations  (local data → filter state → selection/bulk → modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers  (openAdd, openEdit, openDelete, openBulkConfirm, closeModal)
+ *   4. API handlers   (load, handleSave, handleDelete, toggleStatus, handleBulkAction)
+ *   5. Return JSX     (ErrorBanner → header → stats → filters → faq list → modals)
  */
+
 import React, { useState, useCallback, useMemo } from "react";
 import styled from "styled-components";
 import {
@@ -31,8 +39,6 @@ import {
   FormGroup,
   FormLabel,
   FormGrid,
-  SearchBar,
-  SearchInput,
   ModalBackdrop,
   ModalBox,
   ModalHeader,
@@ -40,13 +46,26 @@ import {
   ModalFooter,
   EmptyState,
 } from "../styles/adminShared";
+import {
+  PageSearchBar,
+  PageSearchInp,
+  BulkBar,
+  BulkCount,
+  BulkActionBtn,
+  ModalCloseBtn,
+  ModalTitle,
+  ModalTitleDanger,
+  ConfirmText,
+  ErrorBanner,
+} from "../styles/adminPageComponents";
 import { useAdminDispatch, showAdminToast } from "../store";
 import { adminFaqsApi, AdminFaq } from "../../api/admin";
 import { ApiError } from "../../api/client";
 import { formatDate } from "../utils/formatDate";
 import AdminDropdown from "../components/AdminDropdown";
 
-// ── Styled extras ──────────────────────────────────────────────────────────────
+// ── Page-specific styled components ──────────────────────────────────────────
+
 const PageHeader = styled.div`
   display: flex;
   align-items: flex-start;
@@ -55,34 +74,18 @@ const PageHeader = styled.div`
   gap: 16px;
   margin-bottom: 24px;
 `;
+
 const PageTitle = styled.h1`
   font-size: 1.375rem;
   font-weight: 700;
   color: ${t.colors.textPrimary};
   margin: 0 0 2px;
 `;
+
 const PageSub = styled.p`
   font-size: 0.8125rem;
   color: ${t.colors.textMuted};
   margin: 0;
-`;
-const CategoryBadge = styled.span<{ $active?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 10px;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: ${({ $active }) =>
-    $active ? `${t.colors.primary}15` : `${t.colors.border}`};
-  color: ${({ $active }) => ($active ? t.colors.primary : t.colors.textMuted)};
-  cursor: pointer;
-  transition: all 0.15s;
-  &:hover {
-    background: ${t.colors.primary}25;
-    color: ${t.colors.primary};
-  }
 `;
 
 const FaqAccordion = styled.div`
@@ -91,11 +94,12 @@ const FaqAccordion = styled.div`
   overflow: hidden;
   margin-bottom: 8px;
   background: white;
+  transition: border-color 0.15s;
   &:hover {
     border-color: ${t.colors.primary}40;
   }
-  transition: border-color 0.15s;
 `;
+
 const FaqHeader = styled.div`
   display: flex;
   align-items: center;
@@ -109,32 +113,61 @@ const FaqHeader = styled.div`
     background: ${t.colors.surfaceAlt};
   }
 `;
+
 const FaqQuestion = styled.div`
   flex: 1;
   font-weight: 600;
   font-size: 0.9rem;
   color: ${t.colors.textPrimary};
 `;
+
 const FaqAnswer = styled.div`
-  padding: 0 20px 18px 20px;
+  padding: 14px 20px 18px;
   font-size: 0.875rem;
   color: ${t.colors.textSecondary};
   line-height: 1.7;
   border-top: 1px solid ${t.colors.border};
-  padding-top: 14px;
   white-space: pre-wrap;
 `;
+
 const FaqMeta = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
   flex-shrink: 0;
 `;
+
 const CategoryTag = styled.span`
-  font-size: 1rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  padding: 2px 80px;
+  padding: 2px 8px;
   color: ${t.colors.textMuted};
+  background: ${t.colors.surfaceAlt};
+  border: 1px solid ${t.colors.border};
+  border-radius: 6px;
+`;
+
+const CategoryBadge = styled.button<{ $active?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: ${({ $active }) =>
+    $active ? `${t.colors.primary}15` : t.colors.surfaceAlt};
+  color: ${({ $active }) => ($active ? t.colors.primary : t.colors.textMuted)};
+  border: 1px solid
+    ${({ $active }) => ($active ? `${t.colors.primary}40` : t.colors.border)};
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: ${t.fonts.body};
+  &:hover {
+    background: ${t.colors.primary}25;
+    color: ${t.colors.primary};
+    border-color: ${t.colors.primary}40;
+  }
 `;
 
 const FaqCheckbox = styled.input`
@@ -145,72 +178,7 @@ const FaqCheckbox = styled.input`
   accent-color: ${t.colors.primary};
 `;
 
-const BulkBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 4px 6px 4px 12px;
-  border-radius: 10px;
-  background: ${t.colors.primaryGhost};
-  border: 1.5px solid ${t.colors.primary};
-  box-shadow: 0 2px 8px ${t.colors.primaryGhost};
-  animation: bulkSlideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  @keyframes bulkSlideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(-3px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-`;
-const BulkCount = styled.span`
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: ${t.colors.primary};
-  padding-right: 10px;
-  border-right: 1.5px solid ${t.colors.border};
-  white-space: nowrap;
-  span {
-    font-size: 0.9rem;
-    font-weight: 800;
-  }
-`;
-const BulkActionBtn = styled.button<{
-  $variant?: "success" | "warning" | "danger" | "ghost";
-}>`
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  ${({ $variant }) =>
-    $variant === "success" &&
-    `background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "warning" &&
-    `background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "danger" &&
-    `background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    (!$variant || $variant === "ghost") &&
-    `background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const FAQ_CATEGORIES = [
   "General",
@@ -222,7 +190,9 @@ const FAQ_CATEGORIES = [
   "Other",
 ];
 
-// ── Empty form state ───────────────────────────────────────────────────────────
+type BulkAction = "active" | "inactive" | "delete";
+type ModalMode = "create" | "edit" | "delete" | "bulkConfirm" | null;
+
 const emptyForm = (): Omit<AdminFaq, "id" | "createdAt" | "updatedAt"> => ({
   question: "",
   answer: "",
@@ -231,42 +201,45 @@ const emptyForm = (): Omit<AdminFaq, "id" | "createdAt" | "updatedAt"> => ({
   status: "active",
 });
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────────────────────
+
 export const FaqPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
+  // 1a. Local data (FAQ page manages own list — no hook available)
   const [faqs, setFaqs] = useState<AdminFaq[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 1b. Filter state
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
   const [statFilter, setStatFilter] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<AdminFaq | null>(null);
-  const [form, setForm] = useState(emptyForm());
-  const [saving, setSaving] = useState(false);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  // 1c. Selection / bulk
   const [selIds, setSelIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
-  const [bulkConfirm, setBulkConfirm] = useState<
-    "active" | "inactive" | "delete" | null
-  >(null);
+  const [pendingBulk, setPendingBulk] = useState<BulkAction | null>(null);
 
+  // 1d. Modal / form
+  const [mode, setMode] = useState<ModalMode>(null);
+  const [selected, setSelected] = useState<AdminFaq | null>(null);
+  const [form, setForm] = useState(emptyForm());
+  const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  // 4. Load data (called on mount + after mutations)
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await adminFaqsApi.list();
       if (res.success) setFaqs(res.data ?? []);
     } catch (e) {
-      dispatch(
-        showAdminToast({
-          message: e instanceof ApiError ? e.message : "Failed to load FAQs",
-          type: "error",
-        }),
-      );
+      const msg = e instanceof ApiError ? e.message : "Failed to load FAQs";
+      setError(msg);
+      dispatch(showAdminToast({ message: msg, type: "error" }));
     } finally {
       setLoading(false);
     }
@@ -276,13 +249,12 @@ export const FaqPage: React.FC = () => {
     load();
   }, [load]);
 
-  // Derive unique categories
-  const categories = useMemo(() => {
-    const cats = Array.from(
-      new Set(faqs.map((f) => f.category).filter(Boolean)),
-    ) as string[];
-    return cats.sort();
-  }, [faqs]);
+  // 2. Derived / filtered data
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(faqs.map((f) => f.category).filter(Boolean))).sort() as string[],
+    [faqs],
+  );
 
   const filtered = useMemo(() => {
     let list = faqs;
@@ -299,14 +271,32 @@ export const FaqPage: React.FC = () => {
     return list;
   }, [faqs, catFilter, statFilter, search]);
 
+  const activeCount = faqs.filter((f) => f.status === "active").length;
+  const inactiveCount = faqs.filter((f) => f.status === "inactive").length;
+
+  const allFilteredIds = filtered.map((f) => f.id);
+  const allChecked =
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => selIds.has(id));
+
+  const toggleAll = () =>
+    setSelIds(allChecked ? new Set() : new Set(allFilteredIds));
+
+  const toggleOne = (id: string) =>
+    setSelIds((prev) => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+
+  // 3. Modal helpers
   const openAdd = () => {
-    setEditing(null);
+    setSelected(null);
     setForm(emptyForm());
-    setModalOpen(true);
+    setMode("create");
   };
 
   const openEdit = (faq: AdminFaq) => {
-    setEditing(faq);
+    setSelected(faq);
     setForm({
       question: faq.question,
       answer: faq.answer,
@@ -314,16 +304,28 @@ export const FaqPage: React.FC = () => {
       sortOrder: faq.sortOrder,
       status: faq.status,
     });
-    setModalOpen(true);
+    setMode("edit");
+  };
+
+  const openDelete = (faq: AdminFaq) => {
+    setSelected(faq);
+    setMode("delete");
+  };
+
+  const openBulkConfirm = (action: BulkAction) => {
+    setPendingBulk(action);
+    setMode("bulkConfirm");
   };
 
   const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
+    setMode(null);
+    setSelected(null);
     setForm(emptyForm());
+    setPendingBulk(null);
   };
 
-  const handleSave = async () => {
+  // 4a. Create / Update
+  const handleSave = useCallback(async () => {
     if (!form.question.trim() || !form.answer.trim()) {
       dispatch(
         showAdminToast({
@@ -335,20 +337,15 @@ export const FaqPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      if (editing) {
-        const res = await adminFaqsApi.update(editing.id, form);
-        if (res.success) {
-          setFaqs((prev) =>
-            prev.map((f) => (f.id === editing.id ? res.data : f)),
-          );
-          dispatch(showAdminToast({ message: "FAQ updated", type: "success" }));
-        }
+      if (selected) {
+        const res = await adminFaqsApi.update(selected.id, form);
+        if (res.success)
+          setFaqs((prev) => prev.map((f) => (f.id === selected.id ? res.data : f)));
+        dispatch(showAdminToast({ message: "FAQ updated", type: "success" }));
       } else {
         const res = await adminFaqsApi.create(form);
-        if (res.success) {
-          setFaqs((prev) => [...prev, res.data]);
-          dispatch(showAdminToast({ message: "FAQ created", type: "success" }));
-        }
+        if (res.success) setFaqs((prev) => [...prev, res.data]);
+        dispatch(showAdminToast({ message: "FAQ created", type: "success" }));
       }
       closeModal();
     } catch (e) {
@@ -361,55 +358,51 @@ export const FaqPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [selected, form, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 4b. Delete
+  const handleDelete = useCallback(async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await adminFaqsApi.delete(selected.id);
+      setFaqs((prev) => prev.filter((f) => f.id !== selected.id));
+      dispatch(showAdminToast({ message: "FAQ deleted", type: "warning" }));
+      closeModal();
+    } catch (e) {
+      dispatch(
+        showAdminToast({
+          message: e instanceof ApiError ? e.message : "Delete failed",
+          type: "error",
+        }),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [selected, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 4c. Inline status toggle
   const toggleStatus = async (faq: AdminFaq) => {
     const next = faq.status === "active" ? "inactive" : "active";
     try {
       await adminFaqsApi.setStatus(faq.id, next);
-      setFaqs((prev) =>
-        prev.map((f) => (f.id === faq.id ? { ...f, status: next } : f)),
+      setFaqs((prev) => prev.map((f) => (f.id === faq.id ? { ...f, status: next } : f)));
+      dispatch(
+        showAdminToast({
+          message: `"${faq.question.slice(0, 30)}…" set to ${next}`,
+          type: "success",
+        }),
       );
-      dispatch(showAdminToast({ message: `FAQ ${next}`, type: "success" }));
-    } catch (e) {
+    } catch {
       dispatch(
         showAdminToast({ message: "Status update failed", type: "error" }),
       );
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    setDeleting(true);
-    try {
-      await adminFaqsApi.delete(deleteId);
-      setFaqs((prev) => prev.filter((f) => f.id !== deleteId));
-      dispatch(showAdminToast({ message: "FAQ deleted", type: "success" }));
-      setDeleteId(null);
-    } catch (e) {
-      dispatch(showAdminToast({ message: "Delete failed", type: "error" }));
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const activeCount = faqs.filter((f) => f.status === "active").length;
-  const inactiveCount = faqs.filter((f) => f.status === "inactive").length;
-
-  const allFilteredIds = filtered.map((f) => f.id);
-  const allChecked =
-    allFilteredIds.length > 0 && allFilteredIds.every((id) => selIds.has(id));
-  const toggleAll = () =>
-    setSelIds(allChecked ? new Set() : new Set(allFilteredIds));
-  const toggleOne = (id: string) =>
-    setSelIds((prev) => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
-
+  // 4d. Bulk actions
   const handleBulkAction = useCallback(
-    async (action: "active" | "inactive" | "delete") => {
+    async (action: BulkAction) => {
       if (!selIds.size) return;
       setBulkWorking(true);
       const ids = Array.from(selIds);
@@ -426,9 +419,7 @@ export const FaqPage: React.FC = () => {
         } else {
           await adminFaqsApi.bulkUpdateStatus(ids, action);
           setFaqs((prev) =>
-            prev.map((f) =>
-              ids.includes(f.id) ? { ...f, status: action } : f,
-            ),
+            prev.map((f) => (ids.includes(f.id) ? { ...f, status: action } : f)),
           );
           dispatch(
             showAdminToast({
@@ -438,12 +429,11 @@ export const FaqPage: React.FC = () => {
           );
         }
         setSelIds(new Set());
-        setBulkConfirm(null);
+        closeModal();
       } catch (err) {
         dispatch(
           showAdminToast({
-            message:
-              err instanceof ApiError ? err.message : "Bulk action failed",
+            message: err instanceof ApiError ? err.message : "Bulk action failed",
             type: "error",
           }),
         );
@@ -451,12 +441,16 @@ export const FaqPage: React.FC = () => {
         setBulkWorking(false);
       }
     },
-    [selIds, dispatch],
+    [selIds, dispatch], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // 5. Render
   return (
-    <div>
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+    <section>
+      {/* Error banner */}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <PageHeader>
         <div>
           <PageTitle>FAQs</PageTitle>
@@ -481,16 +475,14 @@ export const FaqPage: React.FC = () => {
                     { label: "Order", key: "sortOrder" },
                     {
                       label: "Status",
-                      resolve: (row) => {
-                        const iso = row["status"] as string;
-                        return iso === "active" ? "Active" : "Inactive";
-                      },
+                      resolve: (row) =>
+                        row["status"] === "active" ? "Active" : "Inactive",
                     },
                     {
-                      label: "Subscribed At",
+                      label: "Created At",
                       resolve: (row) => {
-                        const iso = row["createdAt"] as string;
-                        return iso ? formatDate(iso) : "—";
+                        const v = row["createdAt"] as string;
+                        return v ? formatDate(v) : "—";
                       },
                     },
                   ],
@@ -501,21 +493,21 @@ export const FaqPage: React.FC = () => {
               }
             }}
           />
-          <AdminBtn $variant="primary" onClick={openAdd} style={{ gap: 6 }}>
+          <AdminBtn $variant="primary" onClick={openAdd}>
             <Plus size={15} /> Add FAQ
           </AdminBtn>
-          <AdminBtn $variant="ghost" onClick={load} style={{ gap: 6 }}>
+          <IconBtn title="Refresh" onClick={load}>
             <RefreshCw size={14} />
-          </AdminBtn>
+          </IconBtn>
         </AdminFlex>
       </PageHeader>
 
-      {/* ── Stats ──────────────────────────────────────────────────────────── */}
+      {/* ── Stats ───────────────────────────────────────────────────────── */}
       <AdminFlex $gap="12px" $wrap style={{ marginBottom: 20 }}>
         {[
           { label: "Total", value: faqs.length, color: t.colors.primary },
-          { label: "Active", value: activeCount, color: "#10b981" },
-          { label: "Inactive", value: inactiveCount, color: "#f59e0b" },
+          { label: "Active", value: activeCount, color: t.colors.success },
+          { label: "Inactive", value: inactiveCount, color: t.colors.warning },
           { label: "Categories", value: categories.length, color: "#6366f1" },
         ].map((s) => (
           <AdminCard
@@ -528,11 +520,7 @@ export const FaqPage: React.FC = () => {
               {s.value}
             </div>
             <div
-              style={{
-                fontSize: "0.75rem",
-                color: t.colors.textMuted,
-                marginTop: 2,
-              }}
+              style={{ fontSize: "0.75rem", color: t.colors.textMuted, marginTop: 2 }}
             >
               {s.label}
             </div>
@@ -540,89 +528,89 @@ export const FaqPage: React.FC = () => {
         ))}
       </AdminFlex>
 
-      {/* ── Filters ────────────────────────────────────────────────────────── */}
+      {/* ── Filters ─────────────────────────────────────────────────────── */}
       <AdminCard style={{ padding: "16px 20px", marginBottom: 20 }}>
         <AdminFlex $gap="12px" $wrap>
-          <SearchBar style={{ flex: 1, minWidth: 200 }}>
-            <Search size={15} />
-            <SearchInput
+          <PageSearchBar style={{ flex: 1, minWidth: 200 }}>
+            <Search size={15} color={t.colors.textMuted} />
+            <PageSearchInp
               placeholder="Search questions or answers…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </SearchBar>
+          </PageSearchBar>
           <AdminDropdown
             style={{ minWidth: 150 }}
             value={statFilter}
-            onChange={(val) => {
-              setStatFilter(val as any);
-            }}
+            onChange={(val) => setStatFilter(val as string)}
             options={[
               { value: "", label: "All Status" },
               { value: "active", label: "Active" },
               { value: "inactive", label: "Inactive" },
             ]}
           />
-          {selIds.size > 0 && (
-            <BulkBar>
-              <BulkCount>
-                <span>{selIds.size}</span> selected
-              </BulkCount>
-              <BulkActionBtn
-                $variant="success"
-                disabled={bulkWorking}
-                onClick={() => setBulkConfirm("active")}
-              >
-                <CheckCircle size={12} /> Set Active
-              </BulkActionBtn>
-              <BulkActionBtn
-                $variant="warning"
-                disabled={bulkWorking}
-                onClick={() => setBulkConfirm("inactive")}
-              >
-                <XCircle size={12} /> Set Inactive
-              </BulkActionBtn>
-              <BulkActionBtn
-                $variant="danger"
-                disabled={bulkWorking}
-                onClick={() => setBulkConfirm("delete")}
-              >
-                <Trash2 size={12} /> Delete
-              </BulkActionBtn>
-              <BulkActionBtn
-                $variant="ghost"
-                disabled={bulkWorking}
-                onClick={() => setSelIds(new Set())}
-              >
-                ✕ Clear
-              </BulkActionBtn>
-            </BulkBar>
-          )}
         </AdminFlex>
 
-        {/* Category pills */}
-        {FAQ_CATEGORIES.length > 0 && (
-          <AdminFlex $gap="8px" $wrap style={{ marginTop: 12 }}>
+        {/* Category filter chips */}
+        {categories.length > 0 && (
+          <AdminFlex $gap="6px" $wrap style={{ marginTop: 12 }}>
             <CategoryBadge
-              $active={catFilter === ""}
+              $active={!catFilter}
               onClick={() => setCatFilter("")}
             >
               All
             </CategoryBadge>
-            {FAQ_CATEGORIES.map((c) => (
+            {categories.map((cat) => (
               <CategoryBadge
-                key={c}
-                $active={catFilter === c}
-                onClick={() => setCatFilter(catFilter === c ? "" : c)}
+                key={cat}
+                $active={catFilter === cat}
+                onClick={() => setCatFilter(catFilter === cat ? "" : cat)}
               >
-                {c}
+                {cat}
               </CategoryBadge>
             ))}
           </AdminFlex>
         )}
+
+        {/* Bulk bar */}
+        {selIds.size > 0 && (
+          <BulkBar style={{ marginTop: 12 }}>
+            <BulkCount>
+              <span>{selIds.size}</span> selected
+            </BulkCount>
+            <BulkActionBtn
+              $variant="success"
+              disabled={bulkWorking}
+              onClick={() => openBulkConfirm("active")}
+            >
+              <CheckCircle size={12} /> Set Active
+            </BulkActionBtn>
+            <BulkActionBtn
+              $variant="warning"
+              disabled={bulkWorking}
+              onClick={() => openBulkConfirm("inactive")}
+            >
+              <XCircle size={12} /> Set Inactive
+            </BulkActionBtn>
+            <BulkActionBtn
+              $variant="danger"
+              disabled={bulkWorking}
+              onClick={() => openBulkConfirm("delete")}
+            >
+              <Trash2 size={12} /> Delete
+            </BulkActionBtn>
+            <BulkActionBtn
+              $variant="ghost"
+              disabled={bulkWorking}
+              onClick={() => setSelIds(new Set())}
+            >
+              ✕ Clear
+            </BulkActionBtn>
+          </BulkBar>
+        )}
       </AdminCard>
 
-      {/* ── FAQ List ──────────────────────────────────────────────────────── */}
+      {/* ── FAQ List ────────────────────────────────────────────────────── */}
       {loading ? (
         <AdminCard style={{ padding: 60, textAlign: "center" }}>
           <div style={{ color: t.colors.textMuted }}>Loading FAQs…</div>
@@ -639,6 +627,15 @@ export const FaqPage: React.FC = () => {
               ? "Try adjusting your filters"
               : "Add your first FAQ"}
           </div>
+          {!search && !catFilter && !statFilter && (
+            <AdminBtn
+              $variant="primary"
+              onClick={openAdd}
+              style={{ marginTop: 16 }}
+            >
+              <Plus size={14} /> Add FAQ
+            </AdminBtn>
+          )}
         </EmptyState>
       ) : (
         <>
@@ -713,7 +710,7 @@ export const FaqPage: React.FC = () => {
                     title="Delete"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setDeleteId(faq.id);
+                      openDelete(faq);
                     }}
                   >
                     <Trash2 size={14} />
@@ -731,16 +728,18 @@ export const FaqPage: React.FC = () => {
         </>
       )}
 
-      {/* ── Create / Edit Modal ───────────────────────────────────────────── */}
-      {modalOpen && (
+      {/* ── Create / Edit Modal ──────────────────────────────────────────── */}
+      {(mode === "create" || mode === "edit") && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
             style={{ maxWidth: 620 }}
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <span>{editing ? "Edit FAQ" : "New FAQ"}</span>
-              <IconBtn onClick={closeModal}>✕</IconBtn>
+              <ModalTitle>
+                {mode === "edit" ? "Edit FAQ" : "New FAQ"}
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
               <FormGrid>
@@ -752,6 +751,7 @@ export const FaqPage: React.FC = () => {
                       setForm((p) => ({ ...p, question: e.target.value }))
                     }
                     placeholder="e.g. How long does shipping take?"
+                    autoFocus
                   />
                 </FormGroup>
                 <FormGroup style={{ gridColumn: "1/-1" }}>
@@ -769,13 +769,10 @@ export const FaqPage: React.FC = () => {
                   <FormLabel>Category</FormLabel>
                   <AdminDropdown
                     value={form.category}
-                    onChange={(val) =>
-                      setForm((p) => ({ ...p, category: val }))
-                    }
+                    onChange={(val) => setForm((p) => ({ ...p, category: val }))}
                     options={[
                       ...FAQ_CATEGORIES.map((c) => ({ value: c, label: c })),
-                      ...(!FAQ_CATEGORIES.includes(form.category) &&
-                      form.category
+                      ...(!FAQ_CATEGORIES.includes(form.category) && form.category
                         ? [{ value: form.category, label: form.category }]
                         : []),
                     ]}
@@ -817,112 +814,105 @@ export const FaqPage: React.FC = () => {
               <AdminBtn $variant="ghost" onClick={closeModal}>
                 Cancel
               </AdminBtn>
-              <AdminBtn
-                $variant="primary"
-                onClick={handleSave}
-                disabled={saving}
-              >
-                {saving ? "Saving…" : editing ? "Save Changes" : "Create FAQ"}
+              <AdminBtn $variant="primary" onClick={handleSave} disabled={saving}>
+                {saving
+                  ? "Saving…"
+                  : mode === "edit"
+                    ? "Save Changes"
+                    : "Create FAQ"}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
       )}
 
-      {/* ── Delete Confirm ────────────────────────────────────────────────── */}
-      {deleteId && (
-        <ModalBackdrop onClick={() => setDeleteId(null)}>
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
+      {mode === "delete" && selected && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox
             style={{ maxWidth: 420 }}
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <span>Delete FAQ</span>
-              <IconBtn onClick={() => setDeleteId(null)}>✕</IconBtn>
+              <ModalTitleDanger>Delete FAQ</ModalTitleDanger>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p style={{ color: t.colors.textSecondary, margin: 0 }}>
-                Are you sure you want to delete this FAQ? This action cannot be
-                undone.
-              </p>
+              <ConfirmText>
+                Are you sure you want to delete{" "}
+                <strong>"{selected.question.slice(0, 60)}{selected.question.length > 60 ? "…" : ""}"</strong>?
+                This action cannot be undone.
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
-              <AdminBtn $variant="ghost" onClick={() => setDeleteId(null)}>
+              <AdminBtn $variant="ghost" onClick={closeModal}>
                 Cancel
               </AdminBtn>
-              <AdminBtn
-                $variant="danger"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? "Deleting…" : "Delete"}
+              <AdminBtn $variant="danger" onClick={handleDelete} disabled={saving}>
+                {saving ? "Deleting…" : "Delete"}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
       )}
 
-      {bulkConfirm && (
-        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+      {/* ── Bulk Confirm Modal ───────────────────────────────────────────── */}
+      {mode === "bulkConfirm" && pendingBulk && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox
             style={{ maxWidth: 420 }}
             onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
-              <span style={{ fontWeight: 700, color: t.colors.textPrimary }}>
-                {bulkConfirm === "delete"
+              <ModalTitle>
+                {pendingBulk === "delete"
                   ? "Delete Selected FAQs"
-                  : bulkConfirm === "active"
+                  : pendingBulk === "active"
                     ? "Set FAQs Active"
                     : "Set FAQs Inactive"}
-              </span>
-              <IconBtn onClick={() => setBulkConfirm(null)}>✕</IconBtn>
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  margin: 0,
-                  lineHeight: 1.6,
-                }}
-              >
-                {bulkConfirm === "delete" ? (
+              <ConfirmText>
+                {pendingBulk === "delete" ? (
                   <>
                     Are you sure you want to delete{" "}
-                    <strong>{selIds.size} FAQ(s)</strong>? This cannot be
-                    undone.
+                    <strong>{selIds.size} FAQ(s)</strong>? This cannot be undone.
                   </>
                 ) : (
                   <>
                     Set <strong>{selIds.size} FAQ(s)</strong> to{" "}
-                    <strong>{bulkConfirm}</strong>?
+                    <strong>{pendingBulk}</strong>?
                   </>
                 )}
-              </p>
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
               <AdminBtn
                 $variant="ghost"
-                onClick={() => setBulkConfirm(null)}
+                onClick={closeModal}
                 disabled={bulkWorking}
               >
                 Cancel
               </AdminBtn>
               <AdminBtn
-                $variant={bulkConfirm === "delete" ? "danger" : "primary"}
+                $variant={pendingBulk === "delete" ? "danger" : "primary"}
                 disabled={bulkWorking}
-                onClick={() => handleBulkAction(bulkConfirm)}
+                onClick={() => handleBulkAction(pendingBulk)}
               >
                 {bulkWorking
                   ? "Processing…"
-                  : bulkConfirm === "delete"
+                  : pendingBulk === "delete"
                     ? `Delete ${selIds.size}`
-                    : `Set ${selIds.size} ${bulkConfirm}`}
+                    : `Set ${selIds.size} ${pendingBulk}`}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
       )}
-    </div>
+    </section>
   );
 };
+
+export default FaqPage;

@@ -1,11 +1,18 @@
 /**
  * src/admin/pages/CalendarPage.tsx
+ * Admin: monthly calendar — add / edit / delete events, auto-reminder info banner.
  *
- * Full admin calendar — month view, add / edit / delete events,
- * auto-reminder info banner.
+ * Page structure (consistent across ALL admin pages):
+ *   1. useState declarations  (1a. data → 1b. UI/loading → 1c. modal/form)
+ *   2. Data fetch             (fetchEvents — useCallback + useEffect)
+ *   3. Navigation helpers     (prevMonth, nextMonth, goToday)
+ *   4. Modal helpers          (openAdd, openEvent, openEdit, closeAll)
+ *   5. Action handlers        (handleSave, handleDelete)
+ *   6. Return JSX             (calendar grid → modals)
  *
- * Uses adminTheme tokens (blues / greys) that match the rest of
- * the Vegefoods admin panel — NOT the standalone green palette.
+ * Note: Uses shared adminShared modal/form components (ModalBackdrop, ModalBox,
+ *       ModalHeader, ModalBody, ModalFooter, AdminInput, AdminTextarea, AdminBtn,
+ *       FormLabel) — no local duplicates.
  */
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -14,7 +21,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  X,
   Calendar,
   Clock,
   Trash2,
@@ -22,6 +28,19 @@ import {
   Bell,
 } from "lucide-react";
 import { adminTheme as t } from "../styles/adminTheme";
+import {
+  AdminBtn,
+  AdminInput,
+  AdminSelect,
+  AdminTextarea,
+  FormLabel,
+  ModalBackdrop,
+  ModalBox,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "../styles/adminShared";
+import { ModalCloseBtn, ModalTitle } from "../styles/adminPageComponents";
 import {
   adminCalendarApi,
   CalendarEvent,
@@ -392,194 +411,13 @@ const InfoBanner = styled.div`
   color: #92400e;
 `;
 
-// ── Modal ─────────────────────────────────────────────────────
-const Backdrop = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(16, 24, 40, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: ${t.zIndex.modal};
-  padding: 16px;
-`;
-
-const Modal = styled.div`
-  background: white;
-  border-radius: ${t.radii.lg};
-  width: 100%;
-  max-width: 520px;
-  box-shadow: ${t.shadows.lg};
-  animation: modalIn 0.2s ease;
-  overflow: hidden;
-`;
-
-const ModalHead = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid ${t.colors.border};
-`;
-
-const ModalTitle = styled.h3`
-  margin: 0;
-  font-size: 1.0625rem;
-  font-weight: 700;
-  color: ${t.colors.textPrimary};
-`;
-
-const CloseBtn = styled.button`
-  width: 32px;
-  height: 32px;
-  border-radius: ${t.radii.sm};
-  border: none;
-  background: ${t.colors.surfaceAlt};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: ${t.colors.textMuted};
-  transition: background ${t.transitions.fast};
-  &:hover {
-    background: ${t.colors.border};
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 20px 24px;
-  max-height: 70vh;
-  overflow-y: auto;
-`;
-
+// Calendar-specific form grid (Modal shell/inputs/buttons => adminShared.ts)
 const FormRow = styled.div<{ $cols?: number }>`
   display: grid;
   grid-template-columns: repeat(${({ $cols }) => $cols || 1}, 1fr);
   gap: 12px;
   margin-bottom: 14px;
 `;
-
-const Label = styled.label`
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: ${t.colors.textSecondary};
-  margin-bottom: 5px;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  border: 1px solid ${t.colors.border};
-  border-radius: ${t.radii.md};
-  font-size: 0.875rem;
-  color: ${t.colors.textPrimary};
-  background: white;
-  outline: none;
-  box-sizing: border-box;
-  transition:
-    border-color ${t.transitions.fast},
-    box-shadow ${t.transitions.fast};
-  font-family: ${t.fonts.body};
-  &:focus {
-    border-color: ${t.colors.primary};
-    box-shadow: ${t.shadows.focus};
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  height: 38px;
-  padding: 0 12px;
-  border: 1px solid ${t.colors.border};
-  border-radius: ${t.radii.md};
-  font-size: 0.875rem;
-  color: ${t.colors.textPrimary};
-  background: white;
-  outline: none;
-  cursor: pointer;
-  box-sizing: border-box;
-  font-family: ${t.fonts.body};
-  &:focus {
-    border-color: ${t.colors.primary};
-    box-shadow: ${t.shadows.focus};
-  }
-`;
-
-const Textarea = styled.textarea`
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid ${t.colors.border};
-  border-radius: ${t.radii.md};
-  font-size: 0.875rem;
-  color: ${t.colors.textPrimary};
-  background: white;
-  outline: none;
-  resize: vertical;
-  min-height: 72px;
-  font-family: ${t.fonts.body};
-  box-sizing: border-box;
-  &:focus {
-    border-color: ${t.colors.primary};
-    box-shadow: ${t.shadows.focus};
-  }
-`;
-
-const ModalFooter = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 14px 24px 20px;
-  border-top: 1px solid ${t.colors.border};
-`;
-
-const BtnBase = styled.button`
-  padding: 0 20px;
-  height: 38px;
-  border-radius: ${t.radii.md};
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all ${t.transitions.fast};
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: ${t.fonts.body};
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const BtnPrimary = styled(BtnBase)`
-  background: ${t.colors.primary};
-  color: white;
-  border-color: ${t.colors.primary};
-  &:hover:not(:disabled) {
-    background: ${t.colors.primaryDark};
-  }
-`;
-
-const BtnDanger = styled(BtnBase)`
-  background: white;
-  color: ${t.colors.danger};
-  border-color: #fda29b;
-  &:hover:not(:disabled) {
-    background: ${t.colors.dangerBg};
-  }
-`;
-
-const BtnGhost = styled(BtnBase)`
-  background: white;
-  color: ${t.colors.textSecondary};
-  border-color: ${t.colors.border};
-  &:hover {
-    background: ${t.colors.surfaceAlt};
-  }
-`;
-
 const BellBadge = styled.span`
   display: inline-flex;
   align-items: center;
@@ -736,11 +574,15 @@ export const CalendarPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const today = new Date();
 
+  // 1a. Data state
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+
+  // 1b. UI / loading
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // 1c. Modal / form
   const [showAdd, setShowAdd] = useState(false);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -748,7 +590,7 @@ export const CalendarPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  // ── Fetch ────────────────────────────────────────────────────
+  // 2. Data fetch
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
@@ -767,7 +609,7 @@ export const CalendarPage: React.FC = () => {
     fetchEvents();
   }, [fetchEvents]);
 
-  // ── Navigation ───────────────────────────────────────────────
+  // 3. Navigation helpers
   const prevMonth = () => {
     if (month === 0) {
       setYear((y) => y - 1);
@@ -785,7 +627,7 @@ export const CalendarPage: React.FC = () => {
     setMonth(today.getMonth());
   };
 
-  // ── Modal helpers ────────────────────────────────────────────
+  // 4. Modal helpers
   const openAdd = (date?: string) => {
     const base = date || toYMD(today);
     setForm({ ...emptyForm(), startDate: base, endDate: base });
@@ -813,18 +655,18 @@ export const CalendarPage: React.FC = () => {
     setEditMode(true);
   };
 
-  const closeAll = () => {
+  const closeAll = useCallback(() => {
     setShowAdd(false);
     setSelected(null);
     setEditMode(false);
     setForm(emptyForm());
-  };
+  }, []);
 
   const setField = (field: keyof CreateEventBody, value: string | boolean) =>
     setForm((f) => ({ ...f, [field]: value }));
 
-  // ── Save ─────────────────────────────────────────────────────
-  const handleSave = async () => {
+  // 5. Action handlers
+  const handleSave = useCallback(async () => {
     if (!form.title.trim()) {
       dispatch(showAdminToast({ type: "error", message: "Title is required" }));
       return;
@@ -846,10 +688,9 @@ export const CalendarPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [editMode, selected, form, dispatch, fetchEvents]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Delete ───────────────────────────────────────────────────
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!selected) return;
     if (!window.confirm(`Delete "${selected.title}"?`)) return;
     setDeleting(true);
@@ -863,9 +704,9 @@ export const CalendarPage: React.FC = () => {
     } finally {
       setDeleting(false);
     }
-  };
+  }, [selected, dispatch, closeAll, fetchEvents]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Grid ──────────────────────────────────────────────────────
+  // 6. Grid / derived data
   const cells = buildCalendar(year, month);
   const todayYMD = toYMD(today);
 
@@ -941,8 +782,8 @@ export const CalendarPage: React.FC = () => {
     <>
       <FormRow>
         <div>
-          <Label>Title *</Label>
-          <Input
+          <FormLabel>Title *</FormLabel>
+          <AdminInput
             placeholder="Event title"
             value={form.title}
             autoFocus
@@ -953,7 +794,7 @@ export const CalendarPage: React.FC = () => {
 
       <FormRow $cols={2}>
         <div>
-          <Label>Start Date *</Label>
+          <FormLabel>Start Date *</FormLabel>
           <AdminDatePicker
             value={form.startDate}
             onChange={(val) => setField("startDate", val)}
@@ -961,7 +802,7 @@ export const CalendarPage: React.FC = () => {
           />
         </div>
         <div>
-          <Label>End Date</Label>
+          <FormLabel>End Date</FormLabel>
           <AdminDatePicker
             value={form.endDate}
             onChange={(val) => setField("endDate", val)}
@@ -972,7 +813,7 @@ export const CalendarPage: React.FC = () => {
 
       <FormRow $cols={2}>
         <div>
-          <Label>Start Time</Label>
+          <FormLabel>Start Time</FormLabel>
           <AdminTimePicker
             value={form.startTime}
             onChange={(val) => setField("startTime", val)}
@@ -980,7 +821,7 @@ export const CalendarPage: React.FC = () => {
           />
         </div>
         <div>
-          <Label>End Time</Label>
+          <FormLabel>End Time</FormLabel>
           <AdminTimePicker
             value={form.endTime}
             onChange={(val) => setField("endTime", val)}
@@ -991,20 +832,22 @@ export const CalendarPage: React.FC = () => {
 
       <FormRow $cols={2}>
         <div>
-          <Label>Type</Label>
-          <Select
+          <FormLabel>Type</FormLabel>
+          <AdminSelect
             value={form.type}
-            onChange={(e) => setField("type", e.target.value as EventType)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setField("type", e.target.value as EventType)
+            }
           >
             {EVENT_TYPES.map((et) => (
               <option key={et.value} value={et.value}>
                 {et.label}
               </option>
             ))}
-          </Select>
+          </AdminSelect>
         </div>
         <div>
-          <Label>Colour</Label>
+          <FormLabel>Colour</FormLabel>
           <SwatchGrid>
             {COLOR_SWATCHES.map((c) => (
               <Swatch
@@ -1022,7 +865,7 @@ export const CalendarPage: React.FC = () => {
 
       <FormRow>
         <div>
-          <Label>All Day</Label>
+          <FormLabel>All Day</FormLabel>
           <div
             style={{
               display: "flex",
@@ -1059,8 +902,8 @@ export const CalendarPage: React.FC = () => {
 
       <FormRow>
         <div>
-          <Label>Description</Label>
-          <Textarea
+          <FormLabel>Description</FormLabel>
+          <AdminTextarea
             placeholder="Optional details…"
             value={form.description}
             onChange={(e) => setField("description", e.target.value)}
@@ -1087,7 +930,7 @@ export const CalendarPage: React.FC = () => {
     </>
   );
 
-  // ── Render ────────────────────────────────────────────────────
+  // 7. Render
   return (
     <>
       <GlobalStyle />
@@ -1115,12 +958,9 @@ export const CalendarPage: React.FC = () => {
             <NavBtn onClick={nextMonth} title="Next month">
               <ChevronRight size={16} />
             </NavBtn>
-            <BtnGhost
-              onClick={goToday}
-              style={{ height: 34, padding: "0 14px", fontSize: "0.8125rem" }}
-            >
+            <AdminBtn $variant="ghost" $size="sm" onClick={goToday}>
               Today
-            </BtnGhost>
+            </AdminBtn>
           </NavGroup>
 
           {loading && (
@@ -1270,30 +1110,34 @@ export const CalendarPage: React.FC = () => {
 
       {/* ── Add Modal ── */}
       {showAdd && (
-        <Backdrop onClick={closeAll}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHead>
+        <ModalBackdrop onClick={closeAll}>
+          <ModalBox $width="520px" onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
               <ModalTitle>Add New Event</ModalTitle>
-              <CloseBtn onClick={closeAll}>
-                <X size={16} />
-              </CloseBtn>
-            </ModalHead>
+              <ModalCloseBtn onClick={closeAll}>×</ModalCloseBtn>
+            </ModalHeader>
             <ModalBody>{EventForm}</ModalBody>
             <ModalFooter>
-              <BtnGhost onClick={closeAll}>Cancel</BtnGhost>
-              <BtnPrimary onClick={handleSave} disabled={saving}>
+              <AdminBtn $variant="ghost" onClick={closeAll}>
+                Cancel
+              </AdminBtn>
+              <AdminBtn
+                $variant="primary"
+                onClick={handleSave}
+                disabled={saving}
+              >
                 {saving ? "Saving…" : "Save Event"}
-              </BtnPrimary>
+              </AdminBtn>
             </ModalFooter>
-          </Modal>
-        </Backdrop>
+          </ModalBox>
+        </ModalBackdrop>
       )}
 
       {/* ── View Modal ── */}
       {selected && !editMode && (
-        <Backdrop onClick={closeAll}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHead>
+        <ModalBackdrop onClick={closeAll}>
+          <ModalBox $width="520px" onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {/* FIX: view modal colour dot now uses selected.color */}
                 <div
@@ -1307,10 +1151,8 @@ export const CalendarPage: React.FC = () => {
                 />
                 <ModalTitle>{selected.title}</ModalTitle>
               </div>
-              <CloseBtn onClick={closeAll}>
-                <X size={16} />
-              </CloseBtn>
-            </ModalHead>
+              <ModalCloseBtn onClick={closeAll}>×</ModalCloseBtn>
+            </ModalHeader>
 
             <ModalBody>
               <div
@@ -1414,38 +1256,48 @@ export const CalendarPage: React.FC = () => {
             </ModalBody>
 
             <ModalFooter>
-              <BtnDanger onClick={handleDelete} disabled={deleting}>
+              <AdminBtn
+                $variant="danger"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
                 <Trash2 size={14} />
                 {deleting ? "Deleting…" : "Delete"}
-              </BtnDanger>
-              <BtnGhost onClick={closeAll}>Close</BtnGhost>
-              <BtnPrimary onClick={openEdit}>
+              </AdminBtn>
+              <AdminBtn $variant="ghost" onClick={closeAll}>
+                Close
+              </AdminBtn>
+              <AdminBtn $variant="primary" onClick={openEdit}>
                 <Edit2 size={14} /> Edit
-              </BtnPrimary>
+              </AdminBtn>
             </ModalFooter>
-          </Modal>
-        </Backdrop>
+          </ModalBox>
+        </ModalBackdrop>
       )}
 
       {/* ── Edit Modal ── */}
       {selected && editMode && (
-        <Backdrop onClick={closeAll}>
-          <Modal onClick={(e) => e.stopPropagation()}>
-            <ModalHead>
+        <ModalBackdrop onClick={closeAll}>
+          <ModalBox $width="520px" onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
               <ModalTitle>Edit Event</ModalTitle>
-              <CloseBtn onClick={closeAll}>
-                <X size={16} />
-              </CloseBtn>
-            </ModalHead>
+              <ModalCloseBtn onClick={closeAll}>×</ModalCloseBtn>
+            </ModalHeader>
             <ModalBody>{EventForm}</ModalBody>
             <ModalFooter>
-              <BtnGhost onClick={() => setEditMode(false)}>Back</BtnGhost>
-              <BtnPrimary onClick={handleSave} disabled={saving}>
+              <AdminBtn $variant="ghost" onClick={() => setEditMode(false)}>
+                Back
+              </AdminBtn>
+              <AdminBtn
+                $variant="primary"
+                onClick={handleSave}
+                disabled={saving}
+              >
                 {saving ? "Saving…" : "Update Event"}
-              </BtnPrimary>
+              </AdminBtn>
             </ModalFooter>
-          </Modal>
-        </Backdrop>
+          </ModalBox>
+        </ModalBackdrop>
       )}
     </>
   );

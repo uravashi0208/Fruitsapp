@@ -1,36 +1,51 @@
+/**
+ * src/admin/pages/dashboard/Table.tsx
+ * Thin re-export wrappers so existing callers (RecentOrders) keep their paths.
+ * All actual table styled-components live in dashboardStyles.ts.
+ *
+ * Component structure:
+ *   Re-exports: Table, TableHeader, TableBody, TableRow, TableCell
+ */
+
 import React from 'react';
+import { DashTable, DashThead, DashTbody, DashTr, DashTh, DashTd } from './dashboardStyles';
 
-export const Table: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
-  <table style={{ minWidth: '100%', borderCollapse: 'collapse', ...style }}>{children}</table>
+// ─────────────────────────────────────────────────────────────────────────────
+// Wrapper components (preserve original API)
+// ─────────────────────────────────────────────────────────────────────────────
+export const Table: React.FC<{
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}> = ({ children, style }) => (
+  <DashTable style={style}>{children}</DashTable>
 );
 
-export const TableHeader: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
-  <thead style={{ borderTop: '1px solid #e4e7ec', borderBottom: '1px solid #e4e7ec', ...style }}>{children}</thead>
+export const TableHeader: React.FC<{
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}> = ({ children, style }) => (
+  <DashThead style={style}>{children}</DashThead>
 );
 
-export const TableBody: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <tbody>{children}</tbody>
+export const TableBody: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => (
+  <DashTbody>{children}</DashTbody>
 );
 
-export const TableRow: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
-  <tr style={{ borderBottom: '1px solid #f2f4f7', ...style }}>{children}</tr>
+export const TableRow: React.FC<{
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}> = ({ children, style }) => (
+  <DashTr style={style}>{children}</DashTr>
 );
 
 export const TableCell: React.FC<{
-  children: React.ReactNode;
+  children?: React.ReactNode;
   isHeader?: boolean;
   style?: React.CSSProperties;
-}> = ({ children, isHeader = false, style }) => {
-  const base: React.CSSProperties = {
-    padding: '12px 8px',
-    fontSize: 13,
-    color: '#475467',
-    textAlign: 'left',
-    fontFamily: 'Outfit, sans-serif',
-    fontWeight: isHeader ? 500 : 400,
-    whiteSpace: 'nowrap',
-  };
-  return isHeader
-    ? <th style={{ ...base, color: '#98a2b3', fontSize: 12, ...style }}>{children}</th>
-    : <td style={{ ...base, ...style }}>{children}</td>;
-};
+  colSpan?: number;
+}> = ({ children, isHeader = false, style, colSpan }) =>
+  isHeader
+    ? <DashTh style={style} colSpan={colSpan}>{children}</DashTh>
+    : <DashTd style={style} colSpan={colSpan}>{children}</DashTd>;

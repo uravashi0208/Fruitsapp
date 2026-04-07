@@ -1,4 +1,13 @@
-import React, { useState } from 'react';
+/**
+ * src/admin/pages/LoginPage.tsx
+ * Admin: sign-in page — email/password login with remember-me and brand panel.
+ *
+ * Page structure:
+ *   1. useState declarations  (email, password, UI flags)
+ *   2. Action handler         (handleSubmit)
+ *   3. Return JSX             (form side → brand side)
+ */
+import React, { useState, useCallback } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -113,14 +122,18 @@ export const LoginPage: React.FC = () => {
   const location = useLocation();
   const from     = (location.state as any)?.from?.pathname || '/admin';
 
+  // 1a. Form fields
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
+
+  // 1b. UI / loading
   const [showPw,   setShowPw]   = useState(false);
   const [remember, setRemember] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // 2. Action handler
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault(); setError('');
     if (!email || !password) { setError('Please fill in all fields.'); return; }
     setLoading(true);
@@ -133,8 +146,9 @@ export const LoginPage: React.FC = () => {
     } catch(err) {
       setError(err instanceof ApiError ? err.message : 'Login failed. Please try again.');
     } finally { setLoading(false); }
-  };
+  }, [email, password, dispatch, navigate, from]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 3. Render
   return (
     <Page>
       {/* Form side */}

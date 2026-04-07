@@ -1,4 +1,13 @@
-import React, { useState } from 'react';
+/**
+ * src/admin/pages/RegisterPage.tsx
+ * Admin: register new admin user — name, email, role, password with strength meter.
+ *
+ * Page structure:
+ *   1. useState declarations  (form fields, UI flags)
+ *   2. Action handler         (handleSubmit)
+ *   3. Return JSX             (form side → brand/steps side)
+ */
+import React, { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
@@ -56,17 +65,21 @@ const pwStr=(pw:string)=>{
 export const RegisterPage: React.FC = () => {
   const dispatch = useAdminDispatch();
   const navigate = useNavigate();
-  const [form, setForm] = useState({firstName:'',lastName:'',email:'',phone:'',role:'viewer',password:'',confirm:''});
+  // 1a. Form fields
+  const [form,    setForm]    = useState({firstName:'',lastName:'',email:'',phone:'',role:'viewer',password:'',confirm:''});
+  const [terms,   setTerms]   = useState(false);
+
+  // 1b. UI / loading
   const [showPw,  setShowPw]  = useState(false);
   const [showCf,  setShowCf]  = useState(false);
-  const [terms,   setTerms]   = useState(false);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const set=(k:keyof typeof form)=>(e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement>)=>setForm(f=>({...f,[k]:e.target.value}));
   const str=pwStr(form.password);
 
-  const handleSubmit=async(e:React.FormEvent)=>{
+  // 2. Action handler
+  const handleSubmit=useCallback(async(e:React.FormEvent)=>{
     e.preventDefault(); setError(''); setSuccess('');
     if(!form.firstName||!form.lastName){setError('First and last name are required.');return;}
     if(!form.email.includes('@')){setError('Enter a valid email address.');return;}
@@ -83,8 +96,9 @@ export const RegisterPage: React.FC = () => {
       }
     } catch(err){setError(err instanceof ApiError?err.message:'Registration failed. Please try again.');
     } finally{setLoading(false);}
-  };
+  }, [form, terms, dispatch, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 3. Render
   return (
     <Page>
       <FormSide>

@@ -1,91 +1,151 @@
-import React, { useState } from 'react';
-import Chart from 'react-apexcharts';
-import { ApexOptions } from 'apexcharts';
-import { Dropdown } from '../../theme-components/ui/dropdown/Dropdown';
-import { DropdownItem } from '../../theme-components/ui/dropdown/DropdownItem';
-import { useAdminDashboard } from '../../../hooks/useAdminApi';
+/**
+ * src/admin/pages/dashboard/MonthlySalesChart.tsx
+ * Grouped bar chart — monthly revenue vs orders.
+ * Data from useAdminDashboard. Styling from dashboardStyles.ts.
+ *
+ * Component structure:
+ *   1. useState  (1a. dropdown open)
+ *   2. Data hook (useAdminDashboard)
+ *   3. Derived   (chart categories + series from API)
+ *   4. Chart options (ApexOptions)
+ *   5. Render
+ */
 
-const MoreDotIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm6 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm6 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0z" stroke="#98a2b3" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-);
+import React, { useState } from "react";
+import Chart from "react-apexcharts";
+import { ApexOptions } from "apexcharts";
+import { Dropdown } from "../../theme-components/ui/dropdown/Dropdown";
+import { DropdownItem } from "../../theme-components/ui/dropdown/DropdownItem";
+import { useAdminDashboard } from "../../../hooks/useAdminApi";
+import {
+  DashCard,
+  CardPadding,
+  CardHeaderRow,
+  CardTitle,
+  MoreBtn,
+  MoreDotSVG,
+} from "./dashboardStyles";
+import { adminTheme as t } from "../../styles/adminTheme";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
+const FALLBACK_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+const FALLBACK_ZEROES = new Array(12).fill(0);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
 const MonthlySalesChart: React.FC = () => {
+  // 1a. UI state
   const [isOpen, setIsOpen] = useState(false);
+
+  // 2. Data hook
   const { data: stats } = useAdminDashboard();
 
-  // Build categories and series from API revenueChart, fallback to month names
+  // 3. Derived chart data
   const chartData = stats?.revenueChart ?? [];
-  const categories = chartData.length > 0
+  const hasData = chartData.length > 0;
+  const categories = hasData
     ? chartData.map((d: any) => d.month)
-    : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const revenueData = chartData.length > 0
+    : FALLBACK_MONTHS;
+  const revenue = hasData
     ? chartData.map((d: any) => d.revenue)
-    : [0,0,0,0,0,0,0,0,0,0,0,0];
-  const ordersData = chartData.length > 0
+    : FALLBACK_ZEROES;
+  const orders = hasData
     ? chartData.map((d: any) => d.orders)
-    : [0,0,0,0,0,0,0,0,0,0,0,0];
+    : FALLBACK_ZEROES;
 
+  // 4. Chart options
   const options: ApexOptions = {
-    colors: ['#465fff', '#9CB9FF'],
+    colors: ["#465fff", "#9CB9FF"],
     chart: {
-      fontFamily: 'Outfit, sans-serif',
-      type: 'bar',
+      fontFamily: t.fonts.body,
+      type: "bar",
       height: 180,
       toolbar: { show: false },
     },
     plotOptions: {
       bar: {
         horizontal: false,
-        columnWidth: '39%',
+        columnWidth: "39%",
         borderRadius: 5,
-        borderRadiusApplication: 'end',
+        borderRadiusApplication: "end",
       },
     },
     dataLabels: { enabled: false },
-    stroke: { show: true, width: 4, colors: ['transparent'] },
+    stroke: { show: true, width: 4, colors: ["transparent"] },
     xaxis: {
       categories,
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
-    legend: { show: true, position: 'top', horizontalAlign: 'left', fontFamily: 'Outfit' },
+    legend: {
+      show: true,
+      position: "top",
+      horizontalAlign: "left",
+      fontFamily: t.fonts.body,
+    },
     yaxis: { title: { text: undefined } },
     grid: { yaxis: { lines: { show: true } } },
     fill: { opacity: 1 },
-    tooltip: { x: { show: false }, y: { formatter: (val: number) => `${val}` } },
+    tooltip: {
+      x: { show: false },
+      y: { formatter: (val: number) => `${val}` },
+    },
   };
 
   const series = [
-    { name: 'Revenue ($)', data: revenueData },
-    { name: 'Orders', data: ordersData },
+    { name: "Revenue ($)", data: revenue },
+    { name: "Orders", data: orders },
   ];
 
+  // 5. Render
   return (
-    <div style={{ overflow: 'hidden', borderRadius: 16, border: '1px solid #e4e7ec', background: '#ffffff', padding: '20px 24px 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <h3 style={{ fontSize: 17, fontWeight: 600, color: '#101828', margin: 0, fontFamily: 'Outfit, sans-serif' }}>
-          Monthly Sales
-        </h3>
-        <div style={{ position: 'relative' }}>
-          <button className="dropdown-toggle" onClick={() => setIsOpen(!isOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <MoreDotIcon />
-          </button>
-          <Dropdown isOpen={isOpen} onClose={() => setIsOpen(false)}>
-            <div style={{ padding: 8, minWidth: 140 }}>
-              <DropdownItem onItemClick={() => setIsOpen(false)}>View More</DropdownItem>
-              <DropdownItem onItemClick={() => setIsOpen(false)}>Export</DropdownItem>
-            </div>
-          </Dropdown>
+    <DashCard $overflow="hidden">
+      <CardPadding style={{ paddingBottom: 0 }}>
+        <CardHeaderRow style={{ marginBottom: 4 }}>
+          <CardTitle>Monthly Sales</CardTitle>
+          <div style={{ position: "relative" }}>
+            <MoreBtn
+              className="dropdown-toggle"
+              onClick={() => setIsOpen((v) => !v)}
+            >
+              <MoreDotSVG />
+            </MoreBtn>
+            <Dropdown isOpen={isOpen} onClose={() => setIsOpen(false)}>
+              <div style={{ padding: 8, minWidth: 140 }}>
+                <DropdownItem onItemClick={() => setIsOpen(false)}>
+                  View More
+                </DropdownItem>
+                <DropdownItem onItemClick={() => setIsOpen(false)}>
+                  Export
+                </DropdownItem>
+              </div>
+            </Dropdown>
+          </div>
+        </CardHeaderRow>
+
+        <div style={{ overflow: "hidden" }}>
+          <div style={{ minWidth: 500 }}>
+            <Chart options={options} series={series} type="bar" height={180} />
+          </div>
         </div>
-      </div>
-      <div>
-        <div style={{ minWidth: 500 }}>
-          <Chart options={options} series={series} type="bar" height={180} />
-        </div>
-      </div>
-    </div>
+      </CardPadding>
+    </DashCard>
   );
 };
 

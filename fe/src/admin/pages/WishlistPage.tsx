@@ -1,13 +1,25 @@
+/**
+ * src/admin/pages/WishlistPage.tsx
+ * Admin: wishlist management — view and remove customer wishlist entries.
+ *
+ * Page structure (consistent across ALL admin list pages):
+ *   1. useState declarations  (data hooks → filter/pagination → modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers  (openDelete, closeModal)
+ *   4. API handlers   (handleRemove)
+ *   5. Return JSX     (ErrorBanner → stats → filter → groups → AdminDataTable)
+ */
+
 import React, { useState } from "react";
 import styled from "styled-components";
 import {
   Heart,
   Search,
   Trash2,
-  User,
   ShoppingCart,
   Package,
   RefreshCw,
+  Users,
 } from "lucide-react";
 import { ExportDropdown } from "../components/ExportDropdown";
 import { exportData } from "../utils/exportUtils";
@@ -17,12 +29,14 @@ import {
   AdminFlex,
   AdminBtn,
   IconBtn,
-  SearchBar,
-  SearchInput,
-  SectionTitle,
-  EmptyState,
   AdminGrid,
+  EmptyState,
 } from "../styles/adminShared";
+import {
+  PageSearchBar,
+  PageSearchInp,
+  ErrorBanner,
+} from "../styles/adminPageComponents";
 import {
   adminWishlistApi,
   WishlistByUser,
@@ -35,12 +49,15 @@ import { formatDate } from "../utils/formatDate";
 import AdminDataTable, { TR, TD, ColDef } from "../components/AdminDataTable";
 import AdminDropdown from "../components/AdminDropdown";
 
+// ── Page-specific styled components ──────────────────────────────────────────
+
 const StatCard = styled(AdminCard)`
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 1.25rem 1.5rem;
 `;
+
 const StatIcon = styled.div<{ $color: string }>`
   width: 44px;
   height: 44px;
@@ -51,17 +68,20 @@ const StatIcon = styled.div<{ $color: string }>`
   justify-content: center;
   flex-shrink: 0;
 `;
+
 const StatVal = styled.div`
   font-size: 1.5rem;
   font-weight: 700;
   color: ${t.colors.textPrimary};
   line-height: 1;
 `;
+
 const StatLbl = styled.div`
   font-size: 0.75rem;
   color: ${t.colors.textMuted};
   margin-top: 2px;
 `;
+
 const PThumb = styled.img`
   width: 38px;
   height: 38px;
@@ -70,15 +90,12 @@ const PThumb = styled.img`
   border: 1px solid ${t.colors.border};
   flex-shrink: 0;
 `;
+
 const Avatar = styled.div`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(
-    135deg,
-    ${t.colors.primary},
-    ${t.colors.primaryDark}
-  );
+  background: linear-gradient(135deg, ${t.colors.primary}, ${t.colors.primaryDark});
   color: white;
   font-size: 0.7rem;
   font-weight: 700;
@@ -87,6 +104,7 @@ const Avatar = styled.div`
   justify-content: center;
   flex-shrink: 0;
 `;
+
 const CatTag = styled.span`
   display: inline-block;
   padding: 2px 8px;
@@ -97,6 +115,7 @@ const CatTag = styled.span`
   background: ${t.colors.primaryGhost};
   color: ${t.colors.primary};
 `;
+
 const Skeleton = styled.div`
   height: 60px;
   background: linear-gradient(
@@ -111,6 +130,8 @@ const Skeleton = styled.div`
   margin-bottom: 8px;
 `;
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const WISHLIST_COLS: ColDef[] = [
   { key: "product", label: "Product" },
   { key: "category", label: "Category" },
@@ -124,8 +145,12 @@ const WISHLIST_COLS: ColDef[] = [
   },
 ];
 
+// ── Component ──────────────────────────────────────────────────────────────────
+
 export const AdminWishlistPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+
+  // 1a. Data hooks
   const [search, setSearch] = useState("");
   const [userFilter, setUserFilter] = useState("");
   const [exportLoading, setExportLoading] = useState(false);
@@ -134,19 +159,25 @@ export const AdminWishlistPage: React.FC = () => {
     search,
     userId: userFilter || undefined,
   });
-  const entries = data?.entries || [];
-  const byUser = data?.byUser || [];
-  const total = data?.total || 0;
 
+  // 2. Derived data
+  const entries = data?.entries ?? [];
+  const byUser = data?.byUser ?? [];
+  const total = data?.total ?? 0;
   const uniqueUsers = byUser.length;
   const uniqueProds = new Set(entries.map((e) => String(e.productId))).size;
-  const topProduct = entries.reduce<Record<string, number>>((acc, e) => {
-    acc[e.productName] = (acc[e.productName] || 0) + 1;
-    return acc;
-  }, {});
-  const topProductName =
-    Object.entries(topProduct).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
 
+  const topProductName =
+    Object.entries(
+      entries.reduce<Record<string, number>>((acc, e) => {
+        acc[e.productName] = (acc[e.productName] || 0) + 1;
+        return acc;
+      }, {}),
+    ).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+
+  // 3. Modal helpers — none needed (no modal for this page, inline remove only)
+
+  // 4. API handlers
   const handleRemove = async (id: string) => {
     try {
       await adminWishlistApi.remove(id);
@@ -164,9 +195,13 @@ export const AdminWishlistPage: React.FC = () => {
     }
   };
 
+  // 5. Render
   return (
     <section>
-      {/* Stats */}
+      {/* Error banner */}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {/* ── Stats ────────────────────────────────────────────────────────── */}
       <AdminGrid
         $cols={4}
         $colsMd={2}
@@ -179,20 +214,20 @@ export const AdminWishlistPage: React.FC = () => {
           </StatIcon>
           <div>
             <StatVal>{total}</StatVal>
-            <StatLbl>Total Wishlist Items</StatLbl>
+            <StatLbl>Total Wishlisted</StatLbl>
           </div>
         </StatCard>
         <StatCard>
-          <StatIcon $color="rgba(59,130,246,0.12)">
-            <User size={20} color={t.colors.info} />
+          <StatIcon $color="rgba(11,165,236,0.12)">
+            <Users size={20} color={t.colors.info} />
           </StatIcon>
           <div>
             <StatVal>{uniqueUsers}</StatVal>
-            <StatLbl>Users with Wishlists</StatLbl>
+            <StatLbl>Unique Users</StatLbl>
           </div>
         </StatCard>
         <StatCard>
-          <StatIcon $color="rgba(245,158,11,0.12)">
+          <StatIcon $color="rgba(247,144,9,0.12)">
             <Package size={20} color={t.colors.warning} />
           </StatIcon>
           <div>
@@ -201,33 +236,44 @@ export const AdminWishlistPage: React.FC = () => {
           </div>
         </StatCard>
         <StatCard>
-          <StatIcon $color="rgba(239,68,68,0.12)">
-            <Heart size={20} color={t.colors.danger} />
+          <StatIcon $color="rgba(70,95,255,0.12)">
+            <ShoppingCart size={20} color={t.colors.primary} />
           </StatIcon>
           <div>
-            <StatVal style={{ fontSize: "1rem" }}>{topProductName}</StatVal>
+            <StatVal
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: 120,
+              }}
+              title={topProductName}
+            >
+              {topProductName}
+            </StatVal>
             <StatLbl>Most Wishlisted</StatLbl>
           </div>
         </StatCard>
       </AdminGrid>
 
-      {/* Toolbar */}
+      {/* ── Filters ──────────────────────────────────────────────────────── */}
       <AdminFlex
         as="div"
         $justify="space-between"
         $wrap
-        style={{ gap: t.spacing.md, marginBottom: t.spacing.lg }}
+        style={{ marginBottom: t.spacing.lg, gap: 12 }}
       >
-        <SectionTitle>{total} Wishlist Entries</SectionTitle>
-        <AdminFlex as="div" $gap={t.spacing.sm} $wrap>
-          <SearchBar style={{ maxWidth: 280 }}>
-            <Search size={14} />
-            <SearchInput
+        <AdminFlex as="div" $gap="12px" $wrap>
+          <PageSearchBar style={{ minWidth: 280 }}>
+            <Search size={15} color={t.colors.textMuted} />
+            <PageSearchInp
               placeholder="User name, email or product…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </SearchBar>
+          </PageSearchBar>
           {byUser.length > 0 && (
             <AdminDropdown
               value={userFilter}
@@ -242,44 +288,33 @@ export const AdminWishlistPage: React.FC = () => {
           <IconBtn onClick={refetch} title="Refresh">
             <RefreshCw size={14} />
           </IconBtn>
-          <ExportDropdown
-            loading={exportLoading}
-            onExport={async (fmt) => {
-              setExportLoading(true);
-              try {
-                await exportData(
-                  fmt,
-                  "wishlist",
-                  [
-                    { key: "userName", label: "User" },
-                    { key: "userEmail", label: "Email" },
-                    { key: "productName", label: "Product" },
-                    { key: "productSku", label: "SKU" },
-                    { key: "price", label: "Price ($)" },
-                    { key: "addedAt", label: "Added At" },
-                  ],
-                  entries as unknown as Record<string, unknown>[],
-                );
-              } finally {
-                setExportLoading(false);
-              }
-            }}
-          />
         </AdminFlex>
+        <ExportDropdown
+          loading={exportLoading}
+          onExport={async (fmt) => {
+            setExportLoading(true);
+            try {
+              await exportData(
+                fmt,
+                "wishlist",
+                [
+                  { key: "userName", label: "User" },
+                  { key: "userEmail", label: "Email" },
+                  { key: "productName", label: "Product" },
+                  { key: "productSku", label: "SKU" },
+                  { key: "price", label: "Price ($)" },
+                  { key: "addedAt", label: "Added At" },
+                ],
+                entries as unknown as Record<string, unknown>[],
+              );
+            } finally {
+              setExportLoading(false);
+            }
+          }}
+        />
       </AdminFlex>
 
-      {error && (
-        <div
-          style={{
-            color: t.colors.danger,
-            padding: "1rem",
-            marginBottom: "1rem",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
+      {/* ── Content ──────────────────────────────────────────────────────── */}
       {loading ? (
         <div>
           {[1, 2, 3].map((i) => (
@@ -295,13 +330,7 @@ export const AdminWishlistPage: React.FC = () => {
           </EmptyState>
         </AdminCard>
       ) : (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: t.spacing.lg,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: t.spacing.lg }}>
           {byUser.map((group: WishlistByUser) => (
             <AdminCard key={group.userId} $p="0">
               {/* User header */}
@@ -330,12 +359,7 @@ export const AdminWishlistPage: React.FC = () => {
                       <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
                         {group.userName}
                       </div>
-                      <div
-                        style={{
-                          fontSize: "0.75rem",
-                          color: t.colors.textMuted,
-                        }}
-                      >
+                      <div style={{ fontSize: "0.75rem", color: t.colors.textMuted }}>
                         {group.userEmail}
                       </div>
                     </div>
@@ -347,16 +371,15 @@ export const AdminWishlistPage: React.FC = () => {
                       color: t.colors.textMuted,
                     }}
                   >
-                    <strong
-                      style={{ color: t.colors.primary, fontSize: "1rem" }}
-                    >
+                    <strong style={{ color: t.colors.primary, fontSize: "1rem" }}>
                       {group.items.length}
                     </strong>{" "}
                     item{group.items.length !== 1 ? "s" : ""}
                   </div>
                 </AdminFlex>
               </div>
-              {/* Items using AdminDataTable */}
+
+              {/* Items table */}
               <AdminDataTable
                 columns={WISHLIST_COLS}
                 rows={group.items}
@@ -369,8 +392,7 @@ export const AdminWishlistPage: React.FC = () => {
                           src={w.productImage}
                           alt={w.productName}
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              `https://placehold.co/38x38/e8f5e9/4CAF50?text=${w.productName[0]}`;
+                            (e.target as HTMLImageElement).src = `https://placehold.co/38x38/e8f5e9/4CAF50?text=${w.productName[0]}`;
                           }}
                         />
                         <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>
@@ -384,9 +406,7 @@ export const AdminWishlistPage: React.FC = () => {
                     <TD style={{ fontWeight: 700, color: t.colors.primary }}>
                       ${w.productPrice}
                     </TD>
-                    <TD
-                      style={{ fontSize: "0.8rem", color: t.colors.textMuted }}
-                    >
+                    <TD style={{ fontSize: "0.8rem", color: t.colors.textMuted }}>
                       {formatDate(w.addedAt)}
                     </TD>
                     <TD>
@@ -423,3 +443,5 @@ export const AdminWishlistPage: React.FC = () => {
     </section>
   );
 };
+
+export default AdminWishlistPage;

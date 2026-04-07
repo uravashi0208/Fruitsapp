@@ -1,3 +1,15 @@
+/**
+ * src/admin/pages/SlidersPage.tsx
+ * Admin: hero / banner slider management — full CRUD + bulk actions.
+ *
+ * Page structure (consistent across ALL admin list pages):
+ *   1. useState declarations  (data hooks → filter/pagination → selection/bulk → modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers  (openCreate, openEdit, openView, openDelete, openBulkConfirm, closeModal)
+ *   4. API handlers   (handleSave, handleDelete, toggleStatus, handleBulkAction)
+ *   5. Return JSX     (ErrorBanner → AdminDataTable → modals)
+ */
+
 import React, { useState, useRef, useCallback } from "react";
 import {
   PortalDropdown,
@@ -33,6 +45,22 @@ import {
   ModalBody,
   ModalFooter,
 } from "../styles/adminShared";
+import {
+  PageSearchBar,
+  PageSearchInp,
+  BulkBar,
+  BulkCount,
+  BulkActionBtn,
+  SortBadge,
+  UploadBox,
+  UploadInput,
+  PreviewImg,
+  ModalCloseBtn,
+  ModalTitle,
+  ModalTitleDanger,
+  ConfirmText,
+  ErrorBanner,
+} from "../styles/adminPageComponents";
 import { useAdminDispatch, showAdminToast } from "../store";
 import { useAdminSliders } from "../../hooks/useAdminApi";
 import { adminSlidersApi, AdminSlider } from "../../api/admin";
@@ -45,6 +73,8 @@ import AdminDataTable, {
 } from "../components/AdminDataTable";
 import { formatDate } from "../utils/formatDate";
 import AdminDropdown from "../components/AdminDropdown";
+
+// ── Page-specific styled components ──────────────────────────────────────────
 
 const SliderCell = styled.div`
   display: flex;
@@ -84,140 +114,13 @@ const SliderSub = styled.div`
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
-const SearchBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid ${t.colors.border};
-  border-radius: 10px;
-  padding: 0 12px;
-  background: white;
-  height: 40px;
-  min-width: 200px;
-`;
-const SearchInp = styled.input`
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  background: transparent;
-  flex: 1;
-  color: ${t.colors.textPrimary};
-  &::placeholder {
-    color: ${t.colors.textMuted};
-  }
-`;
-const UploadBox = styled.label`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border: 2px dashed ${t.colors.border};
-  border-radius: 12px;
-  padding: 24px;
-  cursor: pointer;
-  gap: 8px;
-  text-align: center;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
-  &:hover {
-    border-color: ${t.colors.primary};
-    background: ${t.colors.primaryGhost};
-  }
-`;
-const UploadInput = styled.input`
-  display: none;
-`;
-const PreviewImg = styled.img`
-  width: 100%;
-  max-height: 160px;
-  border-radius: 10px;
-  object-fit: cover;
-  border: 1px solid ${t.colors.border};
-  margin-top: 8px;
-`;
-const SortBadge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: ${t.colors.surfaceAlt};
-  border: 1px solid ${t.colors.border};
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: ${t.colors.textSecondary};
-`;
 
-const BulkBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 4px 6px 4px 12px;
-  border-radius: 10px;
-  background: ${t.colors.primaryGhost};
-  border: 1.5px solid ${t.colors.primary};
-  box-shadow: 0 2px 8px ${t.colors.primaryGhost};
-  animation: bulkSlideIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-  @keyframes bulkSlideIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95) translateY(-3px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
-`;
-const BulkCount = styled.span`
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: ${t.colors.primary};
-  padding-right: 10px;
-  border-right: 1.5px solid ${t.colors.border};
-  white-space: nowrap;
-  span {
-    font-size: 0.9rem;
-    font-weight: 800;
-  }
-`;
-const BulkActionBtn = styled.button<{
-  $variant?: "success" | "warning" | "danger" | "ghost";
-}>`
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: 7px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  ${({ $variant }) =>
-    $variant === "success" &&
-    `background:${t.colors.successBg};color:${t.colors.success};border-color:${t.colors.success};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "warning" &&
-    `background:${t.colors.warningBg};color:${t.colors.warning};border-color:${t.colors.warning};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    $variant === "danger" &&
-    `background:${t.colors.dangerBg};color:${t.colors.danger};border-color:${t.colors.danger};&:hover{filter:brightness(0.93);}`}
-  ${({ $variant }) =>
-    (!$variant || $variant === "ghost") &&
-    `background:${t.colors.surface};color:${t.colors.textSecondary};border-color:${t.colors.border};&:hover{background:${t.colors.surfaceAlt};color:${t.colors.textPrimary};}`}
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
+// ── Constants ─────────────────────────────────────────────────────────────────
 
-type ModalMode = "create" | "edit" | "view" | "delete" | null;
+const PER_PAGE = 10;
+type ModalMode = "create" | "edit" | "view" | "delete" | "bulkConfirm" | null;
+type BulkAction = "active" | "inactive" | "delete";
+
 interface FormState {
   title: string;
   subtitle: string;
@@ -226,6 +129,7 @@ interface FormState {
   sortOrder: string;
   status: "active" | "inactive";
 }
+
 const emptyForm = (): FormState => ({
   title: "",
   subtitle: "",
@@ -234,6 +138,7 @@ const emptyForm = (): FormState => ({
   sortOrder: "0",
   status: "active",
 });
+
 const resolveImage = (image: string): string => {
   if (!image) return "";
   if (image.startsWith("http") || image.startsWith("/images")) return image;
@@ -253,69 +158,53 @@ const COLUMNS: ColDef[] = [
     thProps: { $width: "200px" },
   },
 ];
-const PER_PAGE = 10;
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export const SlidersPage: React.FC = () => {
   const dispatch = useAdminDispatch();
+
+  // 1a. Data hooks
   const { data: rawSliders, loading, error, refetch } = useAdminSliders();
+
+  // 1b. Filter / pagination
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"" | "active" | "inactive">(
     "",
   );
   const [page, setPage] = useState(1);
-  const [toggling, setToggling] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // 1c. Selection / bulk
+  const [selIds, setSelIds] = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [pendingBulk, setPendingBulk] = useState<BulkAction | null>(null);
+
+  // 1d. Modal / form
   const [mode, setMode] = useState<ModalMode>(null);
   const [selected, setSelected] = useState<AdminSlider | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
   const [imgFile, setImgFile] = useState<File | null>(null);
-  const [imgPreview, setImgPreview] = useState<string>("");
+  const [imgPreview, setImgPreview] = useState("");
   const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [selIds, setSelIds] = useState<Set<string>>(new Set());
-  const [bulkWorking, setBulkWorking] = useState(false);
-  const [bulkConfirm, setBulkConfirm] = useState<
-    "active" | "inactive" | "delete" | null
-  >(null);
 
-  const toggleStatus = useCallback(
-    async (s: AdminSlider) => {
-      if (toggling) return;
-      const next = s.status === "active" ? "inactive" : "active";
-      setToggling(s.id);
-      try {
-        await adminSlidersApi.setStatus(s.id, next as AdminSlider["status"]);
-        dispatch(
-          showAdminToast({ message: `Slider set to ${next}`, type: "success" }),
-        );
-        refetch();
-      } catch (e) {
-        dispatch(
-          showAdminToast({
-            message: e instanceof ApiError ? e.message : "Update failed",
-            type: "error",
-          }),
-        );
-      } finally {
-        setToggling(null);
-      }
-    },
-    [dispatch, refetch, toggling],
-  );
-
+  // 2. Derived / filtered data
   const sliders = (rawSliders ?? []).filter((s: AdminSlider) => {
     const q = search.toLowerCase();
-    const matchQ =
-      !q ||
-      s.title.toLowerCase().includes(q) ||
-      s.subtitle.toLowerCase().includes(q);
-    const matchS = !statusFilter || s.status === statusFilter;
-    return matchQ && matchS;
+    return (
+      (!q ||
+        s.title.toLowerCase().includes(q) ||
+        s.subtitle.toLowerCase().includes(q)) &&
+      (!statusFilter || s.status === statusFilter)
+    );
   });
   const totalPages = Math.max(1, Math.ceil(sliders.length / PER_PAGE));
   const paged = sliders.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const allIds = paged.map((s) => s.id);
   const allChecked = allIds.length > 0 && allIds.every((id) => selIds.has(id));
+
   const toggleAll = () => setSelIds(allChecked ? new Set() : new Set(allIds));
   const toggleOne = (id: string) =>
     setSelIds((prev) => {
@@ -324,47 +213,7 @@ export const SlidersPage: React.FC = () => {
       return s;
     });
 
-  const handleBulkAction = useCallback(
-    async (action: "active" | "inactive" | "delete") => {
-      if (!selIds.size) return;
-      setBulkWorking(true);
-      const ids = Array.from(selIds);
-      try {
-        if (action === "delete") {
-          await adminSlidersApi.bulkDelete(ids);
-          dispatch(
-            showAdminToast({
-              message: `${ids.length} slider(s) deleted`,
-              type: "warning",
-            }),
-          );
-        } else {
-          await adminSlidersApi.bulkUpdateStatus(ids, action);
-          dispatch(
-            showAdminToast({
-              message: `${ids.length} slider(s) set to ${action}`,
-              type: "success",
-            }),
-          );
-        }
-        setSelIds(new Set());
-        setBulkConfirm(null);
-        refetch();
-      } catch (err) {
-        dispatch(
-          showAdminToast({
-            message:
-              err instanceof ApiError ? err.message : "Bulk action failed",
-            type: "error",
-          }),
-        );
-      } finally {
-        setBulkWorking(false);
-      }
-    },
-    [selIds, dispatch, refetch],
-  );
-
+  // 3. Modal helpers
   const openCreate = () => {
     closeAllDropdowns();
     setSelected(null);
@@ -398,9 +247,14 @@ export const SlidersPage: React.FC = () => {
     setSelected(s);
     setMode("delete");
   };
+  const openBulkConfirm = (action: BulkAction) => {
+    setPendingBulk(action);
+    setMode("bulkConfirm");
+  };
   const closeModal = () => {
     setMode(null);
     setSelected(null);
+    setPendingBulk(null);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -412,6 +266,7 @@ export const SlidersPage: React.FC = () => {
     reader.readAsDataURL(f);
   };
 
+  // 4a. Create / Update
   const handleSave = async () => {
     if (!form.title.trim()) {
       dispatch(showAdminToast({ message: "Title is required", type: "error" }));
@@ -452,6 +307,7 @@ export const SlidersPage: React.FC = () => {
     }
   };
 
+  // 4b. Delete
   const handleDelete = async () => {
     if (!selected) return;
     setSaving(true);
@@ -472,22 +328,81 @@ export const SlidersPage: React.FC = () => {
     }
   };
 
+  // 4c. Inline status toggle
+  const toggleStatus = useCallback(
+    async (s: AdminSlider) => {
+      if (toggling) return;
+      const next = s.status === "active" ? "inactive" : "active";
+      setToggling(s.id);
+      try {
+        await adminSlidersApi.setStatus(s.id, next as AdminSlider["status"]);
+        dispatch(
+          showAdminToast({ message: `Slider set to ${next}`, type: "success" }),
+        );
+        refetch();
+      } catch (e) {
+        dispatch(
+          showAdminToast({
+            message: e instanceof ApiError ? e.message : "Update failed",
+            type: "error",
+          }),
+        );
+      } finally {
+        setToggling(null);
+      }
+    },
+    [dispatch, refetch, toggling],
+  );
+
+  // 4d. Bulk actions
+  const handleBulkAction = useCallback(
+    async (action: BulkAction) => {
+      if (!selIds.size) return;
+      setBulkWorking(true);
+      const ids = Array.from(selIds);
+      try {
+        if (action === "delete") {
+          await adminSlidersApi.bulkDelete(ids);
+          dispatch(
+            showAdminToast({
+              message: `${ids.length} slider(s) deleted`,
+              type: "warning",
+            }),
+          );
+        } else {
+          await adminSlidersApi.bulkUpdateStatus(ids, action);
+          dispatch(
+            showAdminToast({
+              message: `${ids.length} slider(s) set to ${action}`,
+              type: "success",
+            }),
+          );
+        }
+        setSelIds(new Set());
+        closeModal();
+        refetch();
+      } catch (err) {
+        dispatch(
+          showAdminToast({
+            message:
+              err instanceof ApiError ? err.message : "Bulk action failed",
+            type: "error",
+          }),
+        );
+      } finally {
+        setBulkWorking(false);
+      }
+    },
+    [selIds, dispatch, refetch],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 5. Render
   return (
     <>
-      {error && (
-        <div
-          style={{
-            color: t.colors.danger,
-            padding: "1rem",
-            background: "#fff5f5",
-            borderRadius: 8,
-            marginBottom: 16,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {/* Error banner */}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
+      {/* ── Data Table ──────────────────────────────────────────────────── */}
       <AdminDataTable
         title="Sliders List"
         subtitle="Manage hero / banner sliders with images"
@@ -510,16 +425,14 @@ export const SlidersPage: React.FC = () => {
                       { label: "Order", key: "sortOrder" },
                       {
                         label: "Status",
-                        resolve: (row) => {
-                          const iso = row["status"] as string;
-                          return iso === "active" ? "Active" : "Inactive";
-                        },
+                        resolve: (row) =>
+                          row["status"] === "active" ? "Active" : "Inactive",
                       },
                       {
                         label: "Created At",
                         resolve: (row) => {
-                          const iso = row["createdAt"] as string;
-                          return iso ? formatDate(iso) : "—";
+                          const v = row["createdAt"] as string;
+                          return v ? formatDate(v) : "—";
                         },
                       },
                     ],
@@ -539,9 +452,9 @@ export const SlidersPage: React.FC = () => {
           </>
         }
         searchArea={
-          <SearchBar>
+          <PageSearchBar>
             <Search size={15} color={t.colors.textMuted} />
-            <SearchInp
+            <PageSearchInp
               placeholder="Search sliders…"
               value={search}
               onChange={(e) => {
@@ -549,7 +462,7 @@ export const SlidersPage: React.FC = () => {
                 setPage(1);
               }}
             />
-          </SearchBar>
+          </PageSearchBar>
         }
         filterArea={
           <>
@@ -561,21 +474,21 @@ export const SlidersPage: React.FC = () => {
                 <BulkActionBtn
                   $variant="success"
                   disabled={bulkWorking}
-                  onClick={() => setBulkConfirm("active")}
+                  onClick={() => openBulkConfirm("active")}
                 >
                   <CheckCircle size={12} /> Set Active
                 </BulkActionBtn>
                 <BulkActionBtn
                   $variant="warning"
                   disabled={bulkWorking}
-                  onClick={() => setBulkConfirm("inactive")}
+                  onClick={() => openBulkConfirm("inactive")}
                 >
                   <XCircle size={12} /> Set Inactive
                 </BulkActionBtn>
                 <BulkActionBtn
                   $variant="danger"
                   disabled={bulkWorking}
-                  onClick={() => setBulkConfirm("delete")}
+                  onClick={() => openBulkConfirm("delete")}
                 >
                   <Trash2 size={12} /> Delete
                 </BulkActionBtn>
@@ -699,6 +612,7 @@ export const SlidersPage: React.FC = () => {
         onPageChange={setPage}
       />
 
+      {/* ── Create / Edit Modal ──────────────────────────────────────────── */}
       {(mode === "create" || mode === "edit") && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -706,28 +620,10 @@ export const SlidersPage: React.FC = () => {
             style={{ maxWidth: 600, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
+              <ModalTitle>
                 {mode === "create" ? "Add New Slider" : "Edit Slider"}
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
@@ -875,6 +771,7 @@ export const SlidersPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
+      {/* ── View Modal ───────────────────────────────────────────────────── */}
       {mode === "view" && selected && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -882,28 +779,8 @@ export const SlidersPage: React.FC = () => {
             style={{ maxWidth: 540, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
-                Slider Details
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitle>Slider Details</ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody
               style={{ display: "flex", flexDirection: "column", gap: 14 }}
@@ -979,6 +856,7 @@ export const SlidersPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
       {mode === "delete" && selected && (
         <ModalBackdrop onClick={closeModal}>
           <ModalBox
@@ -986,40 +864,14 @@ export const SlidersPage: React.FC = () => {
             style={{ maxWidth: 420, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.danger,
-                }}
-              >
-                Delete Slider
-              </span>
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitleDanger>Delete Slider</ModalTitleDanger>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                }}
-              >
+              <ConfirmText>
                 Are you sure you want to delete{" "}
                 <strong>"{selected.title}"</strong>? This cannot be undone.
-              </p>
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
               <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
@@ -1029,7 +881,6 @@ export const SlidersPage: React.FC = () => {
                 $variant="danger"
                 onClick={handleDelete}
                 disabled={saving}
-                style={{ background: t.colors.danger, color: "white" }}
               >
                 {saving ? "Deleting…" : "Delete Slider"}
               </AdminBtn>
@@ -1038,80 +889,59 @@ export const SlidersPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
-      {bulkConfirm && (
-        <ModalBackdrop onClick={() => setBulkConfirm(null)}>
+      {/* ── Bulk Confirm Modal ───────────────────────────────────────────── */}
+      {mode === "bulkConfirm" && pendingBulk && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: 420, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
-                {bulkConfirm === "delete"
+              <ModalTitle>
+                {pendingBulk === "delete"
                   ? "Delete Selected Sliders"
-                  : bulkConfirm === "active"
+                  : pendingBulk === "active"
                     ? "Set Sliders Active"
                     : "Set Sliders Inactive"}
-              </span>
-              <button
-                onClick={() => setBulkConfirm(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              </ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                }}
-              >
-                {bulkConfirm === "delete" ? (
+              <ConfirmText>
+                {pendingBulk === "delete" ? (
                   <>
+                    {" "}
                     Are you sure you want to delete{" "}
                     <strong>{selIds.size} slider(s)</strong>? This cannot be
-                    undone.
+                    undone.{" "}
                   </>
                 ) : (
                   <>
+                    {" "}
                     Set <strong>{selIds.size} slider(s)</strong> to{" "}
-                    <strong>{bulkConfirm}</strong>?
+                    <strong>{pendingBulk}</strong>?{" "}
                   </>
                 )}
-              </p>
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
               <AdminBtn
                 $variant="ghost"
-                onClick={() => setBulkConfirm(null)}
+                onClick={closeModal}
                 disabled={bulkWorking}
               >
                 Cancel
               </AdminBtn>
               <AdminBtn
-                $variant={bulkConfirm === "delete" ? "danger" : "primary"}
+                $variant={pendingBulk === "delete" ? "danger" : "primary"}
                 disabled={bulkWorking}
-                onClick={() => handleBulkAction(bulkConfirm)}
+                onClick={() => handleBulkAction(pendingBulk)}
               >
                 {bulkWorking
                   ? "Processing…"
-                  : bulkConfirm === "delete"
+                  : pendingBulk === "delete"
                     ? `Delete ${selIds.size}`
-                    : `Set ${selIds.size} ${bulkConfirm}`}
+                    : `Set ${selIds.size} ${pendingBulk}`}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>

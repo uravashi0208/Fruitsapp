@@ -1,3 +1,14 @@
+/**
+ * src/admin/pages/OtherAdminPages.tsx
+ * Admin: Users, Orders, Cards, Contacts, Blog — all CRUD list pages in one file.
+ *
+ * Each section follows the standard page structure:
+ *   1. useState declarations  (1a. data hooks → 1b. UI state → 1c. filter/pagination → 1d. modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers          (openCreate, openEdit, openView, openDelete, openBulkConfirm, closeModal)
+ *   4. API handlers           (handleSave, handleDelete, toggleStatus, handleBulkAction)
+ *   5. Return JSX             (ErrorBanner → AdminDataTable → modals)
+ */
 import React, { useState, useMemo, useCallback } from "react";
 import {
   PortalDropdown,
@@ -221,18 +232,25 @@ const USER_COLS: ColDef[] = [
 
 export const UsersPage: React.FC = () => {
   const dispatch = useAdminDispatch();
-  const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("all");
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<AdminUser | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [selIds, setSelIds] = useState<Set<string>>(new Set());
+
+  // 1b. Filter / pagination (declared before data hook — used to build query)
+  const [search,        setSearch]        = useState("");
+  const [statusF,       setStatusF]       = useState("all");
+  const [page,          setPage]          = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // 1c. Selection / bulk
+  const [selIds,      setSelIds]      = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<
     "active" | "inactive" | "banned" | "delete" | null
   >(null);
-  const [exportLoading, setExportLoading] = useState(false);
 
+  // 1d. Modal / selection
+  const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  // 1a. Data hook (query-based — depends on filter state declared above)
   const query = useMemo(
     () => ({
       page,
@@ -1254,7 +1272,8 @@ export const CardsPage: React.FC = () => {
     return new Date(parseInt(y), parseInt(m) - 1) < new Date();
   };
 
-  const handleDelete = async (c: CardDetail) => {
+  // 3. Action handlers
+  const handleDelete = useCallback(async (c: CardDetail) => {
     try {
       await adminCardsApi.delete(c.id);
       dispatch(
@@ -1272,8 +1291,9 @@ export const CardsPage: React.FC = () => {
         }),
       );
     }
-  };
+  }, [dispatch, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 4. Render
   return (
     <>
       {error && (
@@ -1467,11 +1487,16 @@ const CONTACT_COLS: ColDef[] = [
 
 export const ContactsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
-  const [search, setSearch] = useState("");
+
+  // 1b. Filter / pagination (declared before data hook — used to build query)
+  const [search,  setSearch]  = useState("");
   const [statusF, setStatusF] = useState("all");
-  const [page, setPage] = useState(1);
+  const [page,    setPage]    = useState(1);
+
+  // 1c. Modal
   const [selected, setSelected] = useState<Contact | null>(null);
 
+  // 1a. Data hook (query-based — depends on filter state declared above)
   const query = useMemo(
     () => ({
       page,
@@ -1811,26 +1836,14 @@ const BLOG_COLS: ColDef[] = [
 
 export const BlogsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
-  const [search, setSearch] = useState("");
-  const [statusF, setStatusF] = useState("all");
-  const [page, setPage] = useState(1);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [blogModal, setBlogModal] = useState<BlogModalMode>(null);
-  const [editTarget, setEditTarget] = useState<AdminBlogPost | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<AdminBlogPost | null>(null);
-  const [viewTarget, setViewTarget] = useState<AdminBlogPost | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [toggling, setToggling] = useState<string | null>(null);
-  const [form, setForm] = useState<ReturnType<typeof emptyBlog>>(emptyBlog());
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string>("");
-  const fileRef = React.useRef<HTMLInputElement>(null);
-  const [selIds, setSelIds] = useState<Set<string>>(new Set());
-  const [bulkWorking, setBulkWorking] = useState(false);
-  const [bulkConfirm, setBulkConfirm] = useState<
-    "published" | "draft" | "delete" | null
-  >(null);
 
+  // 1b. Filter / pagination (declared before data hook — used to build query)
+  const [search,        setSearch]        = useState("");
+  const [statusF,       setStatusF]       = useState("all");
+  const [page,          setPage]          = useState(1);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // 1a. Data hook (query-based — depends on filter state above)
   const query = useMemo(
     () => ({
       page,
@@ -1847,6 +1860,25 @@ export const BlogsPage: React.FC = () => {
     error,
     refetch,
   } = useAdminBlogs(query);
+
+  // 1c. Selection / bulk
+  const [selIds,      setSelIds]      = useState<Set<string>>(new Set());
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<
+    "published" | "draft" | "delete" | null
+  >(null);
+
+  // 1d. Modal / form
+  const [blogModal,    setBlogModal]    = useState<BlogModalMode>(null);
+  const [editTarget,   setEditTarget]   = useState<AdminBlogPost | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminBlogPost | null>(null);
+  const [viewTarget,   setViewTarget]   = useState<AdminBlogPost | null>(null);
+  const [saving,       setSaving]       = useState(false);
+  const [toggling,     setToggling]     = useState<string | null>(null);
+  const [form,         setForm]         = useState<ReturnType<typeof emptyBlog>>(emptyBlog());
+  const [coverFile,    setCoverFile]    = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string>("");
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
   const toggleBlogStatus = useCallback(
     async (b: AdminBlogPost) => {

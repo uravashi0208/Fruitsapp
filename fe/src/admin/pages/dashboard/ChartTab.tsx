@@ -1,45 +1,46 @@
-import React, { useState } from 'react';
+/**
+ * src/admin/pages/dashboard/ChartTab.tsx
+ * Segmented control for switching chart time periods.
+ * Controlled component — parent owns the selected value.
+ *
+ * Component structure:
+ *   1. Props interface
+ *   2. Render (TabGroup → TabBtn × 3)
+ */
 
-type Option = 'Monthly' | 'Quarterly' | 'Annually';
+import React from 'react';
+import { TabGroup, TabBtn } from './dashboardStyles';
+import type { ChartPeriod } from '../../../api/admin';
 
-const ChartTab: React.FC = () => {
-  const [selected, setSelected] = useState<Option>('Monthly');
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+interface ChartTabProps {
+  value:    ChartPeriod;
+  onChange: (period: ChartPeriod) => void;
+}
 
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        background: '#f2f4f7',
-        borderRadius: 8,
-        padding: 2,
-      }}
-    >
-      {(['Monthly', 'Quarterly', 'Annually'] as Option[]).map((opt) => (
-        <button
-          key={opt}
-          onClick={() => setSelected(opt)}
-          style={{
-            padding: '6px 12px',
-            borderRadius: 6,
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 500,
-            fontFamily: 'Outfit, sans-serif',
-            transition: 'all 0.15s ease',
-            background: selected === opt ? '#ffffff' : 'transparent',
-            color: selected === opt ? '#101828' : '#667085',
-            boxShadow: selected === opt ? '0px 1px 2px rgba(16,24,40,0.05)' : 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-};
+const LABELS: { value: ChartPeriod; label: string }[] = [
+  { value: 'monthly',    label: 'Monthly'  },
+  { value: 'quarterly',  label: 'Quarterly'},
+  { value: 'annually',   label: 'Annually' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
+const ChartTab: React.FC<ChartTabProps> = ({ value, onChange }) => (
+  <TabGroup>
+    {LABELS.map((opt) => (
+      <TabBtn
+        key={opt.value}
+        $active={value === opt.value}
+        onClick={() => onChange(opt.value)}
+      >
+        {opt.label}
+      </TabBtn>
+    ))}
+  </TabGroup>
+);
 
 export default ChartTab;

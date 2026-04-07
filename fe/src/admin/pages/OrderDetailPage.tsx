@@ -1,11 +1,13 @@
 /**
  * src/admin/pages/OrderDetailPage.tsx
+ * Admin: full order detail view — order summary, status pipeline, tracking timeline.
  *
- * Full order detail view — themed to adminTheme.ts (TailAdmin light palette).
- *  - Order summary (items, totals, payment, address)
- *  - Status pipeline tracker
- *  - Tracking timeline
- *  - Status update / tracking assignment / manual event / admin note
+ * Page structure (consistent across ALL admin detail pages):
+ *   1. useState declarations  (1a. data state → 1b. UI/loading → 1c. form fields)
+ *   2. Data fetch             (fetchOrder — useCallback + useEffect)
+ *   3. Action handlers        (handleStatusUpdate, handleAssignTracking,
+ *                              handleAddEvent, handleSaveNote)
+ *   4. Return JSX             (header → pipeline → items grid → action panels → timeline)
  */
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -582,23 +584,32 @@ export const OrderDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const [order, setOrder] = useState<Order | null>(null);
+  // 1a. Data state
+  const [order,    setOrder]    = useState<Order | null>(null);
   const [timeline, setTimeline] = useState<TrackingTimeline | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
-  const [newStatus, setNewStatus] = useState("");
+  // 1b. UI / loading
+  const [loading, setLoading] = useState(true);
+  const [saving,  setSaving]  = useState(false);
+  const [copied,  setCopied]  = useState(false);
+
+  // 1c. Form fields — status panel
+  const [newStatus,  setNewStatus]  = useState("");
   const [statusNote, setStatusNote] = useState("");
-  const [trkCode, setTrkCode] = useState("");
+
+  // 1d. Form fields — tracking panel
+  const [trkCode,     setTrkCode]     = useState("");
   const [carrierCode, setCarrierCode] = useState("");
   const [estDelivery, setEstDelivery] = useState("");
-  const [trkNote, setTrkNote] = useState("");
-  const [evtNote, setEvtNote] = useState("");
-  const [evtLocation, setEvtLocation] = useState("");
-  const [evtStatus, setEvtStatus] = useState("");
-  const [adminNote, setAdminNote] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [trkNote,     setTrkNote]     = useState("");
 
+  // 1e. Form fields — event / note panel
+  const [evtNote,     setEvtNote]     = useState("");
+  const [evtLocation, setEvtLocation] = useState("");
+  const [evtStatus,   setEvtStatus]   = useState("");
+  const [adminNote,   setAdminNote]   = useState("");
+
+  // 2. Data fetch
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -630,8 +641,8 @@ export const OrderDetailPage: React.FC = () => {
     load();
   }, [load]);
 
-  // actions
-  const handleStatusUpdate = async () => {
+  // 3. Action handlers
+  const handleStatusUpdate = useCallback(async () => {
     if (!id || !newStatus) return;
     setSaving(true);
     try {
@@ -655,9 +666,9 @@ export const OrderDetailPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [id, newStatus, statusNote, dispatch, load]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAssignTracking = async () => {
+  const handleAssignTracking = useCallback(async () => {
     if (!id) return;
     setSaving(true);
     try {
@@ -684,9 +695,9 @@ export const OrderDetailPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [id, trkCode, carrierCode, estDelivery, trkNote, dispatch, load]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddEvent = async () => {
+  const handleAddEvent = useCallback(async () => {
     if (!id || !evtNote) return;
     setSaving(true);
     try {
@@ -709,9 +720,9 @@ export const OrderDetailPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [id, evtNote, evtLocation, evtStatus, order, dispatch, load]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSaveAdminNote = async () => {
+  const handleSaveAdminNote = useCallback(async () => {
     if (!id) return;
     setSaving(true);
     try {
@@ -733,8 +744,9 @@ export const OrderDetailPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [id, adminNote, order, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 4. Helpers
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
@@ -742,7 +754,7 @@ export const OrderDetailPage: React.FC = () => {
     });
   };
 
-  // ── render ──────────────────────────────────────────────────────────────────
+  // 5. Render
   if (loading)
     return (
       <Page>

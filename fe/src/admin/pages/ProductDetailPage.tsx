@@ -1,9 +1,12 @@
 /**
- * Admin — Product Detail Page
- * Route: /admin/products/:id
- * Two tabs:
- *   1. Product Details  — shows all product info
- *   2. Reviews          — paginated list of reviews with delete action
+ * src/admin/pages/ProductDetailPage.tsx
+ * Admin: product detail view — product info + paginated reviews.
+ *
+ * Page structure (consistent across ALL admin detail pages):
+ *   1. useState declarations  (1a. data state → 1b. UI/loading → 1c. pagination)
+ *   2. Data fetch             (loadProduct, loadReviews — useCallback + useEffect)
+ *   3. Action handlers        (handleDeleteReview)
+ *   4. Return JSX             (back btn → header → tab bar → tab panels)
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -202,21 +205,25 @@ export const AdminProductDetailPage: React.FC = () => {
   const navigate   = useNavigate();
   const dispatch   = useAdminDispatch();
 
-  const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
-  const [product,   setProduct]   = useState<AdminProduct | null>(null);
-  const [prodLoading, setProdLoading] = useState(true);
-  // live rating/count synced from reviews (overrides stale product fields)
-  const [liveRating,  setLiveRating]  = useState<number | null>(null);
-  const [liveCount,   setLiveCount]   = useState<number | null>(null);
-
+  // 1a. Data state
+  const [product,    setProduct]    = useState<AdminProduct | null>(null);
   const [reviews,    setReviews]    = useState<AdminReview[]>([]);
   const [revTotal,   setRevTotal]   = useState(0);
-  const [revPage,    setRevPage]    = useState(1);
-  const [revLoading, setRevLoading] = useState(false);
+  const [liveRating, setLiveRating] = useState<number | null>(null); // synced from reviews
+  const [liveCount,  setLiveCount]  = useState<number | null>(null);
+
+  // 1b. UI / loading
+  const [activeTab,   setActiveTab]   = useState<'details' | 'reviews'>('details');
+  const [prodLoading, setProdLoading] = useState(true);
+  const [revLoading,  setRevLoading]  = useState(false);
+
+  // 1c. Pagination
+  const [revPage, setRevPage] = useState(1);
 
   const totalRevPages = Math.ceil(revTotal / REVIEWS_PER_PAGE);
 
   /* Load product (also called after review changes to refresh aggregate) */
+  // 2. Data fetch
   const loadProduct = useCallback(() => {
     if (!id) return;
     setProdLoading(true);
@@ -265,26 +272,25 @@ export const AdminProductDetailPage: React.FC = () => {
     if (activeTab === 'details') loadProduct();
   }, [activeTab, revPage, loadReviews, loadProduct]);
 
-  /* Delete review — refresh both reviews list and product aggregate */
-  const handleDeleteReview = async (reviewId: string) => {
+  // 3. Action handlers
+  const handleDeleteReview = useCallback(async (reviewId: string) => {
     if (!window.confirm('Delete this review? This cannot be undone.')) return;
     try {
       await adminReviewsApi.delete(reviewId);
       dispatch(showAdminToast({ message: 'Review deleted.', type: 'success' }));
-      // reload reviews (updates liveCount/liveRating optimistically)
       await loadReviews(revPage);
-      // reload product in background to get true Firestore aggregate
       loadProduct();
     } catch {
       dispatch(showAdminToast({ message: 'Failed to delete review.', type: 'error' }));
     }
-  };
+  }, [dispatch, loadReviews, loadProduct, revPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Effective rating and count — prefer live values once we have them
   const displayRating  = liveRating  ?? (product as any)?.rating  ?? 0;
   const displayCount   = liveCount   ?? (product as any)?.reviews  ?? 0;
 
-  /* ── Render loading ── */
+  // 4. Render
+  /* ── Loading state ── */
   if (prodLoading) return (
     <PageWrap>
       <BackBtn onClick={() => navigate('/admin/products')}><ArrowLeft size={16} /> Back to Products</BackBtn>

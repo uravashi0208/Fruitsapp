@@ -21,6 +21,7 @@ import {
   adminNewsletterApi,
   adminCouponsApi,
   DashboardStats,
+  ChartPeriod,
   AdminProduct,
   Order,
   AdminUser,
@@ -126,8 +127,13 @@ function useAdminPaged<T>(
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-export const useAdminDashboard = () =>
-  useAdminFetch<DashboardStats>(() => adminDashboardApi.getStats());
+export const useAdminDashboard = (
+  params?: { period?: ChartPeriod; startDate?: string; endDate?: string },
+) =>
+  useAdminFetch<DashboardStats>(
+    () => adminDashboardApi.getStats(params),
+    [params?.period, params?.startDate, params?.endDate],
+  );
 
 // ── Products ─────────────────────────────────────────────────
 export const useAdminProducts = (query: ProductQuery = {}) =>

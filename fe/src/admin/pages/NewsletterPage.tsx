@@ -1,6 +1,15 @@
 /**
- * NewsletterPage.tsx — uses shared AdminDataTable.
+ * src/admin/pages/NewsletterPage.tsx
+ * Admin: newsletter subscriber management + email campaign sender.
+ *
+ * Page structure (consistent across ALL admin list pages):
+ *   1. useState declarations  (data hooks → filter/pagination → modal/form)
+ *   2. Derived / filtered data
+ *   3. Modal helpers  (openSend, openDelete, closeModal)
+ *   4. API handlers   (toggleStatus, handleDelete, handleSend)
+ *   5. Return JSX     (ErrorBanner → stats → AdminDataTable → modals)
  */
+
 import React, { useState } from "react";
 import { PortalDropdown, MenuItem } from "../components/PortalDropdown";
 import styled from "styled-components";
@@ -23,6 +32,15 @@ import {
   ModalBody,
   ModalFooter,
 } from "../styles/adminShared";
+import {
+  PageSearchBar,
+  PageSearchInp,
+  ModalCloseBtn,
+  ModalTitle,
+  ModalTitleDanger,
+  ConfirmText,
+  ErrorBanner,
+} from "../styles/adminPageComponents";
 import { useAdminDispatch, showAdminToast } from "../store";
 import { useAdminNewsletter } from "../../hooks/useAdminApi";
 import { adminNewsletterApi, NewsletterSubscriber } from "../../api/admin";
@@ -31,13 +49,15 @@ import AdminDropdown from "../components/AdminDropdown";
 import AdminDataTable, { TR, TD, ColDef } from "../components/AdminDataTable";
 import { formatDate } from "../utils/formatDate";
 
-/* ── Styled ─────────────────────────────────────────────────── */
+// ── Page-specific styled components ──────────────────────────────────────────
+
 const StatsRow = styled.div`
   display: flex;
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
 `;
+
 const StatCard = styled.div<{ $color: string }>`
   flex: 1;
   min-width: 140px;
@@ -50,6 +70,7 @@ const StatCard = styled.div<{ $color: string }>`
   gap: 14px;
   border-left: 4px solid ${({ $color }) => $color};
 `;
+
 const StatIcon = styled.div<{ $bg: string }>`
   width: 42px;
   height: 42px;
@@ -60,12 +81,14 @@ const StatIcon = styled.div<{ $bg: string }>`
   justify-content: center;
   flex-shrink: 0;
 `;
+
 const StatVal = styled.div`
   font-size: 1.5rem;
   font-weight: 700;
   color: ${t.colors.textPrimary};
   line-height: 1;
 `;
+
 const StatLabel = styled.div`
   font-size: 0.75rem;
   color: ${t.colors.textMuted};
@@ -86,38 +109,17 @@ const EmailAvatar = styled.div`
   color: ${t.colors.primary};
   flex-shrink: 0;
 `;
+
 const EmailCell = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
 `;
+
 const EmailText = styled.div`
   font-weight: 500;
   color: ${t.colors.textPrimary};
   font-size: 0.875rem;
-`;
-
-const SearchBar = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid ${t.colors.border};
-  border-radius: 10px;
-  padding: 0 12px;
-  background: white;
-  height: 40px;
-  min-width: 220px;
-`;
-const SearchInp = styled.input`
-  border: none;
-  outline: none;
-  font-size: 0.875rem;
-  background: transparent;
-  flex: 1;
-  color: ${t.colors.textPrimary};
-  &::placeholder {
-    color: ${t.colors.textMuted};
-  }
 `;
 
 const CharCount = styled.div<{ $over: boolean }>`
@@ -126,6 +128,7 @@ const CharCount = styled.div<{ $over: boolean }>`
   margin-top: 4px;
   color: ${({ $over }) => ($over ? t.colors.danger : t.colors.textMuted)};
 `;
+
 const ResultBox = styled.div<{ $success: boolean }>`
   padding: 16px;
   border-radius: 10px;
@@ -136,6 +139,13 @@ const ResultBox = styled.div<{ $success: boolean }>`
     ${({ $success }) => ($success ? t.colors.success : t.colors.danger)};
 `;
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const PER_PAGE = 20;
+const MAX_MSG = 2000;
+
+type ModalMode = "send" | "delete" | null;
+
 const COLUMNS: ColDef[] = [
   { key: "subscriber", label: "Subscriber" },
   { key: "name", label: "Name" },
@@ -144,12 +154,86 @@ const COLUMNS: ColDef[] = [
   { key: "actions", label: "Actions" },
 ];
 
+// ── Component ──────────────────────────────────────────────────────────────────
+
 export const NewsletterPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
+  // 1a. Data hooks
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"" | "active" | "unsubscribed">("");
+  const {
+    data: allSubs,
+    pagination,
+    loading,
+    error,
+    refetch,
+  } = useAdminNewsletter({
+    page,
+    limit: PER_PAGE,
+    status: statusFilter || undefined,
+  });
+
+  // 1b. Filter
+  const [search, setSearch] = useState("");
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // 1c. Optimistic status
   const [localStatus, setLocalStatus] = useState<
     Record<string, "active" | "unsubscribed">
   >({});
+
+  // 1d. Modal / form
+  const [mode, setMode] = useState<ModalMode>(null);
+  const [selected, setSelected] = useState<NewsletterSubscriber | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // 1e. Send email form
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [sendResult, setSendResult] = useState<{
+    sent: number;
+    failed: number;
+    total: number;
+  } | null>(null);
+
+  // 2. Derived / filtered data
+  const subscribers = (allSubs ?? []).filter((s: NewsletterSubscriber) => {
+    const q = search.toLowerCase();
+    return (
+      !q ||
+      s.email.toLowerCase().includes(q) ||
+      (s.name || "").toLowerCase().includes(q)
+    );
+  });
+
+  const activeCount = (allSubs ?? []).filter((s) => s.status === "active").length;
+  const unsubCount = (allSubs ?? []).filter(
+    (s) => s.status === "unsubscribed",
+  ).length;
+
+  // 3. Modal helpers
+  const openSend = () => {
+    setSendResult(null);
+    setSubject("");
+    setMessage("");
+    setMode("send");
+  };
+
+  const openDelete = (s: NewsletterSubscriber) => {
+    setSelected(s);
+    setMode("delete");
+  };
+
+  const closeModal = () => {
+    setMode(null);
+    setSelected(null);
+    setSendResult(null);
+    setSubject("");
+    setMessage("");
+  };
+
+  // 4a. Inline status toggle (optimistic)
   const toggleStatus = async (s: NewsletterSubscriber) => {
     const current = localStatus[s.id] ?? s.status;
     const next = current === "active" ? "unsubscribed" : "active";
@@ -164,47 +248,16 @@ export const NewsletterPage: React.FC = () => {
     }
   };
 
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "" | "active" | "unsubscribed"
-  >("");
-  const [openDrop, setOpenDrop] = useState<string | null>(null);
-
-  const {
-    data: allSubs,
-    pagination,
-    loading,
-    refetch,
-  } = useAdminNewsletter({
-    page,
-    limit: 20,
-    status: statusFilter || undefined,
-  });
-
-  const subscribers = (allSubs ?? []).filter((s: NewsletterSubscriber) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      s.email.toLowerCase().includes(q) ||
-      (s.name || "").toLowerCase().includes(q)
-    );
-  });
-
-  const [deleteTarget, setDeleteTarget] = useState<NewsletterSubscriber | null>(
-    null,
-  );
-  const [deleting, setDeleting] = useState(false);
-
+  // 4b. Delete subscriber
   const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleting(true);
+    if (!selected) return;
+    setSaving(true);
     try {
-      await adminNewsletterApi.delete(deleteTarget.id);
+      await adminNewsletterApi.delete(selected.id);
       dispatch(
-        showAdminToast({ message: "Subscriber removed", type: "success" }),
+        showAdminToast({ message: "Subscriber removed", type: "warning" }),
       );
-      setDeleteTarget(null);
+      closeModal();
       refetch();
     } catch (e) {
       dispatch(
@@ -214,23 +267,11 @@ export const NewsletterPage: React.FC = () => {
         }),
       );
     } finally {
-      setDeleting(false);
+      setSaving(false);
     }
   };
 
-  const [sendOpen, setSendOpen] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sendResult, setSendResult] = useState<{
-    sent: number;
-    failed: number;
-    total: number;
-  } | null>(null);
-  const [exportLoading, setExportLoading] = useState(false);
-
-  const MAX_MSG = 2000;
-
+  // 4c. Send email campaign
   const handleSend = async () => {
     if (!subject.trim()) {
       dispatch(
@@ -244,7 +285,7 @@ export const NewsletterPage: React.FC = () => {
       );
       return;
     }
-    setSending(true);
+    setSaving(true);
     setSendResult(null);
     try {
       const res = await adminNewsletterApi.send({ subject, message });
@@ -260,32 +301,30 @@ export const NewsletterPage: React.FC = () => {
     } catch (e) {
       dispatch(
         showAdminToast({
-          message: e instanceof ApiError ? e.message : "Failed to send email",
+          message:
+            e instanceof ApiError ? e.message : "Failed to send email",
           type: "error",
         }),
       );
     } finally {
-      setSending(false);
+      setSaving(false);
     }
   };
 
-  const closeSendModal = () => {
-    setSendOpen(false);
-    setSendResult(null);
-    setSubject("");
-    setMessage("");
-  };
-
+  // 5. Render
   return (
-    <>
-      {/* Stats */}
+    <section>
+      {/* Error banner */}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {/* ── Stats Row ───────────────────────────────────────────────────── */}
       <StatsRow>
         <StatCard $color={t.colors.primary}>
           <StatIcon $bg={t.colors.primaryGhost}>
             <Users size={20} color={t.colors.primary} />
           </StatIcon>
           <div>
-            <StatVal>{pagination.total}</StatVal>
+            <StatVal>{pagination?.total ?? 0}</StatVal>
             <StatLabel>Total Subscribers</StatLabel>
           </div>
         </StatCard>
@@ -294,9 +333,7 @@ export const NewsletterPage: React.FC = () => {
             <Mail size={20} color={t.colors.success} />
           </StatIcon>
           <div>
-            <StatVal>
-              {subscribers.filter((s) => s.status === "active").length}
-            </StatVal>
+            <StatVal>{activeCount}</StatVal>
             <StatLabel>Active</StatLabel>
           </div>
         </StatCard>
@@ -305,14 +342,13 @@ export const NewsletterPage: React.FC = () => {
             <Mail size={20} color={t.colors.warning} />
           </StatIcon>
           <div>
-            <StatVal>
-              {subscribers.filter((s) => s.status === "unsubscribed").length}
-            </StatVal>
+            <StatVal>{unsubCount}</StatVal>
             <StatLabel>Unsubscribed</StatLabel>
           </div>
         </StatCard>
       </StatsRow>
 
+      {/* ── Data Table ──────────────────────────────────────────────────── */}
       <AdminDataTable
         title="Newsletter"
         subtitle="Manage subscribers and send email campaigns"
@@ -331,16 +367,14 @@ export const NewsletterPage: React.FC = () => {
                       { label: "Name", key: "name" },
                       {
                         label: "Status",
-                        resolve: (row) => {
-                          const iso = row["status"] as string;
-                          return iso === "active" ? "Active" : "Inactive";
-                        },
+                        resolve: (row) =>
+                          row["status"] === "active" ? "Active" : "Unsubscribed",
                       },
                       {
                         label: "Subscribed At",
                         resolve: (row) => {
-                          const iso = row["createdAt"] as string;
-                          return iso ? formatDate(iso) : "—";
+                          const v = row["createdAt"] as string;
+                          return v ? formatDate(v) : "—";
                         },
                       },
                     ],
@@ -351,13 +385,7 @@ export const NewsletterPage: React.FC = () => {
                 }
               }}
             />
-            <AdminBtn
-              $variant="primary"
-              onClick={() => {
-                setSendOpen(true);
-                setSendResult(null);
-              }}
-            >
+            <AdminBtn $variant="primary" onClick={openSend}>
               <Send size={15} /> Send Email
             </AdminBtn>
             <IconBtn title="Refresh" onClick={refetch}>
@@ -366,21 +394,21 @@ export const NewsletterPage: React.FC = () => {
           </>
         }
         searchArea={
-          <SearchBar>
+          <PageSearchBar>
             <Search size={15} color={t.colors.textMuted} />
-            <SearchInp
+            <PageSearchInp
               placeholder="Search by email or name…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </SearchBar>
+          </PageSearchBar>
         }
         filterArea={
           <AdminDropdown
             style={{ minWidth: 150 }}
             value={statusFilter}
             onChange={(val) => {
-              setStatusFilter(val as any);
+              setStatusFilter(val as "" | "active" | "unsubscribed");
               setPage(1);
             }}
             options={[
@@ -393,10 +421,9 @@ export const NewsletterPage: React.FC = () => {
         columns={COLUMNS}
         rows={subscribers}
         loading={loading}
-        emptyIcon={
-          <Mail size={40} strokeWidth={1} color={t.colors.textMuted} />
-        }
+        emptyIcon={<Mail size={40} strokeWidth={1} color={t.colors.textMuted} />}
         emptyTitle="No subscribers found"
+        emptyText="No subscribers match your current filters."
         renderRow={(s: NewsletterSubscriber) => (
           <TR key={s.id}>
             <TD>
@@ -416,14 +443,12 @@ export const NewsletterPage: React.FC = () => {
                 }}
                 title="Toggle status"
               >
-                <ToggleThumb
-                  $on={(localStatus[s.id] ?? s.status) === "active"}
-                />
+                <ToggleThumb $on={(localStatus[s.id] ?? s.status) === "active"} />
               </ToggleTrack>
             </TD>
-            <TD>
+            <TD onClick={(e) => e.stopPropagation()}>
               <PortalDropdown>
-                <MenuItem $danger onClick={() => setDeleteTarget(s)}>
+                <MenuItem $danger onClick={() => openDelete(s)}>
                   <Trash2 size={13} /> Remove
                 </MenuItem>
               </PortalDropdown>
@@ -432,49 +457,27 @@ export const NewsletterPage: React.FC = () => {
         )}
         showPagination
         paginationInfo={
-          pagination.total > 0
-            ? `Showing ${(page - 1) * 20 + 1}–${Math.min(page * 20, pagination.total)} of ${pagination.total} subscribers`
+          (pagination?.total ?? 0) > 0
+            ? `Showing ${(page - 1) * PER_PAGE + 1}–${Math.min(page * PER_PAGE, pagination?.total ?? 0)} of ${pagination?.total ?? 0} subscribers`
             : "0 subscribers"
         }
         currentPage={page}
-        totalPages={pagination.totalPages || 1}
+        totalPages={pagination?.totalPages ?? 1}
         onPageChange={setPage}
       />
 
-      {/* Send Email Modal */}
-      {sendOpen && (
-        <ModalBackdrop onClick={closeSendModal}>
+      {/* ── Send Email Modal ─────────────────────────────────────────────── */}
+      {mode === "send" && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: 580, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.textPrimary,
-                }}
-              >
-                Send Email Campaign
-              </span>
-              <button
-                onClick={closeSendModal}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitle>Send Email Campaign</ModalTitle>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
-            <ModalBody
-              style={{ display: "flex", flexDirection: "column", gap: 16 }}
-            >
+            <ModalBody style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div
                 style={{
                   background: t.colors.primaryGhost,
@@ -494,10 +497,11 @@ export const NewsletterPage: React.FC = () => {
                     fontWeight: 500,
                   }}
                 >
-                  This will send to all <strong>{pagination.total}</strong>{" "}
-                  active subscriber(s)
+                  This will send to all{" "}
+                  <strong>{pagination?.total ?? 0}</strong> active subscriber(s)
                 </span>
               </div>
+
               {sendResult && (
                 <ResultBox $success={sendResult.failed === 0}>
                   <div
@@ -510,10 +514,7 @@ export const NewsletterPage: React.FC = () => {
                     {sendResult.failed === 0 ? "✅" : "⚠️"} Email Sent
                   </div>
                   <div
-                    style={{
-                      fontSize: "0.875rem",
-                      color: t.colors.textSecondary,
-                    }}
+                    style={{ fontSize: "0.875rem", color: t.colors.textSecondary }}
                   >
                     <strong style={{ color: t.colors.success }}>
                       {sendResult.sent}
@@ -532,13 +533,15 @@ export const NewsletterPage: React.FC = () => {
                   </div>
                 </ResultBox>
               )}
+
               <FormGroup>
                 <FormLabel>Subject *</FormLabel>
                 <AdminInput
                   placeholder="e.g. 🥦 This Week's Fresh Arrivals!"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  disabled={sending}
+                  disabled={saving}
+                  autoFocus
                 />
               </FormGroup>
               <FormGroup>
@@ -548,7 +551,7 @@ export const NewsletterPage: React.FC = () => {
                   placeholder="Write your email message here…"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  disabled={sending}
+                  disabled={saving}
                   style={{ resize: "vertical" }}
                 />
                 <CharCount $over={message.length > MAX_MSG}>
@@ -565,29 +568,25 @@ export const NewsletterPage: React.FC = () => {
                   lineHeight: 1.6,
                 }}
               >
-                💡 The email will be sent with the branded template including
-                your logo, a "Shop Now" button, and an unsubscribe link.
+                💡 The email will be sent with the branded template including your
+                logo, a "Shop Now" button, and an unsubscribe link.
               </div>
             </ModalBody>
             <ModalFooter>
-              <AdminBtn
-                $variant="ghost"
-                onClick={closeSendModal}
-                disabled={sending}
-              >
+              <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
                 {sendResult ? "Close" : "Cancel"}
               </AdminBtn>
               {!sendResult && (
                 <AdminBtn
                   $variant="primary"
                   onClick={handleSend}
-                  disabled={sending || message.length > MAX_MSG}
+                  disabled={saving || message.length > MAX_MSG}
                 >
-                  {sending ? (
-                    `Sending to ${pagination.total} subscriber(s)…`
+                  {saving ? (
+                    `Sending to ${pagination?.total ?? 0} subscriber(s)…`
                   ) : (
                     <>
-                      <Send size={14} /> Send to {pagination.total}{" "}
+                      <Send size={14} /> Send to {pagination?.total ?? 0}{" "}
                       Subscriber(s)
                     </>
                   )}
@@ -598,77 +597,39 @@ export const NewsletterPage: React.FC = () => {
         </ModalBackdrop>
       )}
 
-      {/* Delete Confirm Modal */}
-      {deleteTarget && (
-        <ModalBackdrop onClick={() => setDeleteTarget(null)}>
+      {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}
+      {mode === "delete" && selected && (
+        <ModalBackdrop onClick={closeModal}>
           <ModalBox
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: 420, width: "95%" }}
           >
             <ModalHeader>
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: "1rem",
-                  color: t.colors.danger,
-                }}
-              >
-                Remove Subscriber
-              </span>
-              <button
-                onClick={() => setDeleteTarget(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: t.colors.textMuted,
-                  fontSize: 20,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
+              <ModalTitleDanger>Remove Subscriber</ModalTitleDanger>
+              <ModalCloseBtn onClick={closeModal}>×</ModalCloseBtn>
             </ModalHeader>
             <ModalBody>
-              <p
-                style={{
-                  color: t.colors.textSecondary,
-                  fontSize: "0.875rem",
-                  lineHeight: 1.6,
-                }}
-              >
+              <ConfirmText>
                 Are you sure you want to permanently remove{" "}
-                <strong>{deleteTarget.email}</strong>? This cannot be undone.
-              </p>
+                <strong>{selected.email}</strong>? This cannot be undone.
+              </ConfirmText>
             </ModalBody>
             <ModalFooter>
-              <AdminBtn
-                $variant="ghost"
-                onClick={() => setDeleteTarget(null)}
-                disabled={deleting}
-              >
+              <AdminBtn $variant="ghost" onClick={closeModal} disabled={saving}>
                 Cancel
               </AdminBtn>
               <AdminBtn
                 $variant="danger"
                 onClick={handleDelete}
-                disabled={deleting}
-                style={{ background: t.colors.danger, color: "white" }}
+                disabled={saving}
               >
-                {deleting ? "Removing…" : "Remove Subscriber"}
+                {saving ? "Removing…" : "Remove Subscriber"}
               </AdminBtn>
             </ModalFooter>
           </ModalBox>
         </ModalBackdrop>
       )}
-
-      {openDrop && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 99 }}
-          onClick={() => setOpenDrop(null)}
-        />
-      )}
-    </>
+    </section>
   );
 };
 
