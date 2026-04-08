@@ -13,7 +13,6 @@ const { sendMail, buildEmailTemplate } = require("../utils/mailer");
 
 const cardService = require("./cardService");
 const notificationService = require("./notificationService");
-const couponService = require("./couponService");
 const COL = "orders";
 const toMs = (v) => (v?.toMillis ? v.toMillis() : new Date(v || 0).getTime());
 
@@ -196,7 +195,6 @@ const sendOutOfStockEmail = async (productName, productId, sku, newStock) => {
 
     const html = buildEmailTemplate({ subject, body });
     await sendMail({ to: adminEmail, subject, html });
-    console.log(`[orderService] Out-of-stock email sent for "${productName}"`);
   } catch (err) {
     // Never let email failure crash the order — just log it
     console.error(
@@ -408,6 +406,7 @@ const listOrders = async ({
   page = 1,
   limit = 20,
   status = "",
+  paymentStatus = "",
   search = "",
   sortDir = "desc",
   paymentMethod = "",
@@ -416,6 +415,8 @@ const listOrders = async ({
   let orders = snap.docs.map((d) => d.data());
 
   if (status) orders = orders.filter((o) => o.status === status);
+  if (paymentStatus)
+    orders = orders.filter((o) => o.paymentStatus === paymentStatus);
   if (paymentMethod)
     orders = orders.filter((o) => o.paymentMethod === paymentMethod);
   if (search) {
@@ -496,9 +497,6 @@ const updateOrderStatus = async (id, data) => {
       old.paymentMethod === "cod";
 
     if (stockWasDeducted) {
-      console.log(
-        `[orderService] Admin cancelled order ${id} — restoring stock`,
-      );
       for (const item of old.items || []) {
         if (!item.productId) continue;
         try {
@@ -546,9 +544,6 @@ const updatePaymentStatus = async (
   // This handles PayPal, BLIK, and any async payment method where the order
   // was created with status='pending' and stock was NOT deducted at order time.
   if (paymentStatus === "paid" && !wasPaid) {
-    console.log(
-      `[orderService] Payment confirmed for order ${id} — deducting stock now`,
-    );
     const outOfStockAlerts = [];
 
     for (const item of old.items || []) {
@@ -645,10 +640,6 @@ const enrichPaymentDetails = async (id, cardDetails) => {
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  console.log(
-    `[orderService] enrichPaymentDetails: order ${id} → last4=${merged.last4}`,
-  );
-
   // Also upsert the card into the cards collection (webhook path)
   const orderData = snap.data();
   if (merged.last4) {
@@ -735,7 +726,6 @@ const cancelOrder = async (id, userId) => {
     order.paymentMethod === "cod";
 
   if (stockWasDeducted) {
-    console.log(`[orderService] Restoring stock for cancelled order ${id}`);
     for (const item of order.items || []) {
       if (!item.productId) continue;
       try {

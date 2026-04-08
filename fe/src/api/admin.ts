@@ -121,7 +121,13 @@ export interface Order {
     | "shipped"
     | "delivered"
     | "cancelled";
-  paymentStatus: "pending" | "paid" | "refunded" | "failed";
+  paymentStatus:
+    | "pending"
+    | "paid"
+    | "refunded"
+    | "failed"
+    | "processing"
+    | "cancelled";
   paymentMethod: string;
   paymentMethodLabel?: string;
   paymentDetails: CardPaymentDetails | null;
@@ -218,20 +224,20 @@ export interface WishlistByUser {
   items: WishlistAdminEntry[];
 }
 
-export type ChartPeriod = 'monthly' | 'quarterly' | 'annually';
+export type ChartPeriod = "monthly" | "quarterly" | "annually";
 
 /** One data point in the revenue chart — shape varies by period */
 export interface ChartPoint {
   /** Monthly label e.g. "Jan 2024" */
-  month?:   string;
+  month?: string;
   /** Quarterly label e.g. "Q1 2024" */
   quarter?: string;
   /** Annual label e.g. "2024" */
-  year?:    string;
+  year?: string;
   /** Daily/weekly label for custom range e.g. "Apr 1" */
-  date?:    string;
-  revenue:  number;
-  orders:   number;
+  date?: string;
+  revenue: number;
+  orders: number;
 }
 
 export interface DashboardStats {
@@ -252,7 +258,11 @@ export interface DashboardStats {
     outOfStock: number;
   };
   revenueChart: ChartPoint[];
-  meta?: { period: ChartPeriod; startDate: string | null; endDate: string | null };
+  meta?: {
+    period: ChartPeriod;
+    startDate: string | null;
+    endDate: string | null;
+  };
   topProducts: Array<{
     productId: string;
     name: string;
@@ -329,13 +339,19 @@ export const adminAuthApi = {
 
 // ─── DASHBOARD ────────────────────────────────────────────────
 export const adminDashboardApi = {
-  getStats: (params?: { period?: ChartPeriod; startDate?: string; endDate?: string }) => {
+  getStats: (params?: {
+    period?: ChartPeriod;
+    startDate?: string;
+    endDate?: string;
+  }) => {
     const qs = new URLSearchParams();
-    if (params?.period)    qs.set('period',    params.period);
-    if (params?.startDate) qs.set('startDate', params.startDate);
-    if (params?.endDate)   qs.set('endDate',   params.endDate);
+    if (params?.period) qs.set("period", params.period);
+    if (params?.startDate) qs.set("startDate", params.startDate);
+    if (params?.endDate) qs.set("endDate", params.endDate);
     const query = qs.toString();
-    return api.get<Ok<DashboardStats>>(`/api/admin/dashboard${query ? '?' + query : ''}`);
+    return api.get<Ok<DashboardStats>>(
+      `/api/admin/dashboard${query ? "?" + query : ""}`,
+    );
   },
 };
 
@@ -397,6 +413,7 @@ export interface OrderQuery {
   limit?: number;
   search?: string;
   status?: string;
+  paymentStatus?: string;
   sortDir?: string;
 }
 

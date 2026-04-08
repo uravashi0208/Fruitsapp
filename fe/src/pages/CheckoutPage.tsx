@@ -378,6 +378,367 @@ const METHODS: MethodDef[] = [
 ];
 const GROUP_ORDER = ["digital", "bnpl", "bank", "local", "offline"] as const;
 
+// ─── BLIK Payment Form ────────────────────────────────────────────────────────
+// BLIK is a Polish instant payment — user generates a 6-digit code in their
+// banking app and enters it here. Stripe captures it via confirmBlikPayment().
+// Flow:
+//   1. Create order (pending) on backend
+//   2. Create PaymentIntent (PLN, payment_method_types: ['blik']) on backend
+//   3. User enters 6-digit BLIK code
+//   4. stripe.confirmBlikPayment() — Stripe calls the bank in real-time
+//   5. Bank approves → paymentIntent status = 'succeeded'
+//   6. Update order to paid + deduct stock
+
+interface BlikFormProps {
+  billing: typeof INITIAL_FORM;
+  total: number;
+  items: any[];
+  onSuccess: (orderNum: string, firstName: string, email: string) => void;
+  onError: (msg: string) => void;
+}
+
+const BlikDigitInput = styled.input`
+  width: 44px;
+  height: 56px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  outline: none;
+  color: ${theme.colors.textDark};
+  transition: border-color 0.15s;
+  &:focus {
+    border-color: ${theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(130, 174, 70, 0.15);
+  }
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+  -moz-appearance: textfield;
+`;
+
+const BlikTimerBar = styled.div<{ $pct: number }>`
+  height: 3px;
+  background: #e9ecef;
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+  &::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: ${({ $pct }) => $pct}%;
+    background: ${({ $pct }) => ($pct > 30 ? theme.colors.primary : "#e53e3e")};
+    transition:
+      width 1s linear,
+      background 0.3s;
+  }
+`;
+
+const BlikPaymentForm: React.FC<BlikFormProps> = ({
+  billing,
+  total,
+  items,
+  onSuccess,
+  onError,
+}) => {
+  const stripe = useStripe();
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<"input" | "waiting" | "done">("input");
+  const [secondsLeft, setSecondsLeft] = useState(120); // BLIK codes valid 2 min
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const dispatch = useAppDispatch();
+
+  // Countdown timer — starts when user clicks Pay
+  // Use a ref to avoid stale closure inside the setInterval callback
+  const stageRef = useRef(stage);
+  useEffect(() => {
+    stageRef.current = stage;
+  }, [stage]);
+
+  useEffect(() => {
+    if (stage !== "waiting") return;
+    setSecondsLeft(120);
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(timerRef.current!);
+          // Use ref — not closed-over stage — to get the current value
+          if (stageRef.current === "waiting") {
+            setStage("input");
+            onError(
+              "BLIK code expired. Please generate a new code and try again.",
+            );
+          }
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current!);
+  }, [stage, onError]);
+
+  const handleDigit = (idx: number, val: string) => {
+    if (!/^[0-9]?$/.test(val)) return;
+    const next = [...code];
+    next[idx] = val;
+    setCode(next);
+    if (val && idx < 5) {
+      inputRefs.current[idx + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (idx: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !code[idx] && idx > 0) {
+      inputRefs.current[idx - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    if (pasted.length === 6) {
+      setCode(pasted.split(""));
+      inputRefs.current[5]?.focus();
+    }
+    e.preventDefault();
+  };
+
+  const fullCode = code.join("");
+
+  const handlePay = async () => {
+    if (!stripe) {
+      onError("Stripe is not loaded.");
+      return;
+    }
+    if (fullCode.length !== 6) {
+      onError("Enter the full 6-digit BLIK code.");
+      return;
+    }
+    if (
+      !billing.firstName ||
+      !billing.email ||
+      !billing.address ||
+      !billing.city
+    ) {
+      onError("Please fill in all required shipping fields.");
+      return;
+    }
+    if (items.length === 0) {
+      onError("Your cart is empty.");
+      return;
+    }
+
+    setLoading(true);
+    setStage("waiting");
+
+    try {
+      // 1. Create pending order
+      const orderRes = await ordersApi.place({
+        items: items.map((i) => ({
+          productId: i.id,
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          image: i.image,
+        })),
+        billing: {
+          firstName: billing.firstName,
+          lastName: billing.lastName,
+          email: billing.email,
+          phone: billing.phone,
+          address: billing.address,
+          city: billing.city,
+          state: billing.state,
+          zip: billing.zip,
+          country: billing.country,
+        },
+        payment: { method: "blik", status: "pending" },
+      });
+
+      const appOrderId = (orderRes.data as any)?.id || "";
+
+      // 2. Create PaymentIntent (PLN, blik-only) on backend
+      //    Pass appOrderId so the webhook can link payment → order
+      const piRes = await stripeApi.createPaymentIntent({
+        amount: total,
+        payMethod: "blik",
+        customerEmail: billing.email,
+        orderId: appOrderId,
+        billing: {
+          firstName: billing.firstName,
+          lastName: billing.lastName,
+          email: billing.email,
+          phone: billing.phone,
+          address: billing.address,
+          city: billing.city,
+          state: billing.state,
+          zip: billing.zip,
+          country: billing.country,
+        },
+      });
+
+      const { clientSecret } = piRes.data;
+      if (!clientSecret) {
+        onError("Payment setup failed. Please try again.");
+        setStage("input");
+        setLoading(false);
+        return;
+      }
+
+      // 3. Confirm BLIK payment with the 6-digit code
+      const { error, paymentIntent } = await stripe.confirmBlikPayment(
+        clientSecret,
+        {
+          payment_method: {
+            blik: {},
+            billing_details: {
+              name: `${billing.firstName} ${billing.lastName}`.trim(),
+              email: billing.email,
+            },
+          },
+          payment_method_options: {
+            blik: { code: fullCode },
+          },
+        },
+      );
+
+      clearInterval(timerRef.current!);
+
+      if (error) {
+        setStage("input");
+        setCode(["", "", "", "", "", ""]);
+        inputRefs.current[0]?.focus();
+        onError(error.message || "BLIK payment failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (paymentIntent?.status === "succeeded") {
+        // 4. Payment confirmed — the Stripe webhook (payment_intent.succeeded)
+        //    will mark the order as paid and deduct stock server-side.
+        //    We just clear the cart and show success to the user.
+        dispatch(clearCart());
+        dispatch(
+          showToast({
+            message: "BLIK payment successful! 🎉",
+            type: "success",
+          }),
+        );
+        setStage("done");
+        onSuccess(
+          (orderRes.data as any)?.orderNumber || "",
+          billing.firstName,
+          billing.email,
+        );
+      }
+    } catch (err) {
+      clearInterval(timerRef.current!);
+      setStage("input");
+      setCode(["", "", "", "", "", ""]);
+      onError(
+        err instanceof ApiError
+          ? err.message
+          : "BLIK payment failed. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Code input */}
+      <div style={{ marginBottom: 16 }}>
+        <Label style={{ display: "block", marginBottom: 10, fontSize: 14 }}>
+          📱 Enter your 6-digit BLIK code
+        </Label>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+          {code.map((digit, idx) => (
+            <BlikDigitInput
+              key={idx}
+              ref={(el) => {
+                inputRefs.current[idx] = el;
+              }}
+              type="number"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleDigit(idx, e.target.value.slice(-1))}
+              onKeyDown={(e) => handleKeyDown(idx, e)}
+              onPaste={idx === 0 ? handlePaste : undefined}
+              disabled={loading}
+              autoFocus={idx === 0}
+            />
+          ))}
+        </div>
+
+        {stage === "waiting" && (
+          <>
+            <div
+              style={{
+                textAlign: "center",
+                marginTop: 12,
+                fontSize: 13,
+                color: theme.colors.text,
+              }}
+            >
+              ⏳ Waiting for bank approval… {Math.floor(secondsLeft / 60)}:
+              {String(secondsLeft % 60).padStart(2, "0")}
+            </div>
+            <BlikTimerBar $pct={(secondsLeft / 120) * 100} />
+          </>
+        )}
+
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: 10,
+            fontSize: 12,
+            color: "#888",
+          }}
+        >
+          Open your banking app → BLIK → copy the 6-digit code here
+        </div>
+      </div>
+
+      <Button
+        style={{ width: "100%", justifyContent: "center", gap: 8 }}
+        onClick={handlePay}
+        disabled={loading || fullCode.length !== 6 || !stripe}
+      >
+        {loading ? (
+          <>
+            <SpinIcon size={14} /> Waiting for bank…
+          </>
+        ) : (
+          <>
+            <ShoppingBag size={16} /> Pay with BLIK
+          </>
+        )}
+      </Button>
+
+      <p
+        style={{
+          textAlign: "center",
+          fontSize: 11,
+          color: theme.colors.text,
+          marginTop: 10,
+        }}
+      >
+        <Lock size={11} style={{ verticalAlign: "middle", marginRight: 4 }} />
+        Secured by Stripe — BLIK code is never stored
+      </p>
+    </div>
+  );
+};
+
 // ─── Stripe Payment Form (inner — uses hooks that need <Elements>) ─────────────
 interface StripeFormProps {
   billing: typeof INITIAL_FORM;
@@ -924,16 +1285,20 @@ const CheckoutPage: React.FC = () => {
   // ✅ Must NOT specify payment_method_types here — backend uses automatic_payment_methods.
   // The key prop on <Elements> ensures Stripe re-initialises when payment method changes,
   // which is critical for Apple Pay — it needs Elements to know the amount upfront.
+  // BLIK requires PLN currency — all other Stripe methods use USD
   const elementsOptions: StripeElementsOptions = {
     mode: "payment",
     amount: Math.round(total * 100),
-    currency: "usd",
-    // google_pay and paypal are handled natively — not Stripe.
-    ...(payMethod !== "cod" &&
-      payMethod !== "google_pay" &&
-      payMethod !== "paypal" && {
-        paymentMethodCreationParams: undefined, // let Stripe decide from automatic_payment_methods
-      }),
+    currency: payMethod === "blik" ? "pln" : "usd",
+    // BLIK requires explicit payment_method_types — it is incompatible with
+    // automatic_payment_methods. All other Stripe methods use automatic mode.
+    ...(payMethod === "blik"
+      ? { payment_method_types: ["blik"] }
+      : payMethod !== "cod" &&
+          payMethod !== "google_pay" &&
+          payMethod !== "paypal"
+        ? { paymentMethodCreationParams: undefined }
+        : {}),
     appearance: {
       theme: "stripe",
       variables: {
@@ -1467,6 +1832,24 @@ const CheckoutPage: React.FC = () => {
                                         the summary on the right to confirm.
                                       </InfoBox>
                                     </div>
+                                  ) : m.id === "blik" ? (
+                                    /* BLIK has its own dedicated form with 6-digit
+                                     code input and stripe.confirmBlikPayment().
+                                     It still needs <Elements> for the stripe hook,
+                                     but renders its own UI — not PaymentElement. */
+                                    <Elements
+                                      stripe={stripePromise}
+                                      options={elementsOptions}
+                                      key="blik"
+                                    >
+                                      <BlikPaymentForm
+                                        billing={form}
+                                        total={total}
+                                        items={items}
+                                        onSuccess={handleSuccess}
+                                        onError={handleError}
+                                      />
+                                    </Elements>
                                   ) : (
                                     <Elements
                                       stripe={stripePromise}

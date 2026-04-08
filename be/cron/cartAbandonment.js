@@ -19,22 +19,29 @@
  * Dependencies: node-cron (already in package.json)
  */
 
-const cron    = require('node-cron');
-const { db, FieldValue } = require('../config/firebase');
-const { sendMail, buildEmailTemplate } = require('../utils/mailer');
+const cron = require("node-cron");
+const { db, FieldValue } = require("../config/firebase");
+const { sendMail, buildEmailTemplate } = require("../utils/mailer");
 
-const BATCH_SIZE       = 50;
-const ABANDON_HOURS    = 2;   // hours after last cart update before email fires
-const COL              = 'carts';
+const BATCH_SIZE = 50;
+const ABANDON_HOURS = 2; // hours after last cart update before email fires
+const COL = "carts";
 
 // ── Build the recovery email HTML ─────────────────────────────────────────────
 const buildAbandonmentBody = (userName, items, cartTotal) => {
-  const itemRows = (items || []).slice(0, 5).map(item => `
+  const itemRows = (items || [])
+    .slice(0, 5)
+    .map(
+      (item) => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #f0f0f0;">
         <div style="display:flex;align-items:center;gap:12px;">
-          ${item.image ? `<img src="${item.image.startsWith('http') ? item.image : (process.env.CLIENT_URL || 'http://localhost:3000') + item.image}"
-            width="56" height="56" style="object-fit:cover;border-radius:6px;flex-shrink:0;" />` : ''}
+          ${
+            item.image
+              ? `<img src="${item.image.startsWith("http") ? item.image : (process.env.CLIENT_URL || "http://localhost:3000") + item.image}"
+            width="56" height="56" style="object-fit:cover;border-radius:6px;flex-shrink:0;" />`
+              : ""
+          }
           <div>
             <div style="font-weight:600;color:#1a1a1a;font-size:14px;">${item.name}</div>
             <div style="color:#666;font-size:13px;">Qty: ${item.quantity} · $${(item.price * item.quantity).toFixed(2)}</div>
@@ -42,11 +49,13 @@ const buildAbandonmentBody = (userName, items, cartTotal) => {
         </div>
       </td>
     </tr>
-  `).join('');
+  `,
+    )
+    .join("");
 
   return `
     <h2 style="margin:0 0 8px;font-size:22px;color:#1a1a1a;font-weight:700;text-align:center;">
-      🛒 You left something behind, ${userName || 'friend'}!
+      🛒 You left something behind, ${userName || "friend"}!
     </h2>
 
     <p style="text-align:center;font-size:15px;color:#555;margin:0 0 28px;">
@@ -57,7 +66,7 @@ const buildAbandonmentBody = (userName, items, cartTotal) => {
       ${itemRows}
     </table>
 
-    ${items.length > 5 ? `<p style="text-align:center;font-size:13px;color:#888;margin-bottom:24px;">+ ${items.length - 5} more item(s) in your cart</p>` : ''}
+    ${items.length > 5 ? `<p style="text-align:center;font-size:13px;color:#888;margin-bottom:24px;">+ ${items.length - 5} more item(s) in your cart</p>` : ""}
 
     <div style="background:#f8fdf8;border:1px solid #e0f2e0;border-radius:10px;padding:16px 24px;text-align:center;margin-bottom:28px;">
       <div style="font-size:13px;color:#666;margin-bottom:4px;">Your cart total</div>
@@ -65,7 +74,7 @@ const buildAbandonmentBody = (userName, items, cartTotal) => {
     </div>
 
     <div style="text-align:center;margin-top:28px;">
-      <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/cart"
+      <a href="${process.env.CLIENT_URL || "http://localhost:3000"}/cart"
          style="display:inline-block;background:#4caf50;color:#ffffff;padding:14px 40px;
                 border-radius:8px;text-decoration:none;font-weight:700;font-size:15px;">
         Complete My Order →
@@ -80,20 +89,16 @@ const buildAbandonmentBody = (userName, items, cartTotal) => {
 
 // ── Core task ─────────────────────────────────────────────────────────────────
 const runCartAbandonment = async () => {
-  const now       = new Date();
+  const now = new Date();
   const threshold = new Date(now.getTime() - ABANDON_HOURS * 60 * 60 * 1000);
-
-  console.log(`[cron:cartAbandonment] ▶ Starting at ${now.toISOString()}`);
 
   try {
     // 1. Find abandoned carts — updated before threshold, emailSent == false, has items
-    const snap = await db.collection(COL)
-      .where('emailSent', '==', false)
-      .get();
+    const snap = await db.collection(COL).where("emailSent", "==", false).get();
 
     const abandoned = snap.docs
-      .map(d => ({ id: d.id, ...d.data() }))
-      .filter(cart => {
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((cart) => {
         if (!cart.userEmail) return false;
         if (!cart.items || cart.items.length === 0) return false;
         const updatedAt = cart.updatedAt?.toMillis
@@ -103,20 +108,23 @@ const runCartAbandonment = async () => {
       });
 
     if (abandoned.length === 0) {
-      console.log('[cron:cartAbandonment] ✅ No abandoned carts. Done.');
+      console.log("[cron:cartAbandonment] ✅ No abandoned carts. Done.");
       return;
     }
 
-    console.log(`[cron:cartAbandonment] Found ${abandoned.length} abandoned cart(s)`);
+    console.log(
+      `[cron:cartAbandonment] Found ${abandoned.length} abandoned cart(s)`,
+    );
 
     // 2. Send recovery email to each user
     for (const cart of abandoned) {
       const cartTotal = (cart.items || []).reduce(
-        (sum, item) => sum + item.price * item.quantity, 0
+        (sum, item) => sum + item.price * item.quantity,
+        0,
       );
 
-      const subject = `🛒 Your cart is waiting, ${cart.userName || 'friend'}!`;
-      const html    = buildEmailTemplate({
+      const subject = `🛒 Your cart is waiting, ${cart.userName || "friend"}!`;
+      const html = buildEmailTemplate({
         subject,
         body: buildAbandonmentBody(cart.userName, cart.items, cartTotal),
       });
@@ -127,34 +135,45 @@ const runCartAbandonment = async () => {
 
         // Mark as notified
         await db.collection(COL).doc(cart.id).update({
-          emailSent:   true,
+          emailSent: true,
           emailSentAt: FieldValue.serverTimestamp(),
         });
       } catch (err) {
-        console.error(`[cron:cartAbandonment] Failed for ${cart.userEmail}:`, err.message);
+        console.error(
+          `[cron:cartAbandonment] Failed for ${cart.userEmail}:`,
+          err.message,
+        );
       }
     }
 
-    console.log('[cron:cartAbandonment] ✅ Done.');
+    console.log("[cron:cartAbandonment] ✅ Done.");
   } catch (err) {
-    console.error('[cron:cartAbandonment] ❌ Fatal error:', err);
+    console.error("[cron:cartAbandonment] ❌ Fatal error:", err);
   }
 };
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const startCartAbandonmentCron = () => {
   // Every 2 hours
-  cron.schedule('0 */2 * * *', async () => {
-    await runCartAbandonment();
-  }, {
-    scheduled: true,
-    timezone: 'UTC',
-  });
+  cron.schedule(
+    "0 */2 * * *",
+    async () => {
+      await runCartAbandonment();
+    },
+    {
+      scheduled: true,
+      timezone: "UTC",
+    },
+  );
 
-  console.log('[cron:cartAbandonment] 🕐 Scheduled — fires every 2 hours (UTC)');
+  console.log(
+    "[cron:cartAbandonment] 🕐 Scheduled — fires every 2 hours (UTC)",
+  );
 
-  if (process.env.RUN_CRON_ON_START === 'true') {
-    console.log('[cron:cartAbandonment] RUN_CRON_ON_START=true — running now for test...');
+  if (process.env.RUN_CRON_ON_START === "true") {
+    console.log(
+      "[cron:cartAbandonment] RUN_CRON_ON_START=true — running now for test...",
+    );
     runCartAbandonment();
   }
 };

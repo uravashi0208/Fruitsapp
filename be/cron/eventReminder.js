@@ -18,10 +18,10 @@
  *   node-cron          npm install node-cron
  */
 
-const cron               = require('node-cron');
-const calendarService    = require('../services/calendarService');
-const newsletterService  = require('../services/newsletterService');
-const { sendMail, buildEmailTemplate } = require('../utils/mailer');
+const cron = require("node-cron");
+const calendarService = require("../services/calendarService");
+const newsletterService = require("../services/newsletterService");
+const { sendMail, buildEmailTemplate } = require("../utils/mailer");
 
 const BATCH_SIZE = 50; // send in batches to avoid SMTP rate limits
 
@@ -30,23 +30,26 @@ const BATCH_SIZE = 50; // send in batches to avoid SMTP rate limits
  */
 const buildEventReminderBody = (event) => {
   const dateLabel = event.startDate
-    ? new Date(event.startDate + 'T00:00:00').toLocaleDateString('en-US', {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    ? new Date(event.startDate + "T00:00:00").toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       })
     : event.startDate;
 
   const timeLabel = event.startTime
     ? `<p style="font-size:14px;color:#666;margin:4px 0 0;">
-         🕐 <strong>${event.startTime}${event.endTime ? ' – ' + event.endTime : ''}</strong>
+         🕐 <strong>${event.startTime}${event.endTime ? " – " + event.endTime : ""}</strong>
        </p>`
-    : '';
+    : "";
 
   const typeColors = {
-    event:      '#4caf50',
-    meeting:    '#2196f3',
-    seminar:    '#9c27b0',
-    submission: '#ff9800',
-    other:      '#607d8b',
+    event: "#4caf50",
+    meeting: "#2196f3",
+    seminar: "#9c27b0",
+    submission: "#ff9800",
+    other: "#607d8b",
   };
   const badgeColor = typeColors[event.type] || typeColors.other;
 
@@ -54,7 +57,7 @@ const buildEventReminderBody = (event) => {
     <div style="text-align:center;margin-bottom:24px;">
       <span style="display:inline-block;background:${badgeColor};color:#fff;font-size:11px;font-weight:700;
                    letter-spacing:1px;text-transform:uppercase;padding:4px 14px;border-radius:20px;">
-        ${event.type || 'Event'}
+        ${event.type || "Event"}
       </span>
     </div>
 
@@ -74,12 +77,16 @@ const buildEventReminderBody = (event) => {
         📆 ${dateLabel}
       </p>
       ${timeLabel}
-      ${event.description ? `
+      ${
+        event.description
+          ? `
         <hr style="border:none;border-top:1px solid #e0f2e0;margin:16px 0;"/>
         <p style="font-size:14px;color:#555;line-height:1.7;margin:0;">
           ${event.description}
         </p>
-      ` : ''}
+      `
+          : ""
+      }
     </div>
 
     <p style="font-size:14px;color:#777;text-align:center;line-height:1.6;">
@@ -87,7 +94,7 @@ const buildEventReminderBody = (event) => {
     </p>
 
     <div style="text-align:center;margin-top:28px;">
-      <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}"
+      <a href="${process.env.CLIENT_URL || "http://localhost:3000"}"
          style="display:inline-block;background:#4caf50;color:#ffffff;padding:14px 36px;
                 border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;">
         Visit Vegefoods →
@@ -108,18 +115,28 @@ const runEventReminders = async () => {
     const upcomingEvents = await calendarService.getUpcomingEvents();
 
     if (upcomingEvents.length === 0) {
-      console.log('[cron:eventReminder] ✅ No upcoming events to notify about. Done.');
+      console.log(
+        "[cron:eventReminder] ✅ No upcoming events to notify about. Done.",
+      );
       return;
     }
 
-    console.log(`[cron:eventReminder] Found ${upcomingEvents.length} event(s) to notify`);
+    console.log(
+      `[cron:eventReminder] Found ${upcomingEvents.length} event(s) to notify`,
+    );
 
     // 2. Fetch all active newsletter subscribers
-    const { subscribers } = await newsletterService.listSubscribers({ page: 1, limit: 10000, status: 'active' });
-    const emails = subscribers.map(s => s.email).filter(Boolean);
+    const { subscribers } = await newsletterService.listSubscribers({
+      page: 1,
+      limit: 10000,
+      status: "active",
+    });
+    const emails = subscribers.map((s) => s.email).filter(Boolean);
 
     if (emails.length === 0) {
-      console.log('[cron:eventReminder] ⚠️  No active subscribers — skipping mail send.');
+      console.log(
+        "[cron:eventReminder] ⚠️  No active subscribers — skipping mail send.",
+      );
       // Still mark events so they don't retry forever
       for (const event of upcomingEvents) {
         await calendarService.markNotificationSent(event.id);
@@ -127,7 +144,9 @@ const runEventReminders = async () => {
       return;
     }
 
-    console.log(`[cron:eventReminder] Sending to ${emails.length} subscriber(s)`);
+    console.log(
+      `[cron:eventReminder] Sending to ${emails.length} subscriber(s)`,
+    );
 
     // 3. For each upcoming event — send to all subscribers in batches
     for (const event of upcomingEvents) {
@@ -137,7 +156,8 @@ const runEventReminders = async () => {
         body: buildEventReminderBody(event),
       });
 
-      let sent = 0, failed = 0;
+      let sent = 0,
+        failed = 0;
 
       for (let i = 0; i < emails.length; i += BATCH_SIZE) {
         const batch = emails.slice(i, i + BATCH_SIZE);
@@ -146,19 +166,24 @@ const runEventReminders = async () => {
           sent += batch.length;
         } catch (err) {
           failed += batch.length;
-          console.error(`[cron:eventReminder] Batch mail error for event "${event.title}":`, err.message);
+          console.error(
+            `[cron:eventReminder] Batch mail error for event "${event.title}":`,
+            err.message,
+          );
         }
       }
 
-      console.log(`[cron:eventReminder] Event "${event.title}": sent=${sent}, failed=${failed}`);
+      console.log(
+        `[cron:eventReminder] Event "${event.title}": sent=${sent}, failed=${failed}`,
+      );
 
       // 4. Mark notification as sent
       await calendarService.markNotificationSent(event.id);
     }
 
-    console.log('[cron:eventReminder] ✅ All reminders processed.');
+    console.log("[cron:eventReminder] ✅ All reminders processed.");
   } catch (err) {
-    console.error('[cron:eventReminder] ❌ Fatal error:', err);
+    console.error("[cron:eventReminder] ❌ Fatal error:", err);
   }
 };
 
@@ -171,18 +196,26 @@ const runEventReminders = async () => {
  */
 const startEventReminderCron = () => {
   // Schedule: midnight every day
-  cron.schedule('0 0 * * *', async () => {
-    await runEventReminders();
-  }, {
-    scheduled: true,
-    timezone: 'UTC', // change to your server timezone e.g. 'Asia/Kolkata'
-  });
+  cron.schedule(
+    "0 0 * * *",
+    async () => {
+      await runEventReminders();
+    },
+    {
+      scheduled: true,
+      timezone: "UTC", // change to your server timezone e.g. 'Asia/Kolkata'
+    },
+  );
 
-  console.log('[cron:eventReminder] 🕛 Scheduled — fires every night at midnight (UTC)');
+  console.log(
+    "[cron:eventReminder] 🕛 Scheduled — fires every night at midnight (UTC)",
+  );
 
   // Optional: run once immediately on server start (useful for testing)
-  if (process.env.RUN_CRON_ON_START === 'true') {
-    console.log('[cron:eventReminder] RUN_CRON_ON_START=true — running now for test...');
+  if (process.env.RUN_CRON_ON_START === "true") {
+    console.log(
+      "[cron:eventReminder] RUN_CRON_ON_START=true — running now for test...",
+    );
     runEventReminders();
   }
 };

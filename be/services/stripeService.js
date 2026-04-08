@@ -9,35 +9,46 @@
  *   • constructWebhookEvent   — POST /api/stripe/webhook
  */
 
-const Stripe = require('stripe');
-const { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } = require('../config/env');
+const Stripe = require("stripe");
+const { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } = require("../config/env");
 
 let _stripe = null;
 const stripe = () => {
   if (!_stripe) {
-    if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY.startsWith('sk_test_YOUR')) {
+    if (!STRIPE_SECRET_KEY || STRIPE_SECRET_KEY.startsWith("sk_test_YOUR")) {
       throw new Error(
-        'STRIPE_SECRET_KEY is not configured. ' +
-        'Add it to your .env file (https://dashboard.stripe.com/test/apikeys).'
+        "STRIPE_SECRET_KEY is not configured. " +
+          "Add it to your .env file (https://dashboard.stripe.com/test/apikeys).",
       );
     }
-    _stripe = Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' });
+    _stripe = Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-04-10" });
   }
   return _stripe;
 };
 
-const CURRENCY = 'usd';
+const CURRENCY = "usd";
+
+// BLIK only works with PLN. All other methods default to USD.
+const getCurrency = (payMethod) => {
+  if (payMethod === "blik") return "pln";
+  return CURRENCY;
+};
 
 // ─── Brand normalisation ──────────────────────────────────────────────────────
 // Stripe brands: visa, mastercard, amex, discover, diners, jcb, unionpay, unknown
-const normaliseBrand = (brand = '') => {
+const normaliseBrand = (brand = "") => {
   const b = brand.toLowerCase();
   const MAP = {
-    visa: 'visa', mastercard: 'mastercard', amex: 'amex',
-    american_express: 'amex', discover: 'discover',
-    diners: 'diners', jcb: 'jcb', unionpay: 'unionpay',
+    visa: "visa",
+    mastercard: "mastercard",
+    amex: "amex",
+    american_express: "amex",
+    discover: "discover",
+    diners: "diners",
+    jcb: "jcb",
+    unionpay: "unionpay",
   };
-  return MAP[b] || b || 'visa';
+  return MAP[b] || b || "visa";
 };
 
 // ─── Google Pay wallet type helpers ──────────────────────────────────────────
@@ -50,11 +61,11 @@ const normaliseBrand = (brand = '') => {
  * @returns {'google_pay' | 'apple_pay' | 'card' | string}
  */
 const resolveWalletType = (pm) => {
-  if (!pm) return 'card';
+  if (!pm) return "card";
   const walletType = pm.card?.wallet?.type;
-  if (walletType === 'google_pay') return 'google_pay';
-  if (walletType === 'apple_pay')  return 'apple_pay';
-  return pm.type || 'card';
+  if (walletType === "google_pay") return "google_pay";
+  if (walletType === "apple_pay") return "apple_pay";
+  return pm.type || "card";
 };
 
 // ─── Extract card details from a Stripe PaymentMethod object ──────────────────
@@ -67,57 +78,74 @@ const resolveWalletType = (pm) => {
  * @param {string} [cardholderName]  — billing name from billing_details
  * @returns {{ cardholderName, last4, expiryMonth, expiryYear, cardType, brand, wallet } | null}
  */
-const extractCardDetails = (pm, cardholderName = '') => {
+const extractCardDetails = (pm, cardholderName = "") => {
   if (!pm) return null;
 
   const card = pm.card || pm.card_present;
   if (!card) return null;
 
   return {
-    cardholderName: cardholderName || pm.billing_details?.name || '',
-    last4:          card.last4          || '',
-    expiryMonth:    card.exp_month ? String(card.exp_month).padStart(2, '0') : '',
-    expiryYear:     card.exp_year  ? String(card.exp_year)                    : '',
-    cardType:       normaliseBrand(card.brand),
-    brand:          card.brand || '',
-    fingerprint:    card.fingerprint || '',  // for dedup in cards collection
-    funding:        card.funding || '',      // credit | debit | prepaid
-    network:        card.networks?.preferred || card.brand || '',
+    cardholderName: cardholderName || pm.billing_details?.name || "",
+    last4: card.last4 || "",
+    expiryMonth: card.exp_month ? String(card.exp_month).padStart(2, "0") : "",
+    expiryYear: card.exp_year ? String(card.exp_year) : "",
+    cardType: normaliseBrand(card.brand),
+    brand: card.brand || "",
+    fingerprint: card.fingerprint || "", // for dedup in cards collection
+    funding: card.funding || "", // credit | debit | prepaid
+    network: card.networks?.preferred || card.brand || "",
     // Wallet type — 'google_pay' | 'apple_pay' | null (plain card)
-    wallet:         card.wallet?.type || null,
+    wallet: card.wallet?.type || null,
   };
 };
 
 // ─── Create PaymentIntent ─────────────────────────────────────────────────────
-const createPaymentIntent = async ({ amount, payMethod, customerEmail, orderId }) => {
+const createPaymentIntent = async ({
+  amount,
+  payMethod,
+  customerEmail,
+  orderId,
+}) => {
   const amountCents = Math.round(amount * 100);
 
-  // Apple Pay & Google Pay are wallet wrappers around a card PM — Stripe handles
-  // them automatically when automatic_payment_methods is enabled. No special
-  // payment_method_types configuration is needed.
+  // BLIK requires explicit payment_method_types and PLN currency.
+  // All other methods use automatic_payment_methods (handles card, Apple Pay, Google Pay).
+  const isBlik = payMethod === "blik";
+
   const intentParams = {
-    amount:   amountCents,
-    currency: CURRENCY,
-    automatic_payment_methods: { enabled: true },
+    amount: amountCents,
+    currency: getCurrency(payMethod),
+    ...(isBlik
+      ? {
+          payment_method_types: ["blik"],
+          // BLIK PaymentIntents expire quickly — code is valid 2 minutes only
+          description: "BLIK payment — Poland",
+        }
+      : {
+          automatic_payment_methods: { enabled: true },
+          description: `Order — ${payMethod || "card"}`,
+        }),
     metadata: {
-      payMethod: payMethod || 'card',
-      orderId:   orderId   || '',
+      payMethod: payMethod || "card",
+      orderId: orderId || "",
     },
-    description: `Order — ${payMethod || 'card'}`,
   };
 
   if (customerEmail) intentParams.receipt_email = customerEmail;
 
   const intent = await stripe().paymentIntents.create(intentParams);
   return {
-    clientSecret:    intent.client_secret,
+    clientSecret: intent.client_secret,
     paymentIntentId: intent.id,
   };
 };
 
 // ─── Retrieve PaymentIntent (optionally expand payment_method) ────────────────
-const retrievePaymentIntent = async (paymentIntentId, { expand = false } = {}) => {
-  const params = expand ? { expand: ['payment_method'] } : {};
+const retrievePaymentIntent = async (
+  paymentIntentId,
+  { expand = false } = {},
+) => {
+  const params = expand ? { expand: ["payment_method"] } : {};
   return stripe().paymentIntents.retrieve(paymentIntentId, params);
 };
 
@@ -135,10 +163,17 @@ const retrievePaymentMethod = async (paymentMethodId) => {
 
 // ─── Construct webhook event ──────────────────────────────────────────────────
 const constructWebhookEvent = (rawBody, signature) => {
-  if (!STRIPE_WEBHOOK_SECRET || STRIPE_WEBHOOK_SECRET.startsWith('whsec_YOUR')) {
-    throw new Error('STRIPE_WEBHOOK_SECRET is not configured.');
+  if (
+    !STRIPE_WEBHOOK_SECRET ||
+    STRIPE_WEBHOOK_SECRET.startsWith("whsec_YOUR")
+  ) {
+    throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
   }
-  return stripe().webhooks.constructEvent(rawBody, signature, STRIPE_WEBHOOK_SECRET);
+  return stripe().webhooks.constructEvent(
+    rawBody,
+    signature,
+    STRIPE_WEBHOOK_SECRET,
+  );
 };
 
 module.exports = {

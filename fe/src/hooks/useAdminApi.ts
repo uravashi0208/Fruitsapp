@@ -127,9 +127,11 @@ function useAdminPaged<T>(
 }
 
 // ── Dashboard ─────────────────────────────────────────────────
-export const useAdminDashboard = (
-  params?: { period?: ChartPeriod; startDate?: string; endDate?: string },
-) =>
+export const useAdminDashboard = (params?: {
+  period?: ChartPeriod;
+  startDate?: string;
+  endDate?: string;
+}) =>
   useAdminFetch<DashboardStats>(
     () => adminDashboardApi.getStats(params),
     [params?.period, params?.startDate, params?.endDate],
@@ -153,7 +155,7 @@ export const useAdminProducts = (query: ProductQuery = {}) =>
 export const useAdminOrders = (query: OrderQuery = {}) =>
   useAdminPaged<Order>(
     () => adminOrdersApi.list(query),
-    [query.page, query.limit, query.search, query.status],
+    [query.page, query.limit, query.search, query.status, query.paymentStatus],
   );
 
 // ── Users ─────────────────────────────────────────────────────

@@ -234,13 +234,13 @@ export const UsersPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
   // 1b. Filter / pagination (declared before data hook — used to build query)
-  const [search,        setSearch]        = useState("");
-  const [statusF,       setStatusF]       = useState("all");
-  const [page,          setPage]          = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("all");
+  const [page, setPage] = useState(1);
   const [exportLoading, setExportLoading] = useState(false);
 
   // 1c. Selection / bulk
-  const [selIds,      setSelIds]      = useState<Set<string>>(new Set());
+  const [selIds, setSelIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<
     "active" | "inactive" | "banned" | "delete" | null
@@ -893,6 +893,7 @@ export const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
+  const [statusP, setStatusP] = useState("all");
   const [page, setPage] = useState(1);
   const [exportLoading, setExportLoading] = useState(false);
 
@@ -902,8 +903,9 @@ export const OrdersPage: React.FC = () => {
       limit: PAGE_SIZE,
       search,
       status: statusF === "all" ? "" : statusF,
+      paymentStatus: statusP === "all" ? "" : statusP,
     }),
-    [page, search, statusF],
+    [page, search, statusF, statusP],
   );
   const {
     data: orders,
@@ -1047,27 +1049,51 @@ export const OrdersPage: React.FC = () => {
           </SBar>
         }
         filterArea={
-          <AdminDropdown
-            style={{ minWidth: 150 }}
-            value={statusF}
-            onChange={(val) => {
-              setStatusF(val);
-              setPage(1);
-            }}
-            options={[
-              { value: "all", label: "All Statuses" },
-              ...[
-                "pending",
-                "processing",
-                "shipped",
-                "delivered",
-                "cancelled",
-              ].map((s) => ({
-                value: s,
-                label: s.charAt(0).toUpperCase() + s.slice(1),
-              })),
-            ]}
-          />
+          <>
+            <AdminDropdown
+              style={{ minWidth: 150 }}
+              value={statusP}
+              onChange={(val) => {
+                setStatusP(val);
+                setPage(1);
+              }}
+              options={[
+                { value: "all", label: "Pay Statuses" },
+                ...[
+                  "paid",
+                  "failed",
+                  "refunded",
+                  "pending",
+                  "processing",
+                  "cancelled",
+                ].map((s) => ({
+                  value: s,
+                  label: s.charAt(0).toUpperCase() + s.slice(1),
+                })),
+              ]}
+            />
+            <AdminDropdown
+              style={{ minWidth: 150 }}
+              value={statusF}
+              onChange={(val) => {
+                setStatusF(val);
+                setPage(1);
+              }}
+              options={[
+                { value: "all", label: "Order Statuses" },
+                ...[
+                  "pending",
+                  "processing",
+                  "shipped",
+                  "delivered",
+                  "cancelled",
+                ].map((s) => ({
+                  value: s,
+                  label: s.charAt(0).toUpperCase() + s.slice(1),
+                })),
+              ]}
+            />
+          </>
         }
         columns={ORDER_COLS}
         rows={orders ?? []}
@@ -1273,25 +1299,28 @@ export const CardsPage: React.FC = () => {
   };
 
   // 3. Action handlers
-  const handleDelete = useCallback(async (c: CardDetail) => {
-    try {
-      await adminCardsApi.delete(c.id);
-      dispatch(
-        showAdminToast({
-          message: `Card ••••${c.last4} removed`,
-          type: "warning",
-        }),
-      );
-      refetch();
-    } catch (err) {
-      dispatch(
-        showAdminToast({
-          message: err instanceof ApiError ? err.message : "Delete failed",
-          type: "error",
-        }),
-      );
-    }
-  }, [dispatch, refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleDelete = useCallback(
+    async (c: CardDetail) => {
+      try {
+        await adminCardsApi.delete(c.id);
+        dispatch(
+          showAdminToast({
+            message: `Card ••••${c.last4} removed`,
+            type: "warning",
+          }),
+        );
+        refetch();
+      } catch (err) {
+        dispatch(
+          showAdminToast({
+            message: err instanceof ApiError ? err.message : "Delete failed",
+            type: "error",
+          }),
+        );
+      }
+    },
+    [dispatch, refetch],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 4. Render
   return (
@@ -1489,9 +1518,9 @@ export const ContactsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
   // 1b. Filter / pagination (declared before data hook — used to build query)
-  const [search,  setSearch]  = useState("");
+  const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
-  const [page,    setPage]    = useState(1);
+  const [page, setPage] = useState(1);
 
   // 1c. Modal
   const [selected, setSelected] = useState<Contact | null>(null);
@@ -1838,9 +1867,9 @@ export const BlogsPage: React.FC = () => {
   const dispatch = useAdminDispatch();
 
   // 1b. Filter / pagination (declared before data hook — used to build query)
-  const [search,        setSearch]        = useState("");
-  const [statusF,       setStatusF]       = useState("all");
-  const [page,          setPage]          = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusF, setStatusF] = useState("all");
+  const [page, setPage] = useState(1);
   const [exportLoading, setExportLoading] = useState(false);
 
   // 1a. Data hook (query-based — depends on filter state above)
@@ -1862,21 +1891,21 @@ export const BlogsPage: React.FC = () => {
   } = useAdminBlogs(query);
 
   // 1c. Selection / bulk
-  const [selIds,      setSelIds]      = useState<Set<string>>(new Set());
+  const [selIds, setSelIds] = useState<Set<string>>(new Set());
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkConfirm, setBulkConfirm] = useState<
     "published" | "draft" | "delete" | null
   >(null);
 
   // 1d. Modal / form
-  const [blogModal,    setBlogModal]    = useState<BlogModalMode>(null);
-  const [editTarget,   setEditTarget]   = useState<AdminBlogPost | null>(null);
+  const [blogModal, setBlogModal] = useState<BlogModalMode>(null);
+  const [editTarget, setEditTarget] = useState<AdminBlogPost | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminBlogPost | null>(null);
-  const [viewTarget,   setViewTarget]   = useState<AdminBlogPost | null>(null);
-  const [saving,       setSaving]       = useState(false);
-  const [toggling,     setToggling]     = useState<string | null>(null);
-  const [form,         setForm]         = useState<ReturnType<typeof emptyBlog>>(emptyBlog());
-  const [coverFile,    setCoverFile]    = useState<File | null>(null);
+  const [viewTarget, setViewTarget] = useState<AdminBlogPost | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [form, setForm] = useState<ReturnType<typeof emptyBlog>>(emptyBlog());
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string>("");
   const fileRef = React.useRef<HTMLInputElement>(null);
 

@@ -19,8 +19,8 @@
  *   https://myaccount.google.com/apppasswords
  */
 
-const nodemailer      = require('nodemailer');
-const settingsService = require('../services/settingsService');
+const nodemailer = require("nodemailer");
+const settingsService = require("../services/settingsService");
 
 /**
  * Load SMTP config from DB (live) with .env fallback.
@@ -34,12 +34,17 @@ const loadSmtpConfig = async () => {
   }
 
   return {
-    host:     dbSettings.smtpHost     || process.env.MAIL_HOST     || '',
-    port:     Number(dbSettings.smtpPort || process.env.MAIL_PORT  || 587),
-    user:     dbSettings.smtpUser     || process.env.MAIL_USER     || '',
-    pass:     dbSettings.smtpPass     || process.env.MAIL_PASS     || '',
-    fromName: dbSettings.mailFromName  || process.env.MAIL_FROM_NAME || 'Vegefoods',
-    fromEmail:dbSettings.mailFromEmail || dbSettings.smtpUser || process.env.MAIL_USER || '',
+    host: dbSettings.smtpHost || process.env.MAIL_HOST || "",
+    port: Number(dbSettings.smtpPort || process.env.MAIL_PORT || 587),
+    user: dbSettings.smtpUser || process.env.MAIL_USER || "",
+    pass: dbSettings.smtpPass || process.env.MAIL_PASS || "",
+    fromName:
+      dbSettings.mailFromName || process.env.MAIL_FROM_NAME || "Vegefoods",
+    fromEmail:
+      dbSettings.mailFromEmail ||
+      dbSettings.smtpUser ||
+      process.env.MAIL_USER ||
+      "",
   };
 };
 
@@ -55,30 +60,30 @@ const createTransporter = async () => {
 
   if (!cfg.host || !cfg.user || !cfg.pass) {
     throw new Error(
-      'SMTP not configured. Set MAIL_HOST, MAIL_USER, MAIL_PASS in .env ' +
-      'or Admin → Settings → Email.'
+      "SMTP not configured. Set MAIL_HOST, MAIL_USER, MAIL_PASS in .env " +
+        "or Admin → Settings → Email.",
     );
   }
 
   const use465 = cfg.port === 465;
 
   const transporter = nodemailer.createTransport({
-    host:   cfg.host,
-    port:   cfg.port,
-    secure: use465,          // true = implicit TLS (port 465)
-    auth:   { user: cfg.user, pass: cfg.pass },
+    host: cfg.host,
+    port: cfg.port,
+    secure: use465, // true = implicit TLS (port 465)
+    auth: { user: cfg.user, pass: cfg.pass },
 
     // STARTTLS for port 587 / 2525
     requireTLS: !use465,
 
     // Timeouts — prevent hanging forever on bad SMTP config
-    connectionTimeout: 10_000,   // 10 s to establish TCP connection
-    greetingTimeout:   10_000,   // 10 s for server greeting (220 banner)
-    socketTimeout:     15_000,   // 15 s of socket inactivity
+    connectionTimeout: 10_000, // 10 s to establish TCP connection
+    greetingTimeout: 10_000, // 10 s for server greeting (220 banner)
+    socketTimeout: 15_000, // 15 s of socket inactivity
 
     tls: {
       // Allow self-signed certs in dev; in prod set to true
-      rejectUnauthorized: process.env.NODE_ENV === 'production',
+      rejectUnauthorized: process.env.NODE_ENV === "production",
     },
   });
 
@@ -98,10 +103,10 @@ const sendMail = async ({ to, subject, html, text }) => {
 
   const info = await transporter.sendMail({
     from,
-    to:   Array.isArray(to) ? to.join(', ') : to,
+    to: Array.isArray(to) ? to.join(", ") : to,
     subject,
     html,
-    text: text || (html ? html.replace(/<[^>]*>/g, '') : ''),
+    text: text || (html ? html.replace(/<[^>]*>/g, "") : ""),
   });
 
   return info;
@@ -115,10 +120,8 @@ const verifySmtp = async () => {
   try {
     const { transporter, cfg } = await createTransporter();
     await transporter.verify();
-    console.log(`[mailer] SMTP verified OK — ${cfg.host}:${cfg.port} as ${cfg.user}`);
     return { ok: true, host: cfg.host, port: cfg.port, user: cfg.user };
   } catch (err) {
-    console.error('[mailer] SMTP verify failed:', err.message);
     return { ok: false, error: err.message };
   }
 };
@@ -127,7 +130,7 @@ const verifySmtp = async () => {
  * Branded HTML email template.
  * @param {{ subject: string, body: string, unsubscribeEmail?: string }} opts
  */
-const buildEmailTemplate = ({ subject, body, unsubscribeEmail = '' }) => `
+const buildEmailTemplate = ({ subject, body, unsubscribeEmail = "" }) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -168,10 +171,12 @@ const buildEmailTemplate = ({ subject, body, unsubscribeEmail = '' }) => `
             <td style="padding:24px 40px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#9e9e9e;line-height:1.6;">
                 You are receiving this email because you are subscribed to Vegefoods.<br/>
-                ${unsubscribeEmail
-                  ? `<a href="mailto:unsubscribe@vegefoods.com?subject=Unsubscribe&body=${unsubscribeEmail}"
+                ${
+                  unsubscribeEmail
+                    ? `<a href="mailto:unsubscribe@vegefoods.com?subject=Unsubscribe&body=${unsubscribeEmail}"
                        style="color:#4caf50;text-decoration:none;">Unsubscribe</a>`
-                  : ''}
+                    : ""
+                }
               </p>
               <p style="margin:12px 0 0;font-size:11px;color:#bdbdbd;">
                 © ${new Date().getFullYear()} Vegefoods. All rights reserved.
