@@ -1,14 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+// ============================================================
+// FEATURES SECTION — uses shared useInView + animations
+// ============================================================
+import React from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { Truck, Salad, Medal, Headset } from 'lucide-react';
 import { theme } from '../../styles/theme';
 import { Container, Section } from '../../styles/shared';
-
-// ── Animations ────────────────────────────────────────────────
-const fadeUp = keyframes`
-  from { opacity: 0; transform: translateY(40px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
+import { fadeUp, shimmer } from '../../styles/animations';
+import { useInView } from '../../hooks/useInView';
 
 const iconPop = keyframes`
   0%   { transform: scale(0.5) rotate(-10deg); opacity: 0; }
@@ -16,39 +15,12 @@ const iconPop = keyframes`
   100% { transform: scale(1) rotate(0deg); opacity: 1; }
 `;
 
-const shimmer = keyframes`
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
-`;
-
-// ── useInView hook ─────────────────────────────────────────────
-function useInView(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
-
-// ── Styled Components ─────────────────────────────────────────
 const FeaturesGrid = styled.nav`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0;
   @media (max-width: ${theme.breakpoints.lg}) { grid-template-columns: repeat(2, 1fr); }
   @media (max-width: ${theme.breakpoints.sm}) { grid-template-columns: 1fr; }
-`;
-
-const FeatureBody = styled.figcaption`
-  text-align: center;
 `;
 
 const FeatureItem = styled.article<{ $visible: boolean; $delay: number }>`
@@ -83,8 +55,7 @@ const FeatureIcon = styled.figure<{ $bg: string; $visible: boolean; $delay: numb
     content: '';
     position: absolute; inset: 10px;
     border-radius: 50%;
-    border: 2px solid rgb(255 255 255);
-    opacity: 0.3;
+    border: 2px solid rgba(255,255,255,0.3);
   }
   &::before {
     content: '';
@@ -111,20 +82,17 @@ const FeatureTitle = styled.h3`
   ${FeatureItem}:hover & { color: ${theme.colors.primary}; }
 `;
 
-// ── Types ─────────────────────────────────────────────────────
 interface Feature { icon: React.ReactNode; bg: string; title: string; desc: string; }
-interface FeaturesSectionProps { features?: Feature[]; }
 
 const DEFAULT_FEATURES: Feature[] = [
-  { icon: <Truck size={50} color="white" />, bg: theme.colors.bgColor1, title: 'Free Shipping', desc: 'On order over $100' },
-  { icon: <Salad size={50} color="white" />, bg: theme.colors.bgColor2, title: 'Always Fresh',  desc: 'Product well packaged' },
-  { icon: <Medal size={50} color="white" />, bg: theme.colors.bgColor3, title: 'Superior Quality', desc: 'Quality Products' },
-  { icon: <Headset size={50} color="white" />, bg: theme.colors.bgColor4, title: 'Support',     desc: '24/7 Support' },
+  { icon: <Truck size={50} color="white" />,   bg: theme.colors.bgColor1, title: 'Free Shipping',     desc: 'On orders over $100' },
+  { icon: <Salad size={50} color="white" />,   bg: theme.colors.bgColor2, title: 'Always Fresh',      desc: 'Product well packaged' },
+  { icon: <Medal size={50} color="white" />,   bg: theme.colors.bgColor3, title: 'Superior Quality',  desc: 'Certified organic produce' },
+  { icon: <Headset size={50} color="white" />, bg: theme.colors.bgColor4, title: '24/7 Support',      desc: 'We\'re here to help' },
 ];
 
-// ── Component ─────────────────────────────────────────────────
-export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ features = DEFAULT_FEATURES }) => {
-  const { ref, visible } = useInView();
+export const FeaturesSection: React.FC<{ features?: Feature[] }> = ({ features = DEFAULT_FEATURES }) => {
+  const { ref, visible } = useInView(0.15);
   return (
     <Section>
       <Container>
@@ -135,12 +103,10 @@ export const FeaturesSection: React.FC<FeaturesSectionProps> = ({ features = DEF
                 <FeatureIcon className="feature-icon" $bg={f.bg} $visible={visible} $delay={i * 120}>
                   {f.icon}
                 </FeatureIcon>
-                <FeatureBody>
+                <figcaption>
                   <FeatureTitle>{f.title}</FeatureTitle>
-                  <span style={{ fontSize: theme.fontSizes.sm, color: theme.colors.textMuted }}>
-                    {f.desc}
-                  </span>
-                </FeatureBody>
+                  <span style={{ fontSize: theme.fontSizes.sm, color: theme.colors.textMuted }}>{f.desc}</span>
+                </figcaption>
               </FeatureItem>
             ))}
           </FeaturesGrid>

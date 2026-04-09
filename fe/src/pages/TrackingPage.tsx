@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import styled, { keyframes, css } from 'styled-components';
+import styled, { css } from 'styled-components';
+import { fadeUp, spin, pulse, bounceIn as bounce } from '../styles/animations';
 import { Search, Package, CheckCircle2, ClipboardList, Truck, PartyPopper, MapPin, Clock, Mail, Hash, HeadphonesIcon } from 'lucide-react';
 import { publicTrackingApi, TrackingTimeline, TrackingEvent } from '../api/admin';
 import { PageHero } from '../components/ui/PageHero';
@@ -14,10 +15,6 @@ import { theme as t } from '../styles/theme';
 import { Container, Button } from '../styles/shared';
 
 // ── Animations ────────────────────────────────────────────────────────────────
-const fadeUp  = keyframes`from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}`;
-const spin    = keyframes`to{transform:rotate(360deg)}`;
-const pulse   = keyframes`0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.93)}`;
-const bounce  = keyframes`0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}`;
 
 // ── Status map ────────────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {

@@ -1,46 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
-import styled, { keyframes, css } from 'styled-components';
+// ============================================================
+// FEATURED PRODUCTS — uses shared useInView + animations
+// ============================================================
+import React from 'react';
+import styled, { css } from 'styled-components';
 import { theme } from '../../styles/theme';
 import { Container, Section } from '../../styles/shared';
+import { fadeUp, fadeDown } from '../../styles/animations';
+import { useInView } from '../../hooks/useInView';
 import { ProductCard } from '../ui/ProductCard';
 import { useProducts } from '../../hooks/useApi';
 
-// ── Animations ────────────────────────────────────────────────
-const fadeUp = keyframes`
-  from { opacity: 0; transform: translateY(40px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-const slideDown = keyframes`
-  from { opacity: 0; transform: translateY(-20px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-// ── useInView hook ─────────────────────────────────────────────
-function useInView(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
-
-// ── Styled Components ─────────────────────────────────────────
+// ── Styled ────────────────────────────────────────────────────
 const HeadingSection = styled.header<{ $visible: boolean }>`
   text-align: center;
   margin-bottom: 40px;
   margin-top: 1rem;
   opacity: 0;
   ${({ $visible }) => $visible && css`
-    animation: ${slideDown} 0.6s ease both;
+    animation: ${fadeDown} 0.6s ease both;
   `}
   h2 {
     font-size: ${theme.fontSizes['4xl']};
@@ -75,8 +52,7 @@ const AnimatedLi = styled.li<{ $visible: boolean; $delay: number }>`
 
 const ProductsGrid = styled.ul`
   list-style: none;
-  padding: 0;
-  margin: 0;
+  padding: 0; margin: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0 20px;
@@ -84,11 +60,10 @@ const ProductsGrid = styled.ul`
   @media (max-width: ${theme.breakpoints.sm}) { grid-template-columns: 1fr; }
 `;
 
-// ── Types ─────────────────────────────────────────────────────
-interface FeaturedProductsProps { count?: number; }
-
 // ── Component ─────────────────────────────────────────────────
-export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ count = 8 }) => {
+interface Props { count?: number; }
+
+export const FeaturedProducts: React.FC<Props> = ({ count = 8 }) => {
   const { ref, visible } = useInView();
   const { data: allProducts } = useProducts({ limit: count });
 
@@ -99,7 +74,7 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ count = 8 })
           <HeadingSection $visible={visible}>
             <span className="subheading">Featured Products</span>
             <h2>Our Products</h2>
-            <p>Far far away, behind the word mountains, far from the countries Vokalia and Consonantia</p>
+            <p>Farm-fresh goodness delivered straight to your door — quality you can taste in every bite.</p>
           </HeadingSection>
         </div>
       </Container>

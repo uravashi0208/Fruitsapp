@@ -101,7 +101,7 @@ const resolveCover = (cover: string) => {
 
 // Skeleton card
 const SkeletonCard = styled.div`background:white;border:1px solid #f0f0f0;overflow:hidden;`;
-const SkeletonImg  = styled.div`height:220px;background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;@keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}`;
+const SkeletonImg  = styled.div`height:220px;background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;`;
 const SkeletonLine = styled.div<{$w?:string;$h?:string}>`height:${({$h})=>$h||'12px'};width:${({$w})=>$w||'100%'};background:#f0f0f0;border-radius:4px;margin-bottom:8px;`;
 
 // Pagination

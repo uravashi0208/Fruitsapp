@@ -1,33 +1,16 @@
+// ============================================================
+// HERO SLIDER — shared animations (no local keyframes)
+// ============================================================
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import styled, { keyframes, css } from 'styled-components';
+import styled, { css } from 'styled-components';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { theme } from '../../styles/theme';
 import { Button } from '../../styles/shared';
+import { heroTextIn, heroSubIn, heroBtnIn, kenBurns, spin } from '../../styles/animations';
 import { API_BASE } from '../../api/client';
 
-// ── Animations ────────────────────────────────────────────────
-const heroTextIn = keyframes`
-  from { opacity: 0; transform: translateY(30px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-const heroSubIn = keyframes`
-  from { opacity: 0; letter-spacing: 10px; }
-  to   { opacity: 0.9; letter-spacing: 4px; }
-`;
-
-const heroBtnIn = keyframes`
-  from { opacity: 0; transform: translateY(20px) scale(0.9); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-`;
-
-const kenBurns = keyframes`
-  0%   { transform: scale(1); }
-  100% { transform: scale(1.07); }
-`;
-
-// ── Styled Components ─────────────────────────────────────────
+// ── Styled ─────────────────────────────────────────────────────
 const HeroSection = styled.section`
   position: relative;
   overflow: hidden;
@@ -59,6 +42,12 @@ const SliderContent = styled.aside`
   display: flex; align-items: center; justify-content: center;
   text-align: center;
   z-index: 2;
+`;
+
+const SliderContentInner = styled.article`
+  padding: 0 60px;
+  max-width: 900px;
+  width: 100%;
 `;
 
 const SliderH1 = styled.h1<{ $animate: boolean }>`
@@ -107,7 +96,6 @@ const SliderArrow = styled.button<{ $dir: 'left' | 'right' }>`
   background: rgba(255,255,255,0.2);
   color: white;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
   transition: ${theme.transitions.base};
   ${({ $dir }) => $dir === 'left' ? 'left: 30px;' : 'right: 30px;'}
   backdrop-filter: blur(4px);
@@ -123,12 +111,6 @@ const SliderArrow = styled.button<{ $dir: 'left' | 'right' }>`
   }
 `;
 
-const SliderContentInner = styled.article`
-  padding: 0 60px;
-  max-width: 900px;
-  width: 100%;
-`;
-
 const SliderDots = styled.nav`
   position: absolute; bottom: 25px; left: 0; right: 0;
   display: flex; justify-content: center; gap: 8px; z-index: 10;
@@ -142,29 +124,28 @@ const Dot = styled.button<{ $active: boolean }>`
   &:hover { background: ${theme.colors.primaryLight}; }
 `;
 
-// Skeleton shown while sliders load
 const SkeletonWrap = styled.div`
   height: 650px;
   background: linear-gradient(135deg, #1a2e1a 0%, #2d4a2d 50%, #1a2e1a 100%);
   display: flex; align-items: center; justify-content: center;
   @media (max-width: ${theme.breakpoints.md}) { height: 480px; }
 `;
+
 const SkeletonPulse = styled.div`
   width: 60px; height: 60px; border-radius: 50%;
   border: 4px solid rgba(255,255,255,0.2);
   border-top-color: ${theme.colors.primary};
-  animation: spin 0.8s linear infinite;
-  @keyframes spin { to { transform: rotate(360deg); } }
+  animation: ${spin} 0.8s linear infinite;
 `;
 
-// ── Types ─────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────
 export interface SlideData {
   id?:         string;
-  image?:      string;   // from API  (local /uploads/... path)
-  bg?:         string;   // legacy static path
+  image?:      string;
+  bg?:         string;
   title:       string;
   subtitle?:   string;
-  sub?:        string;   // legacy alias
+  sub?:        string;
   buttonText?: string;
   buttonLink?: string;
 }
@@ -174,16 +155,14 @@ interface HeroSliderProps {
   loading?: boolean;
 }
 
-// ── Resolve image URL from either API or static data ──────────
 const resolveImage = (s: SlideData): string => {
   const raw = s.image || s.bg || '';
   if (!raw) return '';
   if (raw.startsWith('http') || raw.startsWith('/images') || raw.startsWith('data:')) return raw;
-  // local upload path — prefix with API base
   return `${API_BASE}${raw}`;
 };
 
-// ── Component ─────────────────────────────────────────────────
+// ── Component ──────────────────────────────────────────────────
 export const HeroSlider: React.FC<HeroSliderProps> = ({ slides, loading = false }) => {
   const [slide,   setSlide]   = useState(0);
   const [animKey, setAnimKey] = useState(0);
@@ -191,27 +170,22 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ slides, loading = false 
   useEffect(() => {
     if (slides.length === 0) return;
     const id = setInterval(() => {
-      setSlide((s) => (s + 1) % slides.length);
-      setAnimKey((k) => k + 1);
+      setSlide(s => (s + 1) % slides.length);
+      setAnimKey(k => k + 1);
     }, 5000);
     return () => clearInterval(id);
   }, [slides.length]);
 
-  const prev = () => { setSlide((s) => (s - 1 + slides.length) % slides.length); setAnimKey((k) => k + 1); };
-  const next = () => { setSlide((s) => (s + 1) % slides.length); setAnimKey((k) => k + 1); };
+  const prev = () => { setSlide(s => (s - 1 + slides.length) % slides.length); setAnimKey(k => k + 1); };
+  const next = () => { setSlide(s => (s + 1) % slides.length); setAnimKey(k => k + 1); };
 
-  if (loading) {
-    return <SkeletonWrap><SkeletonPulse /></SkeletonWrap>;
-  }
-
-  if (slides.length === 0) {
-    return <SkeletonWrap />;
-  }
+  if (loading) return <SkeletonWrap><SkeletonPulse /></SkeletonWrap>;
+  if (slides.length === 0) return <SkeletonWrap />;
 
   const current = slides[slide];
-  const subText   = current.subtitle || current.sub || '';
-  const btnText   = current.buttonText || 'View Details';
-  const btnLink   = current.buttonLink || '/shop';
+  const subText = current.subtitle || current.sub || '';
+  const btnText = current.buttonText || 'View Details';
+  const btnLink = current.buttonLink || '/shop';
 
   return (
     <HeroSection>
@@ -240,7 +214,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({ slides, loading = false 
 
       <SliderDots>
         {slides.map((_, i) => (
-          <Dot key={i} $active={i === slide} onClick={() => { setSlide(i); setAnimKey((k) => k + 1); }} />
+          <Dot key={i} $active={i === slide} onClick={() => { setSlide(i); setAnimKey(k => k + 1); }} />
         ))}
       </SliderDots>
     </HeroSection>

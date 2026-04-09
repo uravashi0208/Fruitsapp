@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { springPop as badgePop } from '../styles/animations';
 import { useParams, Link } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { ShoppingCart, Heart, Share2, CheckCircle, Truck, RefreshCw, Star, Send, User, AlertCircle } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { ProductCard } from '../components/ui/ProductCard';
@@ -29,10 +30,6 @@ const decodeToken = (token: string): { name?: string; id?: string } | null => {
 const LOW_STOCK = 5;
 
 // ── Styled ─────────────────────────────────────────────────
-const badgePop = keyframes`
-  from { transform: scale(0); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
-`;
 
 const DetailLayout = styled.div`
   display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: start;
@@ -116,8 +113,7 @@ const RelatedGrid = styled.div`
 `;
 const SkeletonBox = styled.div`
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px;
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; 100% { background-position: -200% 0; } }
 `;
 
 /* ── Review Styles ── */

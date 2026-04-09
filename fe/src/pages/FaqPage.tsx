@@ -3,7 +3,8 @@
  * Public-facing FAQ page with category filtering and accordion UI
  */
 import React, { useEffect, useState, useMemo } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
+import { fadeIn } from '../styles/animations';
 import { Plus, Minus, HelpCircle, Search } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
@@ -12,7 +13,6 @@ import { theme } from '../styles/theme';
 import { faqApi, ApiFaq } from '../api/storefront';
 
 // ── Animations ─────────────────────────────────────────────────────────────────
-const fadeIn = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); }`;
 
 // ── Styled components ──────────────────────────────────────────────────────────
 const FaqSection = styled(Section)`
@@ -206,8 +206,7 @@ const Skeleton = styled.div`
   background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   border-radius: 8px;
-  animation: shimmer 1.2s infinite;
-  @keyframes shimmer { to { background-position: -200% 0; } }
+  animation: shimmer 1.2s infinite; }
 `;
 
 /* ── Contact CTA ── */

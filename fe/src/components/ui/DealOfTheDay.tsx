@@ -1,43 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import styled, { keyframes, css } from 'styled-components';
-import { theme } from '../../styles/theme';
-import { Container } from '../../styles/shared';
+// ============================================================
+// DEAL OF THE DAY — shared useInView + animations
+// ============================================================
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import styled, { css } from "styled-components";
+import { theme } from "../../styles/theme";
+import { Container } from "../../styles/shared";
+import { fadeRight, countUp, gentlePulse } from "../../styles/animations";
+import { useInView } from "../../hooks/useInView";
 
-// ── Animations ────────────────────────────────────────────────
-const fadeRight = keyframes`
-  from { opacity: 0; transform: translateX(60px); }
-  to   { opacity: 1; transform: translateX(0); }
-`;
+// ── Countdown hook ─────────────────────────────────────────────
+const useCountdown = (daysAhead = 3) => {
+  const target = new Date();
+  target.setDate(target.getDate() + daysAhead);
+  target.setHours(23, 59, 59);
 
-const countUp = keyframes`
-  from { transform: translateY(10px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-`;
+  const [time, setTime] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
 
-const pulse = keyframes`
-  0%, 100% { transform: scale(1); }
-  50%       { transform: scale(1.04); }
-`;
-
-// ── useInView hook ─────────────────────────────────────────────
-function useInView(threshold = 0.2) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
+    const tick = () => {
+      const diff = target.getTime() - Date.now();
+      if (diff <= 0) return;
+      setTime({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-// ── Styled Components ─────────────────────────────────────────
+  return time;
+};
+
+// ── Styled ─────────────────────────────────────────────────────
 const DealSection = styled.section<{ $bg: string }>`
   background-image: url(${({ $bg }) => $bg});
   background-size: cover;
@@ -54,10 +59,12 @@ const DealAlignRight = styled.aside`
 const DealInner = styled.article<{ $visible: boolean }>`
   max-width: 500px;
   opacity: 0;
-  ${({ $visible }) => $visible && css`
-    animation: ${fadeRight} 0.7s ease both;
-    animation-delay: 100ms;
-  `}
+  ${({ $visible }) =>
+    $visible &&
+    css`
+      animation: ${fadeRight} 0.7s ease both;
+      animation-delay: 100ms;
+    `}
 `;
 
 const DealText = styled.header`
@@ -83,15 +90,21 @@ const DealText = styled.header`
     font-size: 30px;
     font-family: ${theme.fonts.serif};
     font-style: italic;
-    a { color: ${theme.colors.primary}; text-decoration: none; }
+    a {
+      color: ${theme.colors.primary};
+      text-decoration: none;
+    }
   }
   .price {
     font-weight: ${theme.fontWeights.medium};
     font-size: 18px;
-    color: rgba(0,0,0,0.5);
+    color: rgba(0, 0, 0, 0.5);
     margin-top: 8px;
     display: block;
-    a { color: ${theme.colors.primary}; text-decoration: none; }
+    a {
+      color: ${theme.colors.primary};
+      text-decoration: none;
+    }
   }
 `;
 
@@ -102,18 +115,18 @@ const TimerBox = styled.footer`
   flex-wrap: wrap;
 `;
 
-
-
-const TimeUnitStyled = styled.figure<{ $visible: boolean; $delay: number }>`
+const TimeUnit = styled.figure<{ $visible: boolean; $delay: number }>`
   text-align: left;
-  border-left: 1px solid rgba(0,0,0,0.05);
+  border-left: 1px solid rgba(0, 0, 0, 0.05);
   padding-left: 16px;
   margin: 0;
   opacity: 0;
-  ${({ $visible, $delay }) => $visible && css`
-    animation: ${countUp} 0.5s ease both;
-    animation-delay: ${$delay}ms;
-  `}
+  ${({ $visible, $delay }) =>
+    $visible &&
+    css`
+      animation: ${countUp} 0.5s ease both;
+      animation-delay: ${$delay}ms;
+    `}
   .number {
     font-size: 40px;
     font-weight: ${theme.fontWeights.medium};
@@ -129,40 +142,15 @@ const TimeUnitStyled = styled.figure<{ $visible: boolean; $delay: number }>`
 
 const PriceHighlight = styled.span<{ $visible: boolean }>`
   display: inline-block;
-  ${({ $visible }) => $visible && css`
-    animation: ${pulse} 2s ease-in-out 1s infinite;
-  `}
+  ${({ $visible }) =>
+    $visible &&
+    css`
+      animation: ${gentlePulse} 2s ease-in-out 1s infinite;
+    `}
 `;
 
-// ── Countdown hook ────────────────────────────────────────────
-const useCountdown = (daysAhead = 3) => {
-  const target = new Date();
-  target.setDate(target.getDate() + daysAhead);
-  target.setHours(23, 59, 59);
-
-  const [time, setTime] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
-  useEffect(() => {
-    const tick = () => {
-      const diff = target.getTime() - Date.now();
-      if (diff <= 0) return;
-      setTime({
-        days:    Math.floor(diff / 86400000),
-        hours:   Math.floor((diff % 86400000) / 3600000),
-        minutes: Math.floor((diff % 3600000) / 60000),
-        seconds: Math.floor((diff % 60000) / 1000),
-      });
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []); // eslint-disable-line
-
-  return time;
-};
-
-// ── Types ─────────────────────────────────────────────────────
-interface DealOfTheDayProps {
+// ── Component ──────────────────────────────────────────────────
+interface Props {
   bg?: string;
   productName?: string;
   originalPrice?: string;
@@ -170,16 +158,15 @@ interface DealOfTheDayProps {
   description?: string;
 }
 
-// ── Component ─────────────────────────────────────────────────
-export const DealOfTheDay: React.FC<DealOfTheDayProps> = ({
-  bg = '/images/bg_3.jpg',
-  productName = 'Spinach',
-  originalPrice = '$10',
-  dealPrice = '$5',
-  description = 'Far far away, behind the word mountains, far from the countries Vokalia and Consonantia',
+export const DealOfTheDay: React.FC<Props> = ({
+  bg = "/images/bg_3.jpg",
+  productName = "Spinach",
+  originalPrice = "$10",
+  dealPrice = "$5",
+  description = "Fresh, organic produce at unbeatable prices — only for a limited time!",
 }) => {
   const countdown = useCountdown();
-  const { ref, visible } = useInView();
+  const { ref, visible } = useInView(0.2);
 
   return (
     <DealSection $bg={bg}>
@@ -190,10 +177,14 @@ export const DealOfTheDay: React.FC<DealOfTheDayProps> = ({
               <DealText>
                 <span className="subheading">Best Price For You</span>
                 <h2>Deal of the day</h2>
-                <p style={{ color: theme.colors.text, marginBottom: 12 }}>{description}</p>
-                <h3><Link to="/shop">{productName}</Link></h3>
+                <p style={{ color: theme.colors.text, marginBottom: 12 }}>
+                  {description}
+                </p>
+                <h3>
+                  <Link to="/shop">{productName}</Link>
+                </h3>
                 <span className="price">
-                  {originalPrice}{' '}
+                  {originalPrice}{" "}
                   <PriceHighlight $visible={visible}>
                     <Link to="/shop">now {dealPrice} only</Link>
                   </PriceHighlight>
@@ -202,15 +193,21 @@ export const DealOfTheDay: React.FC<DealOfTheDayProps> = ({
 
               <TimerBox>
                 {[
-                  { num: countdown.days,    label: 'Days' },
-                  { num: countdown.hours,   label: 'Hours' },
-                  { num: countdown.minutes, label: 'Minutes' },
-                  { num: countdown.seconds, label: 'Seconds' },
+                  { num: countdown.days, label: "Days" },
+                  { num: countdown.hours, label: "Hours" },
+                  { num: countdown.minutes, label: "Minutes" },
+                  { num: countdown.seconds, label: "Seconds" },
                 ].map((t, i) => (
-                  <TimeUnitStyled key={t.label} $visible={visible} $delay={300 + i * 100}>
-                    <span className="number">{String(t.num).padStart(2, '0')}</span>
+                  <TimeUnit
+                    key={t.label}
+                    $visible={visible}
+                    $delay={300 + i * 100}
+                  >
+                    <span className="number">
+                      {String(t.num).padStart(2, "0")}
+                    </span>
                     <span className="label">{t.label}</span>
-                  </TimeUnitStyled>
+                  </TimeUnit>
                 ))}
               </TimerBox>
             </DealInner>

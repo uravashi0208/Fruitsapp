@@ -1,67 +1,40 @@
-import React, { useEffect, useRef, useState } from 'react';
-import styled, { keyframes, css } from 'styled-components';
-import { Star } from 'lucide-react';
-import { theme } from '../../styles/theme';
-import { Container, Section } from '../../styles/shared';
-import { useTestimonials } from '../../hooks/useApi';
-import { API_BASE } from '../../api/client';
+// ============================================================
+// TESTIMONIALS SECTION — shared useInView + animations
+// ============================================================
+import React from "react";
+import styled, { css } from "styled-components";
+import { Star } from "lucide-react";
+import { theme } from "../../styles/theme";
+import { Container, Section } from "../../styles/shared";
+import { fadeUp, fadeDown, avatarReveal } from "../../styles/animations";
+import { useInView } from "../../hooks/useInView";
+import { useTestimonials } from "../../hooks/useApi";
+import { API_BASE } from "../../api/client";
 
-// ── Animations ────────────────────────────────────────────────
-const fadeUp = keyframes`
-  from { opacity: 0; transform: translateY(50px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-const slideDown = keyframes`
-  from { opacity: 0; transform: translateY(-20px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-const avatarReveal = keyframes`
-  from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
-  to   { opacity: 1; transform: scale(1) rotate(0deg); }
-`;
-
-// ── useInView hook ─────────────────────────────────────────────
-function useInView(threshold = 0.1) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, visible };
-}
-
-// ── Avatar URL resolver ───────────────────────────────────────
 const resolveAvatar = (avatar: string) => {
-  if (!avatar) return '/images/person_1.jpg';
-  if (avatar.startsWith('http') || avatar.startsWith('/images')) return avatar;
+  if (!avatar) return "/images/person_1.jpg";
+  if (avatar.startsWith("http") || avatar.startsWith("/images")) return avatar;
   return `${API_BASE}${avatar}`;
 };
 
-// ── Styled Components ─────────────────────────────────────────
+// ── Styled ─────────────────────────────────────────────────────
 const HeadingSection = styled.header<{ $visible: boolean }>`
   text-align: center;
   margin-bottom: 40px;
   margin-top: 1rem;
   opacity: 0;
-  ${({ $visible }) => $visible && css`
-    animation: ${slideDown} 0.6s ease both;
-  `}
+  ${({ $visible }) =>
+    $visible &&
+    css`
+      animation: ${fadeDown} 0.6s ease both;
+    `}
   h2 {
-    font-size: ${theme.fontSizes['4xl']};
+    font-size: ${theme.fontSizes["4xl"]};
     font-weight: ${theme.fontWeights.semibold};
     color: ${theme.colors.textDark};
-    font-family: ${theme.fonts.heading};
-    margin-bottom: 1rem;
-    @media (max-width: ${theme.breakpoints.md}) { font-size: 28px; }
+    @media (max-width: ${theme.breakpoints.md}) {
+      font-size: 28px;
+    }
   }
   .subheading {
     font-size: ${theme.fontSizes.lg};
@@ -75,7 +48,11 @@ const HeadingSection = styled.header<{ $visible: boolean }>`
     letter-spacing: 1px;
     text-transform: capitalize;
   }
-  p { max-width: 680px; margin: 10px auto 0; color: ${theme.colors.text}; }
+  p {
+    max-width: 680px;
+    margin: 10px auto 0;
+    color: ${theme.colors.text};
+  }
 `;
 
 const TestimonyGrid = styled.ul`
@@ -85,30 +62,43 @@ const TestimonyGrid = styled.ul`
   list-style: none;
   padding: 0;
   margin: 0;
-  @media (max-width: ${theme.breakpoints.lg}) { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: ${theme.breakpoints.sm}) { grid-template-columns: 1fr; }
+  @media (max-width: ${theme.breakpoints.lg}) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TestimonyCard = styled.li<{ $visible: boolean; $delay: number }>`
-  background: rgba(255,255,255,0.1);
-  color: rgba(0,0,0,0.8);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(0, 0, 0, 0.8);
   padding: 30px 30px 40px;
   text-align: center;
   position: relative;
   opacity: 0;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-  ${({ $visible, $delay }) => $visible && css`
-    animation: ${fadeUp} 0.65s ease both;
-    animation-delay: ${$delay}ms;
-  `}
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+  ${({ $visible, $delay }) =>
+    $visible &&
+    css`
+      animation: ${fadeUp} 0.65s ease both;
+      animation-delay: ${$delay}ms;
+    `}
   &:hover {
-    box-shadow: 0 10px 40px rgba(130,174,70,0.15);
+    box-shadow: 0 10px 40px rgba(130, 174, 70, 0.15);
     transform: translateY(-4px);
   }
 `;
 
-const UserImg = styled.figure<{ $src: string; $visible: boolean; $delay: number }>`
-  width: 100px; height: 100px;
+const UserImg = styled.figure<{
+  $src: string;
+  $visible: boolean;
+  $delay: number;
+}>`
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background-image: url(${({ $src }) => $src});
   background-size: cover;
@@ -116,25 +106,19 @@ const UserImg = styled.figure<{ $src: string; $visible: boolean; $delay: number 
   margin: 0 auto 20px;
   position: relative;
   opacity: 0;
-  ${({ $visible, $delay }) => $visible && css`
-    animation: ${avatarReveal} 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
-    animation-delay: ${$delay + 200}ms;
-  `}
-`;
-
-const QuoteIcon = styled.span`
-  position: absolute;
-  bottom: -10px; right: 0;
-  width: 36px; height: 36px;
-  background: ${theme.colors.primary};
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: white;
-  font-size: 16px;
+  ${({ $visible, $delay }) =>
+    $visible &&
+    css`
+      animation: ${avatarReveal} 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      animation-delay: ${$delay + 200}ms;
+    `}
 `;
 
 const StarsRow = styled.div`
-  display: flex; justify-content: center; gap: 3px; margin-bottom: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 14px;
 `;
 
 const TestimonyText = styled.p`
@@ -145,7 +129,7 @@ const TestimonyText = styled.p`
   text-align: left;
   &::after {
     position: absolute;
-    content: '';
+    content: "";
     top: 50%;
     left: -2px;
     transform: translateY(-50%);
@@ -169,36 +153,37 @@ const TestimonyRole = styled.span`
   letter-spacing: 1px;
 `;
 
-const TestimonyBody = styled.section`
-  margin-top: 20px;
-`;
-
-// ── Skeleton card ─────────────────────────────────────────────
+// ── Skeleton ───────────────────────────────────────────────────
 const SkeletonCard = styled.li`
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   padding: 30px;
   border-radius: 4px;
 `;
 const SkeletonCircle = styled.div`
-  width: 100px; height: 100px; border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
   margin: 0 auto 20px;
 `;
 const SkeletonLine = styled.div<{ $w?: string }>`
-  height: 12px; border-radius: 6px;
+  height: 12px;
+  border-radius: 6px;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  width: ${({ $w }) => $w || '100%'};
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
+  width: ${({ $w }) => $w || "100%"};
   margin: 8px auto;
 `;
 
-// ── Types ─────────────────────────────────────────────────────
-interface TestimonialsSectionProps { count?: number; }
-
-// ── Component ─────────────────────────────────────────────────
-export const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ count = 3 }) => {
-  const { ref, visible } = useInView();
+// ── Component ──────────────────────────────────────────────────
+export const TestimonialsSection: React.FC<{ count?: number }> = ({
+  count = 3,
+}) => {
+  const { ref, visible } = useInView(0.1);
   const { data: testimonials, loading } = useTestimonials();
-
   const displayItems = (testimonials ?? []).slice(0, count);
 
   return (
@@ -208,7 +193,10 @@ export const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ count 
           <HeadingSection $visible={visible}>
             <span className="subheading">Testimony</span>
             <h2>Our satisfied customer says</h2>
-            <p>Far far away, behind the word mountains, far from the countries Vokalia and Consonantia, there live the blind texts.</p>
+            <p>
+              Real people, real results — hear what our happy customers have to
+              say about us.
+            </p>
           </HeadingSection>
 
           <TestimonyGrid>
@@ -225,22 +213,28 @@ export const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({ count 
                 ))
               : displayItems.map((t, i) => (
                   <TestimonyCard key={t.id} $visible={visible} $delay={i * 150}>
-                    <UserImg $src={resolveAvatar(t.avatar)} $visible={visible} $delay={i * 150}>
-                      <QuoteIcon>"</QuoteIcon>
-                    </UserImg>
+                    <UserImg
+                      $src={resolveAvatar(t.avatar)}
+                      $visible={visible}
+                      $delay={i * 150}
+                    ></UserImg>
                     <StarsRow>
-                      {[1,2,3,4,5].map(n => (
-                        <Star key={n} size={14} fill={n <= t.rating ? '#f79009' : 'none'} color={n <= t.rating ? '#f79009' : '#d0d5dd'} />
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          size={14}
+                          fill={n <= t.rating ? "#f79009" : "none"}
+                          color={n <= t.rating ? "#f79009" : "#d0d5dd"}
+                        />
                       ))}
                     </StarsRow>
-                    <TestimonyBody>
+                    <section style={{ marginTop: 20 }}>
                       <TestimonyText>{t.message}</TestimonyText>
                       <TestimonyName>{t.name}</TestimonyName>
                       <TestimonyRole>{t.position}</TestimonyRole>
-                    </TestimonyBody>
+                    </section>
                   </TestimonyCard>
-                ))
-            }
+                ))}
           </TestimonyGrid>
         </div>
       </Container>

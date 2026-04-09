@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
+import { fadeUp } from '../styles/animations';
 import { useParams, Link } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { Calendar, User, Tag, ArrowLeft, BookOpen } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { theme } from '../styles/theme';
@@ -11,7 +12,6 @@ import { useFetch } from '../hooks/useApi';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 
 // ── Animations ────────────────────────────────────────────────
-const fadeUp = keyframes`from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}`;
 
 // ── Styled ─────────────────────────────────────────────────────
 const Layout       = styled.div`display:grid;grid-template-columns:1fr 320px;gap:48px;@media(max-width:${theme.breakpoints.lg}){grid-template-columns:1fr;}`;
@@ -75,8 +75,7 @@ const RecentDate   = styled.div`font-size:11px;color:${theme.colors.text};`;
 const SkeletonBlock= styled.div<{$h?:string;$w?:string;$r?:string}>`
   height:${p=>p.$h||'16px'};width:${p=>p.$w||'100%'};border-radius:${p=>p.$r||'4px'};
   background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);
-  background-size:200% 100%;animation:shimmer 1.5s infinite;
-  @keyframes shimmer{0%{background-position:200% 0;}100%{background-position:-200% 0;}}
+  background-size:200% 100%;animation:shimmer 1.5s infinite;100%{background-position:-200% 0;}}
   margin-bottom:10px;
 `;
 

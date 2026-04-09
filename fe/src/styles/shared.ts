@@ -291,3 +291,72 @@ export const StarRow = styled.div`
   color: #ffc107;
   font-size: 14px;
 `;
+
+// ── Page Layout Helpers ───────────────────────────────────────
+// Common 2-column layout (content + sidebar)
+export const TwoCol = styled.div<{ $sidebarWidth?: string }>`
+  display: grid;
+  grid-template-columns: 1fr ${({ $sidebarWidth }) => $sidebarWidth ?? '340px'};
+  gap: 40px;
+  align-items: start;
+  @media (max-width: ${theme.breakpoints.lg}) { grid-template-columns: 1fr; }
+`;
+
+// Sticky sidebar
+export const StickySidebar = styled.aside`
+  position: sticky;
+  top: 90px;
+`;
+
+// ── Page Section Header (center-aligned, same style every page) ─
+export const PageSectionHead = styled.header`
+  text-align: center;
+  margin-bottom: 2.5rem;
+  h2 {
+    font-size: ${theme.fontSizes['4xl']};
+    font-weight: ${theme.fontWeights.semibold};
+    color: ${theme.colors.textDark};
+    @media (max-width: ${theme.breakpoints.md}) { font-size: 28px; }
+  }
+  .sub {
+    font-size: ${theme.fontSizes.lg};
+    display: block;
+    margin-bottom: 0.4rem;
+    font-family: ${theme.fonts.serif};
+    color: ${theme.colors.primary};
+    font-style: italic;
+  }
+  p { max-width: 680px; margin: 8px auto 0; color: ${theme.colors.text}; }
+`;
+
+// ── Empty State ────────────────────────────────────────────────
+export const EmptyState = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+  color: ${theme.colors.text};
+  h3 { font-size: 20px; margin-bottom: 8px; color: ${theme.colors.textDark}; }
+  p  { color: ${theme.colors.textMuted}; max-width: 400px; margin: 0 auto 20px; }
+`;
+
+// ── Skeleton shimmer block (inline use) ───────────────────────
+export const SkeletonBlock = styled.div<{ $h?: string; $w?: string; $radius?: string }>`
+  height: ${({ $h }) => $h ?? '16px'};
+  width:  ${({ $w }) => $w ?? '100%'};
+  border-radius: ${({ $radius }) => $radius ?? '4px'};
+  background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease infinite;
+  margin-bottom: 8px;
+`;
+
+// ── Notification banner (sale, announcement) ──────────────────
+export const AnnouncementBar = styled.div`
+  background: ${theme.colors.primary};
+  color: white;
+  text-align: center;
+  padding: 10px 20px;
+  font-size: ${theme.fontSizes.sm};
+  letter-spacing: 1px;
+  font-weight: ${theme.fontWeights.medium};
+  a { color: white; text-decoration: underline; margin-left: 8px; }
+`;

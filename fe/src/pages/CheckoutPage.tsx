@@ -11,7 +11,8 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import styled, { keyframes } from "styled-components";
+import styled from "styled-components";
+import { spin } from '../styles/animations';
 import {
   CreditCard,
   Truck,
@@ -72,7 +73,6 @@ const isTestMode = (
 ).startsWith("pk_test_");
 
 // ─── Animations ───────────────────────────────────────────────────────────────
-const spin = keyframes`to { transform: rotate(360deg); }`;
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 const Layout = styled.div`

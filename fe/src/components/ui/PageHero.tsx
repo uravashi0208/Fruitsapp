@@ -1,20 +1,12 @@
+// ============================================================
+// PAGE HERO — shared animations (no local keyframes)
+// ============================================================
 import React from 'react';
 import { Link } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled, { css } from 'styled-components';
 import { theme } from '../../styles/theme';
+import { fadeDown, fadeUp } from '../../styles/animations';
 
-// ── Animations ────────────────────────────────────────────────
-const fadeDown = keyframes`
-  from { opacity: 0; transform: translateY(-20px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-const breadcrumbIn = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-`;
-
-// ── Styled Components ─────────────────────────────────────────
 const HeroWrap = styled.section<{ $bg?: string }>`
   width: 100%;
   position: relative;
@@ -24,16 +16,13 @@ const HeroWrap = styled.section<{ $bg?: string }>`
   padding: 10em 0;
   display: flex;
   align-items: center;
-  /* dark overlay */
   &::before {
     content: '';
     position: absolute; inset: 0;
     background: rgba(0,0,0,0.45);
     pointer-events: none;
   }
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding: 6em 0;
-  }
+  @media (max-width: ${theme.breakpoints.md}) { padding: 6em 0; }
 `;
 
 const HeroContent = styled.article`
@@ -43,7 +32,7 @@ const HeroContent = styled.article`
   width: 100%;
 `;
 
-const HeroContainer = styled.section`
+const HeroContainer = styled.div`
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
@@ -57,12 +46,10 @@ const Breadcrumbs = styled.nav`
   margin-bottom: 0.5rem;
   font-weight: ${theme.fontWeights.light};
   color: white;
-  animation: ${breadcrumbIn} 0.6s ease 0.3s both;
   opacity: 0;
-
+  animation: ${css`${fadeUp} 0.6s ease 0.3s both`};
   a {
-    color: white;
-    text-decoration: none;
+    color: white; text-decoration: none;
     transition: opacity 0.2s ease;
     &:hover { opacity: 0.75; }
   }
@@ -77,11 +64,10 @@ const PageTitle = styled.h1`
   letter-spacing: 3px;
   text-transform: uppercase;
   margin: 0;
-  animation: ${fadeDown} 0.7s ease 0.1s both;
   opacity: 0;
+  animation: ${css`${fadeDown} 0.7s ease 0.1s both`};
 `;
 
-// ── Types ─────────────────────────────────────────────────────
 interface Props {
   title: string;
   subtitle?: string;
@@ -89,7 +75,6 @@ interface Props {
   breadcrumbs?: Array<{ label: string; to?: string }>;
 }
 
-// ── Component ─────────────────────────────────────────────────
 export const PageHero: React.FC<Props> = ({ title, bg, breadcrumbs = [] }) => (
   <HeroWrap $bg={bg}>
     <HeroContainer>

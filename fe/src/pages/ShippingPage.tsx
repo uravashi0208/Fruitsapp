@@ -1,13 +1,12 @@
 import React from 'react';
-import styled, { keyframes } from 'styled-components';
+import { fadeUp, shimmer } from '../styles/animations';
+import styled from 'styled-components';
 import { Truck, Clock, Package, Shield, Leaf, CheckCircle, Zap } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 import { Container, Section } from '../styles/shared';
 import { theme } from '../styles/theme';
 
-const fadeUp = keyframes`from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); }`;
-const shimmer = keyframes`0%{background-position:200% center} 100%{background-position:-200% center}`;
 
 const PageWrap = styled.main`font-family: ${theme.fonts.body};`;
 

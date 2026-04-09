@@ -1,12 +1,12 @@
 import React from 'react';
-import styled, { keyframes } from 'styled-components';
+import { fadeUp } from '../styles/animations';
+import styled from 'styled-components';
 import { RefreshCw, CheckCircle, XCircle, Clock, Mail, ArrowRight } from 'lucide-react';
 import { PageHero } from '../components/ui/PageHero';
 import { NewsletterSection } from '../components/ui/NewsletterSection';
 import { Container, Section } from '../styles/shared';
 import { theme } from '../styles/theme';
 
-const fadeUp = keyframes`from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}`;
 
 const PageWrap = styled.main`font-family: ${theme.fonts.body};`;
 

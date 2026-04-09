@@ -5,31 +5,33 @@
 // - Transparent → white (scrolled), fixed on scroll
 // - Cart CTA: green pill button
 // ============================================================
-import React, { useState, useEffect } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import styled from 'styled-components';
-import { theme } from '../../styles/theme';
-import { useCart } from '../../hooks/useCart';
-import { useAppDispatch, useAppSelector } from '../../store';
-import { toggleMobileMenu, closeMobileMenu } from '../../store/uiSlice';
-import { ShoppingCart, User, LogOut, ChevronDown } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import AuthModal from '../ui/AuthModal';
-
-
+import React, { useState, useEffect } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
+import styled from "styled-components";
+import { theme } from "../../styles/theme";
+import { useCart } from "../../hooks/useCart";
+import { useAppDispatch, useAppSelector } from "../../store";
+import { toggleMobileMenu, closeMobileMenu } from "../../store/uiSlice";
+import { ShoppingCart, User, LogOut, ChevronDown } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import AuthModal from "../ui/AuthModal";
 
 // ── Main Navbar ───────────────────────────────────────────────
 const NavWrapper = styled.nav<{ $scrolled: boolean }>`
-  background: ${({ $scrolled }) => $scrolled ? '#fff' : 'transparent'} !important;
+  background: ${({ $scrolled }) =>
+    $scrolled ? "#fff" : "transparent"} !important;
   z-index: ${theme.zIndex.sticky};
   padding: 0;
-  position: ${({ $scrolled }) => $scrolled ? 'fixed' : 'relative'};
-  top: 0; left: 0; right: 0;
-  box-shadow: ${({ $scrolled }) => $scrolled ? theme.shadows.nav : 'none'};
+  position: ${({ $scrolled }) => ($scrolled ? "fixed" : "relative")};
+  top: 0;
+  left: 0;
+  right: 0;
+  box-shadow: ${({ $scrolled }) => ($scrolled ? theme.shadows.nav : "none")};
   transition: all 0.3s ease;
 
   @media (max-width: ${theme.breakpoints.lg}) {
-    background: #000000 !important;
+    background: ${({ $scrolled }) =>
+      $scrolled ? "#fff" : "transparent"} !important;
     position: relative;
     padding: 10px 15px;
   }
@@ -61,11 +63,16 @@ const Brand = styled(Link)`
   letter-spacing: 0.05em;
   flex-shrink: 0;
 
-  &:hover { color: ${theme.colors.textDark}; text-decoration: none; }
+  &:hover {
+    color: ${theme.colors.textDark};
+    text-decoration: none;
+  }
 
   @media (max-width: ${theme.breakpoints.lg}) {
-    color: white;
-    &:hover { color: white; }
+    color: ${theme.colors.primary};
+    &:hover {
+      color: ${theme.colors.textDark};
+    }
   }
 `;
 
@@ -75,31 +82,34 @@ const NavList = styled.ul<{ $open: boolean }>`
   align-items: center;
   gap: 0;
   list-style: none;
-  margin: 0; padding: 0;
+  margin: 0;
+  padding: 0;
 
   @media (max-width: ${theme.breakpoints.lg}) {
     position: fixed;
-    top: 0; bottom: 0; right: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
     width: 280px;
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    background: #1a1a1a;
-    transform: ${({ $open }) => $open ? 'translateX(0)' : 'translateX(100%)'};
+    background: #fdfdfde8;
+    transform: ${({ $open }) => ($open ? "translateX(0)" : "translateX(100%)")};
     transition: transform 0.3s ease;
     z-index: ${theme.zIndex.modal};
     padding: 60px 30px 30px;
     gap: 4px;
-    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.3);
   }
 `;
 
 // Nav link — 11px, uppercase, letter-spacing 2px, padding top/bottom 1.5rem
 const NavLinkStyled = styled(NavLink)<{ $scrolled: boolean }>`
-  font-size: 11px;
+  font-size: 13px;
   padding: 1.5rem 20px;
   font-weight: ${theme.fontWeights.normal};
-  color: ${({ $scrolled }) => $scrolled ? '#000000' : '#000000'} !important;
+  color: ${({ $scrolled }) => ($scrolled ? "#000000" : "#000000")} !important;
   text-transform: uppercase;
   letter-spacing: 2px;
   opacity: 1 !important;
@@ -108,25 +118,32 @@ const NavLinkStyled = styled(NavLink)<{ $scrolled: boolean }>`
   display: block;
   white-space: nowrap;
 
-  &:hover { color: #000000 !important; text-decoration: none; }
-  &.active { color: ${theme.colors.primary} !important; }
+  &:hover {
+    color: #000000 !important;
+    text-decoration: none;
+  }
+  &.active {
+    color: ${theme.colors.primary} !important;
+  }
 
   @media (max-width: ${theme.breakpoints.lg}) {
     padding: 0.9rem 0;
     font-size: 14px;
-    color: rgba(255,255,255,0.7) !important;
-    &:hover, &.active { color: #fff !important; }
+    color: ${({ $scrolled }) => ($scrolled ? "#000000" : "#000000")} !important;
+    &:hover,
+    &.active {
+      color: ${theme.colors.primary} !important;
+    }
   }
 `;
-
-
 
 // Cart CTA button — green pill
 const CartCta = styled(Link)<{ $scrolled: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 8px 18px;
+  padding: 7.2px 20px;
+  border-radius: 10px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -135,8 +152,9 @@ const CartCta = styled(Link)<{ $scrolled: boolean }>`
   font-weight: ${theme.fontWeights.normal};
   white-space: nowrap;
 
-  background: ${({ $scrolled }) => $scrolled ? theme.colors.primary : 'transparent'};
-  color: ${({ $scrolled }) => $scrolled ? '#fff' : '#000000'} !important;
+  background: ${({ $scrolled }) =>
+    $scrolled ? theme.colors.primary : "transparent"};
+  color: ${({ $scrolled }) => ($scrolled ? "#fff" : "#000000")} !important;
 
   &:hover {
     background: ${theme.colors.primary};
@@ -153,26 +171,33 @@ const CartCta = styled(Link)<{ $scrolled: boolean }>`
   }
 `;
 
-const CartCount = styled.span`font-size: 11px;`;
+const CartCount = styled.span`
+  font-size: 11px;
+`;
 
 const MobileClose = styled.button`
   position: absolute;
-  top: 16px; right: 16px;
-  width: 36px; height: 36px;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.1);
+  background: rgb(130 174 70 / 62%);
   color: white;
   font-size: 18px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 `;
 
 const MobileOverlay = styled.div<{ $open: boolean }>`
   display: none;
   @media (max-width: ${theme.breakpoints.lg}) {
-    display: ${({ $open }) => $open ? 'block' : 'none'};
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
+    display: ${({ $open }) => ($open ? "block" : "none")};
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
     z-index: ${theme.zIndex.modal - 1};
   }
 `;
@@ -180,34 +205,50 @@ const MobileOverlay = styled.div<{ $open: boolean }>`
 const HamburgerBtn = styled.button`
   display: none;
   @media (max-width: ${theme.breakpoints.lg}) {
-    display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgb(130 174 70);
     font-size: 14px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     gap: 6px;
-    padding: 4px 0;
+    padding: 8px 0 0 0;
     flex-shrink: 0;
   }
 `;
 
-const HamburgerIcon = styled.span`font-size: 20px;`;
+const HamburgerIcon = styled.span`
+  font-size: 20px;
+`;
 
 // ── Auth styled components ─────────────────────────────────────
 const LoginBtn = styled.button<{ $scrolled: boolean }>`
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 16px;
-  border: 1.5px solid ${({ $scrolled }) => $scrolled ? theme.colors.primary : 'rgba(130,174,70,0.8)'};
-  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 25px;
+  border: 1.5px solid
+    ${({ $scrolled }) =>
+      $scrolled ? theme.colors.primary : "rgba(130,174,70,0.8)"};
+  border-radius: 10px;
   background: transparent;
-  color: ${({ $scrolled }) => $scrolled ? theme.colors.primary : '#000'};
-  font-size: 12px; font-weight: 600;
+  color: ${({ $scrolled }) => ($scrolled ? theme.colors.primary : "#000")};
+  font-size: 12px;
+  font-weight: 600;
   font-family: ${theme.fonts.body};
-  cursor: pointer; transition: all 0.2s;
-  text-transform: uppercase; letter-spacing: 0.08em;
-  &:hover { background: ${theme.colors.primary}; color: white; border-color: ${theme.colors.primary}; }
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  &:hover {
+    background: ${theme.colors.primary};
+    color: white;
+    border-color: ${theme.colors.primary};
+  }
   @media (max-width: ${theme.breakpoints.lg}) {
-    border-color: rgba(255,255,255,0.4); color: white;
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
   }
 `;
 
@@ -216,25 +257,41 @@ const UserDropdownWrap = styled.div`
 `;
 
 const UserBtn = styled.button`
-  display: flex; align-items: center; gap: 6px;
-  background: ${theme.colors.primary}; color: white;
-  border: none; border-radius: 0px; padding: 8px 19px 8px 15px;
-  font-size: 12px; font-weight: 600; font-family: ${theme.fonts.body};
-  cursor: pointer; transition: background 0.2s;
-  &:hover { background: ${theme.colors.primaryDark}; }
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: ${theme.colors.primary};
+  color: white;
+  border: none;
+  border-radius: 0px;
+  padding: 8px 19px 8px 15px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: ${theme.fonts.body};
+  cursor: pointer;
+  transition: background 0.2s;
+  &:hover {
+    background: ${theme.colors.primaryDark};
+  }
 `;
 
 const UserAvatar = styled.span`
-  width: 24px; height: 24px; border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
 `;
 
 const UserDropdown = styled.div<{ $open: boolean }>`
-  display: ${({ $open }) => $open ? 'block' : 'none'};
+  display: ${({ $open }) => ($open ? "block" : "none")};
   position: absolute;
-  top: 100%; right: 0;
+  top: 100%;
+  right: 0;
   padding-top: 8px;
   background: transparent;
   min-width: 180px;
@@ -242,27 +299,46 @@ const UserDropdown = styled.div<{ $open: boolean }>`
 `;
 
 const UserDropdownInner = styled.div`
-  background: white; border: 1px solid ${theme.colors.border};
+  background: white;
+  border: 1px solid ${theme.colors.border};
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   overflow: hidden;
 `;
 
 const DropdownItem = styled(Link)`
-  display: flex; align-items: center; gap: 8px;
-  padding: 11px 16px; font-size: 13px;
-  color: ${theme.colors.textDark}; text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  color: ${theme.colors.textDark};
+  text-decoration: none;
   transition: background 0.15s;
-  &:hover { background: #f8f9fa; color: ${theme.colors.primary}; }
+  &:hover {
+    background: #f8f9fa;
+    color: ${theme.colors.primary};
+  }
 `;
 
 const DropdownLogout = styled.button`
-  display: flex; align-items: center; gap: 8px;
-  padding: 11px 16px; font-size: 13px; color: #dc2626;
-  background: none; border: none; width: 100%; text-align: left;
-  cursor: pointer; font-family: ${theme.fonts.body};
-  border-top: 1px solid ${theme.colors.border}; transition: background 0.15s;
-  &:hover { background: #fff5f5; }
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  color: #dc2626;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: ${theme.fonts.body};
+  border-top: 1px solid ${theme.colors.border};
+  transition: background 0.15s;
+  &:hover {
+    background: #fff5f5;
+  }
 `;
 
 export const Navbar: React.FC = () => {
@@ -272,13 +348,28 @@ export const Navbar: React.FC = () => {
   const mobileOpen = useAppSelector((s) => s.ui.mobileMenuOpen);
   const { totalItems } = useCart();
   const location = useLocation();
-  const { user, isLoggedIn, logout, authModalOpen, authModalMode, openAuthModal, closeAuthModal, login } = useAuth();
-  const initials = (name?: string) => (name || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const {
+    user,
+    isLoggedIn,
+    logout,
+    authModalOpen,
+    authModalMode,
+    openAuthModal,
+    closeAuthModal,
+    login,
+  } = useAuth();
+  const initials = (name?: string) =>
+    (name || "U")
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -287,8 +378,10 @@ export const Navbar: React.FC = () => {
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   return (
@@ -309,23 +402,35 @@ export const Navbar: React.FC = () => {
       </TopBar>*/}
 
       {/* Main navigation */}
-      <NavWrapper $scrolled={scrolled} role="navigation" aria-label="Main navigation">
+      <NavWrapper
+        $scrolled={scrolled}
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <NavInner>
           <Brand to="/">Vegefoods</Brand>
 
           {/* Mobile overlay */}
-          <MobileOverlay $open={mobileOpen} onClick={() => dispatch(closeMobileMenu())} />
+          <MobileOverlay
+            $open={mobileOpen}
+            onClick={() => dispatch(closeMobileMenu())}
+          />
 
           {/* Nav links */}
           <NavList $open={mobileOpen}>
             {mobileOpen && (
-              <MobileClose onClick={() => dispatch(closeMobileMenu())} aria-label="Close menu">
+              <MobileClose
+                onClick={() => dispatch(closeMobileMenu())}
+                aria-label="Close menu"
+              >
                 ✕
               </MobileClose>
             )}
 
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/" end $scrolled={scrolled}>Home</NavLinkStyled>
+            <li style={{ listStyle: "none" }}>
+              <NavLinkStyled to="/" end $scrolled={scrolled}>
+                Home
+              </NavLinkStyled>
             </li>
 
             {/*<DropdownWrap>
@@ -338,56 +443,81 @@ export const Navbar: React.FC = () => {
               </DropdownList>
             </DropdownWrap>*/}
 
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/shop" $scrolled={scrolled}>Shop</NavLinkStyled>
+            <li style={{ listStyle: "none" }}>
+              <NavLinkStyled to="/shop" $scrolled={scrolled}>
+                Shop
+              </NavLinkStyled>
             </li>
 
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/about" $scrolled={scrolled}>About</NavLinkStyled>
+            <li style={{ listStyle: "none" }}>
+              <NavLinkStyled to="/about" $scrolled={scrolled}>
+                About
+              </NavLinkStyled>
             </li>
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/blog" $scrolled={scrolled}>Blog</NavLinkStyled>
+            <li style={{ listStyle: "none" }}>
+              <NavLinkStyled to="/blog" $scrolled={scrolled}>
+                Blog
+              </NavLinkStyled>
             </li>
-            <li style={{ listStyle: 'none' }}>
-              <NavLinkStyled to="/contact" $scrolled={scrolled}>Contact</NavLinkStyled>
+            <li style={{ listStyle: "none" }}>
+              <NavLinkStyled to="/contact" $scrolled={scrolled}>
+                Contact
+              </NavLinkStyled>
             </li>
           </NavList>
 
           {/* Cart CTA + Auth + hamburger */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Guest: Login button | Logged-in: Avatar dropdown */}
             {isLoggedIn ? (
               <UserDropdownWrap
                 onMouseEnter={() => setUserDropOpen(true)}
                 onMouseLeave={() => setUserDropOpen(false)}
               >
-                <UserBtn onClick={() => setUserDropOpen(v => !v)}>
+                <UserBtn onClick={() => setUserDropOpen((v) => !v)}>
                   <UserAvatar>{initials(user?.name)}</UserAvatar>
-                  {user?.name?.split(' ')[0]}
+                  {user?.name?.split(" ")[0]}
                   <ChevronDown size={12} />
                 </UserBtn>
                 <UserDropdown $open={userDropOpen}>
                   <UserDropdownInner>
-                    <DropdownItem to="/account" onClick={() => setUserDropOpen(false)}>
+                    <DropdownItem
+                      to="/account"
+                      onClick={() => setUserDropOpen(false)}
+                    >
                       <User size={14} /> My Account
                     </DropdownItem>
-                    <DropdownItem to="/orders" onClick={() => setUserDropOpen(false)}>
+                    <DropdownItem
+                      to="/orders"
+                      onClick={() => setUserDropOpen(false)}
+                    >
                       <ShoppingCart size={14} /> My Orders
                     </DropdownItem>
-                    <DropdownLogout onClick={() => { logout(); setUserDropOpen(false); }}>
+                    <DropdownLogout
+                      onClick={() => {
+                        logout();
+                        setUserDropOpen(false);
+                      }}
+                    >
                       <LogOut size={14} /> Logout
                     </DropdownLogout>
                   </UserDropdownInner>
                 </UserDropdown>
               </UserDropdownWrap>
             ) : (
-              <LoginBtn $scrolled={scrolled} onClick={() => openAuthModal('login')}>
+              <LoginBtn
+                $scrolled={scrolled}
+                onClick={() => openAuthModal("login")}
+              >
                 <User size={13} /> Login
               </LoginBtn>
             )}
 
-            <CartCta to="/cart" $scrolled={scrolled} aria-label={`Cart, ${totalItems} items`}>
+            <CartCta
+              to="/cart"
+              $scrolled={scrolled}
+              aria-label={`Cart, ${totalItems} items`}
+            >
               <ShoppingCart /> <CartCount>[{totalItems}]</CartCount>
             </CartCta>
 
