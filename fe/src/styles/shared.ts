@@ -4,8 +4,8 @@
 //   Primary: #82ae46  |  Fonts: Poppins, Lora, Amatic SC
 //   Buttons: 30px pill radius  |  Sections: 6em padding
 // ============================================================
-import styled, { css } from 'styled-components';
-import { theme } from './theme';
+import styled, { css } from "styled-components";
+import { theme } from "./theme";
 
 // ── Layout ────────────────────────────────────────────────────
 export const Container = styled.div`
@@ -21,12 +21,9 @@ export const Section = styled.section<{
   $noPb?: boolean;
 }>`
   padding: ${({ $noPt, $noPb }) =>
-    $noPt && $noPb ? '0' :
-    $noPt ? `0 0 6em` :
-    $noPb ? `6em 0 0` :
-    `3em 0`};
+    $noPt && $noPb ? "0" : $noPt ? `0 0 6em` : $noPb ? `6em 0 0` : `3em 0`};
   position: relative;
-  background: ${({ $bg }) => $bg ?? 'transparent'};
+  background: ${({ $bg }) => $bg ?? "transparent"};
 `;
 
 export const Row = styled.div`
@@ -43,11 +40,11 @@ export const Flex = styled.div<{
   $direction?: string;
 }>`
   display: flex;
-  align-items: ${({ $align }) => $align ?? 'center'};
-  justify-content: ${({ $justify }) => $justify ?? 'flex-start'};
-  gap: ${({ $gap }) => $gap ?? '0'};
-  flex-wrap: ${({ $wrap }) => ($wrap ? 'wrap' : 'nowrap')};
-  flex-direction: ${({ $direction }) => $direction ?? 'row'};
+  align-items: ${({ $align }) => $align ?? "center"};
+  justify-content: ${({ $justify }) => $justify ?? "flex-start"};
+  gap: ${({ $gap }) => $gap ?? "0"};
+  flex-wrap: ${({ $wrap }) => ($wrap ? "wrap" : "nowrap")};
+  flex-direction: ${({ $direction }) => $direction ?? "row"};
 `;
 
 export const Grid = styled.div<{
@@ -58,7 +55,7 @@ export const Grid = styled.div<{
 }>`
   display: grid;
   grid-template-columns: repeat(${({ $cols }) => $cols ?? 4}, 1fr);
-  gap: ${({ $gap }) => $gap ?? '30px'};
+  gap: ${({ $gap }) => $gap ?? "30px"};
 
   @media (max-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(${({ $colsMd }) => $colsMd ?? 2}, 1fr);
@@ -75,20 +72,30 @@ export const Heading = styled.h2<{
 }>`
   font-family: ${theme.fonts.body};
   font-size: ${({ $size }) =>
-    $size === '5xl' ? '8vw'  :
-    $size === '4xl' ? '40px' :
-    $size === '3xl' ? '30px' :
-    $size === '2xl' ? '24px' :
-    $size === 'xl'  ? '20px' :
-    $size === 'lg'  ? '18px' :
-    $size === 'md'  ? '16px' :
-    $size === 'sm'  ? '14px' : '40px'};
+    $size === "5xl"
+      ? "8vw"
+      : $size === "4xl"
+        ? "40px"
+        : $size === "3xl"
+          ? "30px"
+          : $size === "2xl"
+            ? "24px"
+            : $size === "xl"
+              ? "20px"
+              : $size === "lg"
+                ? "18px"
+                : $size === "md"
+                  ? "16px"
+                  : $size === "sm"
+                    ? "14px"
+                    : "40px"};
   font-weight: ${theme.fontWeights.semibold};
   color: ${({ $color }) => $color ?? theme.colors.textDark};
   line-height: 1.3;
 
   @media (max-width: ${theme.breakpoints.md}) {
-    font-size: ${({ $size }) => ($size === '5xl' || $size === '4xl') ? '28px' : undefined};
+    font-size: ${({ $size }) =>
+      $size === "5xl" || $size === "4xl" ? "28px" : undefined};
   }
 `;
 
@@ -104,7 +111,8 @@ export const SubHeading = styled.span`
 
 export const Text = styled.p<{ $muted?: boolean; $size?: string }>`
   font-size: ${({ $size }) => $size ?? theme.fontSizes.base};
-  color: ${({ $muted }) => ($muted ? theme.colors.textMuted : theme.colors.text)};
+  color: ${({ $muted }) =>
+    $muted ? theme.colors.textMuted : theme.colors.text};
   line-height: 1.8;
   margin: 0;
 `;
@@ -135,36 +143,53 @@ export const Button = styled.button<{ $variant?: string }>`
 
   /* variant logic */
   background: ${({ $variant }) =>
-    $variant === 'outline' || $variant === 'ghost' ? 'transparent' :
-    $variant === 'secondary' ? theme.colors.textDark :
-    $variant === 'danger'    ? '#dc3545' :
-    theme.colors.primary};
+    $variant === "outline" || $variant === "ghost"
+      ? "transparent"
+      : $variant === "secondary"
+        ? theme.colors.textDark
+        : $variant === "danger"
+          ? "#dc3545"
+          : theme.colors.primary};
 
   border-color: ${({ $variant }) =>
-    $variant === 'outline' || $variant === 'ghost' ? theme.colors.primary :
-    $variant === 'secondary' ? theme.colors.textDark :
-    $variant === 'danger'    ? '#dc3545' :
-    theme.colors.primary};
+    $variant === "outline" || $variant === "ghost"
+      ? theme.colors.primary
+      : $variant === "secondary"
+        ? theme.colors.textDark
+        : $variant === "danger"
+          ? "#dc3545"
+          : theme.colors.primary};
 
   color: ${({ $variant }) =>
-    $variant === 'outline' || $variant === 'ghost' ? theme.colors.primary :
-    '#fff'};
+    $variant === "outline" || $variant === "ghost"
+      ? theme.colors.primary
+      : "#fff"};
 
   &:hover {
     background: ${({ $variant }) =>
-      $variant === 'outline' || $variant === 'ghost' ? theme.colors.primary :
-      $variant === 'danger'   ? '#c82333' :
-      'transparent'};
+      $variant === "outline" || $variant === "ghost"
+        ? theme.colors.primary
+        : $variant === "danger"
+          ? "#c82333"
+          : "transparent"};
     color: ${({ $variant }) =>
-      $variant === 'danger'   ? '#fff' :
-      $variant === 'outline' || $variant === 'ghost' ? '#fff' :
-      theme.colors.primary};
+      $variant === "danger"
+        ? "#fff"
+        : $variant === "outline" || $variant === "ghost"
+          ? "#fff"
+          : theme.colors.primary};
     border-color: ${({ $variant }) =>
-      $variant === 'danger' ? '#c82333' : theme.colors.primary};
+      $variant === "danger" ? "#c82333" : theme.colors.primary};
     text-decoration: none;
   }
-  &:active { transform: scale(0.98); }
-  &:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
+  &:active {
+    transform: scale(0.98);
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 `;
 
 // ── Card — white with original border ─────────────────────────
@@ -174,12 +199,14 @@ export const Card = styled.article<{ $hover?: boolean }>`
   transition: all 0.3s ease;
   overflow: hidden;
 
-  ${({ $hover }) => $hover && css`
-    &:hover {
-      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-      transform: translateY(-4px);
-    }
-  `}
+  ${({ $hover }) =>
+    $hover &&
+    css`
+      &:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-4px);
+      }
+    `}
 `;
 
 // ── Badge — original status pill ──────────────────────────────
@@ -193,18 +220,26 @@ export const Badge = styled.span<{ $variant?: string }>`
   font-weight: ${theme.fontWeights.light};
 
   background: ${({ $variant }) =>
-    $variant === 'success' ? 'rgba(130,174,70,0.12)' :
-    $variant === 'warning' ? 'rgba(255,193,7,0.15)' :
-    $variant === 'danger'  ? 'rgba(220,53,69,0.12)' :
-    $variant === 'info'    ? 'rgba(23,162,184,0.12)' :
-    theme.colors.primary};
+    $variant === "success"
+      ? "rgba(130,174,70,0.12)"
+      : $variant === "warning"
+        ? "rgba(255,193,7,0.15)"
+        : $variant === "danger"
+          ? "rgba(220,53,69,0.12)"
+          : $variant === "info"
+            ? "rgba(23,162,184,0.12)"
+            : theme.colors.primary};
 
   color: ${({ $variant }) =>
-    $variant === 'success' ? theme.colors.primary :
-    $variant === 'warning' ? '#856404' :
-    $variant === 'danger'  ? '#dc3545' :
-    $variant === 'info'    ? '#17a2b8' :
-    '#fff'};
+    $variant === "success"
+      ? theme.colors.primary
+      : $variant === "warning"
+        ? "#856404"
+        : $variant === "danger"
+          ? "#dc3545"
+          : $variant === "info"
+            ? "#17a2b8"
+            : "#fff"};
 `;
 
 // ── Tag chips ─────────────────────────────────────────────────
@@ -215,9 +250,10 @@ export const Tag = styled.button<{ $active?: boolean }>`
   font-size: ${theme.fontSizes.base};
   cursor: pointer;
   transition: all 0.3s ease;
-  border: 1px solid ${({ $active }) => ($active ? theme.colors.primary : '#dee2e6')};
-  background: ${({ $active }) => ($active ? theme.colors.primary : 'white')};
-  color: ${({ $active }) => ($active ? 'white' : theme.colors.text)};
+  border: 1px solid
+    ${({ $active }) => ($active ? theme.colors.primary : "#dee2e6")};
+  background: ${({ $active }) => ($active ? theme.colors.primary : "white")};
+  color: ${({ $active }) => ($active ? "white" : theme.colors.text)};
 
   &:hover {
     background: ${theme.colors.primary};
@@ -239,15 +275,19 @@ export const Input = styled.input`
   outline: none;
   transition: all 0.3s ease;
 
-  &::placeholder { color: rgba(0,0,0,0.3); }
-  &:focus { border-color: ${theme.colors.primary}; }
+  &::placeholder {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  &:focus {
+    border-color: ${theme.colors.primary};
+  }
 `;
 
 // ── Divider ───────────────────────────────────────────────────
 export const Divider = styled.div<{ $my?: string }>`
   border: none;
   border-top: 1px solid #dee2e6;
-  margin: ${({ $my }) => $my ?? '20px'} 0;
+  margin: ${({ $my }) => $my ?? "20px"} 0;
   height: 0;
 `;
 
@@ -255,14 +295,17 @@ export const Divider = styled.div<{ $my?: string }>`
 export const QuantityWrapper = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 `;
 
 export const QuantityBtn = styled.button`
-  width: 30px; height: 30px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 7px;
   border: 1px solid #dee2e6;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: white;
   color: ${theme.colors.primary};
   cursor: pointer;
@@ -277,11 +320,15 @@ export const QuantityBtn = styled.button`
 `;
 
 export const QuantityNum = styled.span`
-  min-width: 30px;
+  width: 60px;
+  height: 40px;
   text-align: center;
   font-weight: ${theme.fontWeights.medium};
   color: ${theme.colors.textDark};
   font-size: ${theme.fontSizes.base};
+  border-radius: 7px;
+  border: 1px solid #dee2e6;
+  padding: 5px;
 `;
 
 // ── StarRow ───────────────────────────────────────────────────
@@ -296,10 +343,12 @@ export const StarRow = styled.div`
 // Common 2-column layout (content + sidebar)
 export const TwoCol = styled.div<{ $sidebarWidth?: string }>`
   display: grid;
-  grid-template-columns: 1fr ${({ $sidebarWidth }) => $sidebarWidth ?? '340px'};
+  grid-template-columns: 1fr ${({ $sidebarWidth }) => $sidebarWidth ?? "340px"};
   gap: 40px;
   align-items: start;
-  @media (max-width: ${theme.breakpoints.lg}) { grid-template-columns: 1fr; }
+  @media (max-width: ${theme.breakpoints.lg}) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 // Sticky sidebar
@@ -313,10 +362,12 @@ export const PageSectionHead = styled.header`
   text-align: center;
   margin-bottom: 2.5rem;
   h2 {
-    font-size: ${theme.fontSizes['4xl']};
+    font-size: ${theme.fontSizes["4xl"]};
     font-weight: ${theme.fontWeights.semibold};
     color: ${theme.colors.textDark};
-    @media (max-width: ${theme.breakpoints.md}) { font-size: 28px; }
+    @media (max-width: ${theme.breakpoints.md}) {
+      font-size: 28px;
+    }
   }
   .sub {
     font-size: ${theme.fontSizes.lg};
@@ -326,7 +377,11 @@ export const PageSectionHead = styled.header`
     color: ${theme.colors.primary};
     font-style: italic;
   }
-  p { max-width: 680px; margin: 8px auto 0; color: ${theme.colors.text}; }
+  p {
+    max-width: 680px;
+    margin: 8px auto 0;
+    color: ${theme.colors.text};
+  }
 `;
 
 // ── Empty State ────────────────────────────────────────────────
@@ -334,15 +389,27 @@ export const EmptyState = styled.div`
   text-align: center;
   padding: 60px 20px;
   color: ${theme.colors.text};
-  h3 { font-size: 20px; margin-bottom: 8px; color: ${theme.colors.textDark}; }
-  p  { color: ${theme.colors.textMuted}; max-width: 400px; margin: 0 auto 20px; }
+  h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: ${theme.colors.textDark};
+  }
+  p {
+    color: ${theme.colors.textMuted};
+    max-width: 400px;
+    margin: 0 auto 20px;
+  }
 `;
 
 // ── Skeleton shimmer block (inline use) ───────────────────────
-export const SkeletonBlock = styled.div<{ $h?: string; $w?: string; $radius?: string }>`
-  height: ${({ $h }) => $h ?? '16px'};
-  width:  ${({ $w }) => $w ?? '100%'};
-  border-radius: ${({ $radius }) => $radius ?? '4px'};
+export const SkeletonBlock = styled.div<{
+  $h?: string;
+  $w?: string;
+  $radius?: string;
+}>`
+  height: ${({ $h }) => $h ?? "16px"};
+  width: ${({ $w }) => $w ?? "100%"};
+  border-radius: ${({ $radius }) => $radius ?? "4px"};
   background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease infinite;
@@ -358,5 +425,9 @@ export const AnnouncementBar = styled.div`
   font-size: ${theme.fontSizes.sm};
   letter-spacing: 1px;
   font-weight: ${theme.fontWeights.medium};
-  a { color: white; text-decoration: underline; margin-left: 8px; }
+  a {
+    color: white;
+    text-decoration: underline;
+    margin-left: 8px;
+  }
 `;
