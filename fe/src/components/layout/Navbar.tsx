@@ -167,7 +167,6 @@ const CartCta = styled(Link)<{ $scrolled: boolean }>`
     background: ${theme.colors.primary};
     color: #fff !important;
     border: none;
-    margin-top: 8px;
   }
 `;
 
@@ -213,7 +212,7 @@ const HamburgerBtn = styled.button`
     text-transform: uppercase;
     letter-spacing: 0.1em;
     gap: 6px;
-    padding: 8px 0 0 0;
+    padding: 0;
     flex-shrink: 0;
   }
 `;
@@ -247,8 +246,10 @@ const LoginBtn = styled.button<{ $scrolled: boolean }>`
     border-color: ${theme.colors.primary};
   }
   @media (max-width: ${theme.breakpoints.lg}) {
-    border-color: rgba(255, 255, 255, 0.4);
-    color: white;
+    border: 1.5px solid
+      ${({ $scrolled }) =>
+        $scrolled ? theme.colors.primary : "rgba(130,174,70,0.8)"};
+    color: ${({ $scrolled }) => ($scrolled ? theme.colors.primary : "#000")};
   }
 `;
 
