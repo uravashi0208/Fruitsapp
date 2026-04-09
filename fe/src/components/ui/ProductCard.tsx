@@ -1,22 +1,22 @@
 // ============================================================
 // PRODUCT CARD  — with full out-of-stock / low-stock UI
 // ============================================================
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Eye, AlertCircle } from 'lucide-react';
-import styled, { keyframes, css } from 'styled-components';
-import { theme } from '../../styles/theme';
-import { Product } from '../../types';
-import { useCart, useWishlist } from '../../hooks/useCart';
-import { isInStock } from '../../store/cartSlice';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ShoppingCart, Heart, Eye, AlertCircle } from "lucide-react";
+import styled, { keyframes, css } from "styled-components";
+import { theme } from "../../styles/theme";
+import { Product } from "../../types";
+import { useCart, useWishlist } from "../../hooks/useCart";
+import { isInStock } from "../../store/cartSlice";
 
 // ── Helpers ────────────────────────────────────────────────
 const LOW_STOCK_QTY = 5;
 
-const stockState = (p: Product): 'out' | 'low' | 'in' => {
-  if (!isInStock(p)) return 'out';
-  if ((p.stock ?? Infinity) <= LOW_STOCK_QTY) return 'low';
-  return 'in';
+const stockState = (p: Product): "out" | "low" | "in" => {
+  if (!isInStock(p)) return "out";
+  if ((p.stock ?? Infinity) <= LOW_STOCK_QTY) return "low";
+  return "in";
 };
 
 // ── Animations ─────────────────────────────────────────────
@@ -34,18 +34,28 @@ const ProductWrap = styled.article<{ $disabled: boolean }>`
   transition: all 0.3s ease;
   border: 1px solid #f0f0f0;
   background: white;
-  ${({ $disabled }) => $disabled && css`
-    opacity: 0.75;
-    filter: grayscale(40%);
-  `}
+  ${({ $disabled }) =>
+    $disabled &&
+    css`
+      opacity: 0.75;
+      filter: grayscale(40%);
+    `}
 
   &:hover {
-    box-shadow: 0px 7px 15px -5px rgba(0,0,0,0.07);
+    box-shadow: 0px 7px 15px -5px rgba(0, 0, 0, 0.07);
   }
-  &:hover .pricing     { opacity: 0; }
-  &:hover .bottom-area { opacity: 1; }
-  &:hover .img-overlay { opacity: 0.15; }
-  &:hover .product-img { transform: scale(1.1); }
+  &:hover .pricing {
+    opacity: 0;
+  }
+  &:hover .bottom-area {
+    opacity: 1;
+  }
+  &:hover .img-overlay {
+    opacity: 0.15;
+  }
+  &:hover .product-img {
+    transform: scale(1.1);
+  }
 `;
 
 const ImgProd = styled.div`
@@ -76,7 +86,7 @@ const ImgOverlay = styled.div`
 const OutOfStockOverlay = styled.div`
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,25 +103,27 @@ const OutOfStockRibbon = styled.span`
   text-transform: uppercase;
   padding: 6px 24px;
   transform: rotate(-30deg);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 `;
 
-const StatusBadge = styled.span<{ $type: 'promo' | 'new' | 'out' | 'low' }>`
+const StatusBadge = styled.span<{ $type: "promo" | "new" | "out" | "low" }>`
   position: absolute;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   padding: 2px 10px;
   color: #fff;
   font-weight: 600;
   font-size: 12px;
   letter-spacing: 0.5px;
   z-index: 3;
-  animation: ${badgePop} 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
-  background: ${({ $type }) => ({
-    promo: theme.colors.primary,
-    new:   '#0ea5e9',
-    out:   '#dc2626',
-    low:   '#f97316',
-  }[$type])};
+  animation: ${badgePop} 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  background: ${({ $type }) =>
+    ({
+      promo: theme.colors.primary,
+      new: "#0ea5e9",
+      out: "#dc2626",
+      low: "#f97316",
+    })[$type]};
 `;
 
 const CardText = styled.div`
@@ -134,10 +146,11 @@ const ProductTitle = styled.h3`
     color: ${theme.colors.textDark};
     text-decoration: none;
     transition: all 0.3s ease;
-    &:hover { color: ${theme.colors.primary}; }
+    &:hover {
+      color: ${theme.colors.primary};
+    }
   }
 `;
-
 
 const Pricing = styled.div`
   width: 100%;
@@ -164,7 +177,8 @@ const PriceSale = styled.span`
 const BottomArea = styled.div`
   position: absolute;
   bottom: 15px;
-  left: 0; right: 0;
+  left: 0;
+  right: 0;
   opacity: 0;
   transition: all 0.3s ease;
   display: flex;
@@ -176,45 +190,56 @@ const BottomArea = styled.div`
 
 const ActionBtn = styled.button<{ $disabled?: boolean }>`
   color: #fff;
-  background: ${({ $disabled }) => $disabled ? '#9ca3af' : theme.colors.primary};
-  width: 40px; height: 40px;
+  background: ${({ $disabled }) =>
+    $disabled ? "#9ca3af" : theme.colors.primary};
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
-  display: flex; align-items: center; justify-content: center;
-  cursor: ${({ $disabled }) => $disabled ? 'not-allowed' : 'pointer'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ${({ $disabled }) => ($disabled ? "not-allowed" : "pointer")};
   font-size: 16px;
   transition: all 0.3s ease;
   flex-shrink: 0;
   text-decoration: none;
   &:hover {
-    background: ${({ $disabled }) => $disabled ? '#9ca3af' : theme.colors.primaryDark};
-    transform: ${({ $disabled }) => $disabled ? 'none' : 'scale(1.1)'};
+    background: ${({ $disabled }) =>
+      $disabled ? "#9ca3af" : theme.colors.primaryDark};
+    transform: ${({ $disabled }) => ($disabled ? "none" : "scale(1.1)")};
   }
 `;
 
 const WishActionBtn = styled(ActionBtn)<{ $active: boolean }>`
-  background: ${({ $active }) => ($active ? '#dc3545' : theme.colors.primary)};
-  &:hover { background: ${({ $active }) => ($active ? '#c82333' : theme.colors.primaryDark)}; }
+  background: ${({ $active }) => ($active ? "#dc3545" : theme.colors.primary)};
+  &:hover {
+    background: ${({ $active }) =>
+      $active ? "#c82333" : theme.colors.primaryDark};
+  }
 `;
 
 // ── Component ──────────────────────────────────────────────
 export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
   const { addItem } = useCart();
+  const navigate = useNavigate();
   const { toggle, isWishlisted } = useWishlist();
-  const wishlisted  = isWishlisted(product.id);
-  const state       = stockState(product);
-  const outOfStock  = state === 'out';
-  const lowStock    = state === 'low';
-  const stockNum    = product.stock ?? 0;
+  const wishlisted = isWishlisted(product.id);
+  const state = stockState(product);
+  const outOfStock = state === "out";
+  const lowStock = state === "low";
+  const stockNum = product.stock ?? 0;
 
   const handleAddToCart = () => {
     if (!outOfStock) addItem(product);
   };
 
   const badge = (() => {
-    if (outOfStock) return '';
-    if (lowStock)   return <StatusBadge $type="low">Only {stockNum} left!</StatusBadge>;
-    if (product.badge) return <StatusBadge $type="promo">{product.badge}</StatusBadge>;
+    if (outOfStock) return "";
+    if (lowStock)
+      return <StatusBadge $type="low">Only {stockNum} left!</StatusBadge>;
+    if (product.badge)
+      return <StatusBadge $type="promo">{product.badge}</StatusBadge>;
     if (product.isNew) return <StatusBadge $type="new">New</StatusBadge>;
     return null;
   })();
@@ -225,9 +250,9 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <ProductImg
           className="product-img"
           src={
-            product.image?.startsWith('http')
+            product.image?.startsWith("http")
               ? product.image
-              : `${process.env.REACT_APP_API_URL || 'http://localhost:4000'}${product.image}`
+              : `${process.env.REACT_APP_API_URL || "http://localhost:4000"}${product.image}`
           }
           alt={product.name}
           loading="lazy"
@@ -265,8 +290,7 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
         <BottomArea className="bottom-area">
           {/* Quick View */}
           <ActionBtn
-            as={Link as any}
-            to={`/product/${product.id}`}
+            onClick={() => navigate(`/product/${product.id}`)}
             title="Quick View"
             aria-label="Quick view"
           >
@@ -277,19 +301,23 @@ export const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
           <ActionBtn
             onClick={handleAddToCart}
             $disabled={outOfStock}
-            title={outOfStock ? 'Out of stock' : 'Add to Cart'}
-            aria-label={outOfStock ? 'Out of stock' : 'Add to cart'}
+            title={outOfStock ? "Out of stock" : "Add to Cart"}
+            aria-label={outOfStock ? "Out of stock" : "Add to cart"}
             aria-disabled={outOfStock}
           >
-            {outOfStock ? <AlertCircle size={16} /> : <ShoppingCart size={16} />}
+            {outOfStock ? (
+              <AlertCircle size={16} />
+            ) : (
+              <ShoppingCart size={16} />
+            )}
           </ActionBtn>
 
           {/* Wishlist */}
           <WishActionBtn
             $active={wishlisted}
             onClick={() => toggle(product)}
-            title={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-            aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+            aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart size={16} />
           </WishActionBtn>

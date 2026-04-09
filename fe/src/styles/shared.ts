@@ -129,7 +129,7 @@ export const Button = styled.button<{ $variant?: string }>`
   justify-content: center;
   gap: 8px;
   padding: 12px 28px;
-  border-radius: 30px;
+  border-radius: 12px;
   font-family: ${theme.fonts.body};
   font-size: ${theme.fontSizes.base};
   font-weight: ${theme.fontWeights.normal};
