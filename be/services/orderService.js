@@ -602,6 +602,7 @@ const getOrderStats = async () => {
     processing: orders.filter((o) => o.status === "processing").length,
     shipped: orders.filter((o) => o.status === "shipped").length,
     delivered: orders.filter((o) => o.status === "delivered").length,
+    complete: orders.filter((o) => o.status === "complete").length,
     cancelled: orders.filter((o) => o.status === "cancelled").length,
     paid: orders.filter((o) => o.paid === true || o.paymentStatus === "paid")
       .length,
@@ -694,7 +695,7 @@ const cancelOrder = async (id, userId) => {
     throw new AppError("Access denied.", 403);
 
   // Only allow cancel before shipped
-  const nonCancellable = ["shipped", "delivered", "cancelled"];
+  const nonCancellable = ["shipped", "delivered", "complete", "cancelled"];
   if (nonCancellable.includes(order.status))
     throw new AppError(
       `Cannot cancel an order that is already ${order.status}.`,

@@ -29,7 +29,7 @@ const TRANSITIONS = [
     from: "pending",
     to: "processing",
     afterMs: HOURS(5),
-    note: "Order moved to processing automatically",
+    note: "Order moved to processing",
     emailSubject: (o) =>
       `🔄 Your order ${o.orderNumber} is now being processed`,
     emailBody: (o) =>
@@ -43,7 +43,7 @@ const TRANSITIONS = [
     from: "processing",
     to: "shipped",
     afterMs: HOURS(5),
-    note: "Order shipped automatically",
+    note: "Order shipped",
     emailSubject: (o) => `🚚 Your order ${o.orderNumber} has been shipped!`,
     emailBody: (o) =>
       buildStatusEmailBody(
@@ -56,7 +56,7 @@ const TRANSITIONS = [
     from: "shipped",
     to: "delivered",
     afterMs: HOURS(1),
-    note: "Order marked as delivered automatically",
+    note: "Order marked as delivered",
     emailSubject: (o) => `📦 Your order ${o.orderNumber} has been delivered!`,
     emailBody: (o) =>
       buildStatusEmailBody(
@@ -69,7 +69,7 @@ const TRANSITIONS = [
     from: "delivered",
     to: "complete",
     afterMs: HOURS(1),
-    note: "Order completed automatically",
+    note: "Order completed",
     emailSubject: (o) => `✅ Your order ${o.orderNumber} is complete`,
     emailBody: (o) =>
       buildStatusEmailBody(

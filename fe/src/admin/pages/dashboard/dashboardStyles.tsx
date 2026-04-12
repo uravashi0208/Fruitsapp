@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 /**
  * src/admin/pages/dashboard/dashboardStyles.ts
  *
@@ -18,8 +18,8 @@ import React from 'react';
  *   Helper fns         : fmtCurrency, fmtNumber, statusBadgeColor
  */
 
-import styled, { keyframes } from 'styled-components';
-import { adminTheme as t } from '../../styles/adminTheme';
+import styled, { keyframes } from "styled-components";
+import { adminTheme as t } from "../../styles/adminTheme";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Animations
@@ -36,7 +36,7 @@ export const DashCard = styled.div<{ $bg?: string; $overflow?: string }>`
   border-radius: ${t.radii.xl};
   border: 1px solid ${t.colors.border};
   background: ${({ $bg }) => $bg ?? t.colors.surface};
-  overflow: ${({ $overflow }) => $overflow ?? 'visible'};
+  overflow: ${({ $overflow }) => $overflow ?? "visible"};
   font-family: ${t.fonts.body};
 `;
 
@@ -81,8 +81,10 @@ export const MoreBtn = styled.button`
   align-items: center;
   justify-content: center;
   color: ${t.colors.textMuted};
-  transition: background ${t.transitions?.fast ?? '0.15s'};
-  &:hover { background: ${t.colors.surfaceAlt}; }
+  transition: background ${t.transitions?.fast ?? "0.15s"};
+  &:hover {
+    background: ${t.colors.surfaceAlt};
+  }
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,8 +136,12 @@ export const MetricValue = styled.h4`
 // ─────────────────────────────────────────────────────────────────────────────
 // Skeleton loader
 // ─────────────────────────────────────────────────────────────────────────────
-export const SkeletonBox = styled.div<{ $w?: number | string; $h?: number; $r?: number }>`
-  width: ${({ $w }) => (typeof $w === 'number' ? `${$w}px` : ($w ?? '100%'))};
+export const SkeletonBox = styled.div<{
+  $w?: number | string;
+  $h?: number;
+  $r?: number;
+}>`
+  width: ${({ $w }) => (typeof $w === "number" ? `${$w}px` : ($w ?? "100%"))};
   height: ${({ $h }) => $h ?? 16}px;
   background: ${t.colors.surfaceAlt};
   border-radius: ${({ $r }) => $r ?? 6}px;
@@ -227,7 +233,8 @@ export const DashThead = styled.thead`
 export const DashTbody = styled.tbody``;
 
 export const DashTr = styled.tr<{ $noBottom?: boolean }>`
-  border-bottom: ${({ $noBottom }) => $noBottom ? 'none' : `1px solid ${t.colors.surfaceAlt}`};
+  border-bottom: ${({ $noBottom }) =>
+    $noBottom ? "none" : `1px solid ${t.colors.surfaceAlt}`};
 `;
 
 export const DashTh = styled.th`
@@ -269,9 +276,10 @@ export const TabBtn = styled.button<{ $active: boolean }>`
   font-family: ${t.fonts.body};
   transition: all 0.15s ease;
   white-space: nowrap;
-  background: ${({ $active }) => ($active ? '#ffffff' : 'transparent')};
-  color: ${({ $active }) => ($active ? t.colors.textPrimary : t.colors.textMuted)};
-  box-shadow: ${({ $active }) => ($active ? t.shadows.xs : 'none')};
+  background: ${({ $active }) => ($active ? "#ffffff" : "transparent")};
+  color: ${({ $active }) =>
+    $active ? t.colors.textPrimary : t.colors.textMuted};
+  box-shadow: ${({ $active }) => ($active ? t.shadows.xs : "none")};
 `;
 
 // Date range picker trigger wrapper (used in StatisticsChart)
@@ -307,7 +315,9 @@ export const DatePickerInput = styled.input`
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
-  &:focus { border-color: ${t.colors.primary}; }
+  &:focus {
+    border-color: ${t.colors.primary};
+  }
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -376,25 +386,32 @@ export const CountryList = styled.div`
 // ─────────────────────────────────────────────────────────────────────────────
 // Badge (inline variant — used across all cards)
 // ─────────────────────────────────────────────────────────────────────────────
-export type BadgeColor = 'primary' | 'success' | 'error' | 'warning' | 'info' | 'light' | 'dark';
+export type BadgeColor =
+  | "primary"
+  | "success"
+  | "error"
+  | "warning"
+  | "info"
+  | "light"
+  | "dark";
 
 export const BADGE_COLORS: Record<BadgeColor, { bg: string; text: string }> = {
-  primary: { bg: '#ecf3ff', text: t.colors.primary },
+  primary: { bg: "#ecf3ff", text: t.colors.primary },
   success: { bg: t.colors.successBg, text: t.colors.success },
-  error:   { bg: t.colors.dangerBg,  text: t.colors.danger  },
+  error: { bg: t.colors.dangerBg, text: t.colors.danger },
   warning: { bg: t.colors.warningBg, text: t.colors.warning },
-  info:    { bg: t.colors.infoBg,    text: t.colors.info    },
-  light:   { bg: t.colors.surfaceAlt, text: t.colors.textSecondary },
-  dark:    { bg: '#667085',           text: '#ffffff'        },
+  info: { bg: t.colors.infoBg, text: t.colors.info },
+  light: { bg: t.colors.surfaceAlt, text: t.colors.textSecondary },
+  dark: { bg: "#667085", text: "#ffffff" },
 };
 
 export const DashBadge = styled.span<{ $color: BadgeColor; $sm?: boolean }>`
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: ${({ $sm }) => ($sm ? '2px 8px' : '3px 10px')};
+  padding: ${({ $sm }) => ($sm ? "2px 8px" : "3px 10px")};
   border-radius: ${t.radii.full};
-  font-size: ${({ $sm }) => ($sm ? '0.75rem' : '0.8125rem')};
+  font-size: ${({ $sm }) => ($sm ? "0.75rem" : "0.8125rem")};
   font-weight: 500;
   white-space: nowrap;
   background: ${({ $color }) => BADGE_COLORS[$color].bg};
@@ -439,7 +456,9 @@ export const OutlineBtn = styled.button`
   font-family: ${t.fonts.body};
   transition: background 0.15s ease;
   text-decoration: none;
-  &:hover { background: ${t.colors.surfaceAlt}; }
+  &:hover {
+    background: ${t.colors.surfaceAlt};
+  }
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -448,9 +467,11 @@ export const OutlineBtn = styled.button`
 
 /** Format a number as a compact currency string. e.g. 1234 → "$1.2K" */
 export const fmtCurrency = (n: number): string =>
-  n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(1)}M`
-  : n >= 1_000   ? `$${(n / 1_000).toFixed(1)}K`
-  : `$${n.toFixed(0)}`;
+  n >= 1_000_000
+    ? `$${(n / 1_000_000).toFixed(1)}M`
+    : n >= 1_000
+      ? `$${(n / 1_000).toFixed(1)}K`
+      : `$${n.toFixed(0)}`;
 
 /** Format a plain number with locale separators. */
 export const fmtNumber = (n: number): string => n.toLocaleString();
@@ -458,13 +479,19 @@ export const fmtNumber = (n: number): string => n.toLocaleString();
 /** Map an order status string to a BadgeColor. */
 export const statusBadgeColor = (status: string): BadgeColor => {
   switch (status?.toLowerCase()) {
-    case 'delivered':
-    case 'shipped':   return 'success';
-    case 'processing':
-    case 'pending':   return 'warning';
-    case 'cancelled':
-    case 'canceled':  return 'error';
-    default:          return 'light';
+    case "complete":
+    case "delivered":
+      return "success";
+    case "shipped":
+      return "success";
+    case "processing":
+    case "pending":
+      return "warning";
+    case "cancelled":
+    case "canceled":
+      return "error";
+    default:
+      return "light";
   }
 };
 
@@ -473,7 +500,9 @@ export const MoreDotSVG: React.FC = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
     <path
       d="M5 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm6 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0zm6 0a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"
-      stroke="#98a2b3" strokeWidth="2" strokeLinecap="round"
+      stroke="#98a2b3"
+      strokeWidth="2"
+      strokeLinecap="round"
     />
   </svg>
 );

@@ -70,6 +70,7 @@ const STATUS_COLORS: Record<
     fg: t.colors.success,
     border: `${t.colors.success}44`,
   },
+  complete: { bg: "#f0fdf4", fg: "#16a34a", border: "#86efac" },
   cancelled: {
     bg: t.colors.dangerBg,
     fg: t.colors.danger,
@@ -224,6 +225,7 @@ const STEPS: { key: string; icon: LucideIcon; label: string }[] = [
   { key: "processing", icon: Package, label: "Packing" },
   { key: "shipped", icon: Truck, label: "Shipped" },
   { key: "delivered", icon: PartyPopper, label: "Delivered" },
+  { key: "complete", icon: CheckCircle2, label: "Complete" },
 ];
 
 const StepBar = styled.div`
@@ -585,29 +587,29 @@ export const OrderDetailPage: React.FC = () => {
   const dispatch = useDispatch();
 
   // 1a. Data state
-  const [order,    setOrder]    = useState<Order | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [timeline, setTimeline] = useState<TrackingTimeline | null>(null);
 
   // 1b. UI / loading
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [copied,  setCopied]  = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // 1c. Form fields — status panel
-  const [newStatus,  setNewStatus]  = useState("");
+  const [newStatus, setNewStatus] = useState("");
   const [statusNote, setStatusNote] = useState("");
 
   // 1d. Form fields — tracking panel
-  const [trkCode,     setTrkCode]     = useState("");
+  const [trkCode, setTrkCode] = useState("");
   const [carrierCode, setCarrierCode] = useState("");
   const [estDelivery, setEstDelivery] = useState("");
-  const [trkNote,     setTrkNote]     = useState("");
+  const [trkNote, setTrkNote] = useState("");
 
   // 1e. Form fields — event / note panel
-  const [evtNote,     setEvtNote]     = useState("");
+  const [evtNote, setEvtNote] = useState("");
   const [evtLocation, setEvtLocation] = useState("");
-  const [evtStatus,   setEvtStatus]   = useState("");
-  const [adminNote,   setAdminNote]   = useState("");
+  const [evtStatus, setEvtStatus] = useState("");
+  const [adminNote, setAdminNote] = useState("");
 
   // 2. Data fetch
   const load = useCallback(async () => {
@@ -1125,6 +1127,7 @@ export const OrderDetailPage: React.FC = () => {
                     { value: "processing", label: "Processing" },
                     { value: "shipped", label: "Shipped" },
                     { value: "delivered", label: "Delivered" },
+                    { value: "complete", label: "Complete" },
                     { value: "cancelled", label: "Cancelled" },
                   ]}
                 />
@@ -1275,6 +1278,7 @@ export const OrderDetailPage: React.FC = () => {
                     { value: "processing", label: "Processing" },
                     { value: "shipped", label: "In Transit" },
                     { value: "delivered", label: "Delivered" },
+                    { value: "complete", label: "Complete" },
                     { value: "update", label: "General Update" },
                   ]}
                 />

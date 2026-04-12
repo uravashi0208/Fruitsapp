@@ -120,6 +120,7 @@ export interface Order {
     | "processing"
     | "shipped"
     | "delivered"
+    | "complete"
     | "cancelled";
   paymentStatus:
     | "pending"

@@ -76,6 +76,7 @@ const STATUS_LABELS = {
   processing: { label: "Being Prepared", icon: "📦", color: "#8b5cf6" },
   shipped: { label: "Out for Delivery", icon: "🚚", color: "#06b6d4" },
   delivered: { label: "Delivered", icon: "🎉", color: "#10b981" },
+  complete: { label: "Completed", icon: "✅", color: "#16a34a" },
   cancelled: { label: "Cancelled", icon: "❌", color: "#ef4444" },
 };
 
@@ -239,13 +240,14 @@ const lookupTracking = async (code) => {
   }
 
   if (snap.empty)
-    throw new AppError("No order found for this tracking code.", 404);
+    throw new AppError("No order found for this order number.", 404);
 
   const orderId = snap.docs[0].id;
   const timeline = await getTrackingTimeline(orderId);
 
   // Return safe public view (no payment details, no email)
   return {
+    orderId: timeline.orderId,
     orderNumber: timeline.orderNumber,
     status: timeline.status,
     statusLabel: STATUS_LABELS[timeline.status]?.label || timeline.status,

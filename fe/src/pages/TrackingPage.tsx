@@ -5,25 +5,42 @@
  * (Poppins · #82ae46 primary · white/light bg · 30px pill radii)
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import styled, { css } from 'styled-components';
-import { fadeUp, spin, pulse, bounceIn as bounce } from '../styles/animations';
-import { Search, Package, CheckCircle2, ClipboardList, Truck, PartyPopper, MapPin, Clock, Mail, Hash, HeadphonesIcon } from 'lucide-react';
-import { publicTrackingApi, TrackingTimeline, TrackingEvent } from '../api/admin';
-import { PageHero } from '../components/ui/PageHero';
-import { theme as t } from '../styles/theme';
-import { Container, Button } from '../styles/shared';
+import React, { useState, useRef, useEffect } from "react";
+import styled, { css } from "styled-components";
+import { fadeUp, spin, pulse, bounceIn as bounce } from "../styles/animations";
+import {
+  Search,
+  Package,
+  CheckCircle2,
+  ClipboardList,
+  Truck,
+  PartyPopper,
+  MapPin,
+  Clock,
+  Mail,
+  Hash,
+  HeadphonesIcon,
+} from "lucide-react";
+import {
+  publicTrackingApi,
+  TrackingTimeline,
+  TrackingEvent,
+} from "../api/admin";
+import { PageHero } from "../components/ui/PageHero";
+import { theme as t } from "../styles/theme";
+import { Container, Button } from "../styles/shared";
 
 // ── Animations ────────────────────────────────────────────────────────────────
 
 // ── Status map ────────────────────────────────────────────────────────────────
 const STATUS_COLORS: Record<string, string> = {
-  pending:    '#f79009',
-  confirmed:  '#0ba5ec',
-  processing: '#7c3aed',
-  shipped:    '#0891b2',
-  delivered:  t.colors.primary,
-  cancelled:  t.colors.danger,
+  pending: "#f79009",
+  confirmed: "#0ba5ec",
+  processing: "#7c3aed",
+  shipped: "#0891b2",
+  delivered: t.colors.primary,
+  complete: "#16a34a",
+  cancelled: t.colors.danger,
 };
 
 // ── Search section ────────────────────────────────────────────────────────────
@@ -41,7 +58,9 @@ const SearchCard = styled.div`
   max-width: 680px;
   margin: 0 auto;
   animation: ${fadeUp} 0.5s ease both;
-  @media (max-width: ${t.breakpoints.sm}) { padding: 24px 20px; }
+  @media (max-width: ${t.breakpoints.sm}) {
+    padding: 24px 20px;
+  }
 `;
 
 const SearchTitle = styled.h2`
@@ -70,7 +89,9 @@ const InputLabel = styled.label`
 const InputRow = styled.div`
   display: flex;
   gap: 10px;
-  @media (max-width: ${t.breakpoints.xs}) { flex-direction: column; }
+  @media (max-width: ${t.breakpoints.xs}) {
+    flex-direction: column;
+  }
 `;
 
 const TrackInput = styled.input`
@@ -84,8 +105,13 @@ const TrackInput = styled.input`
   outline: none;
   transition: ${t.transitions.fast};
   background: white;
-  &::placeholder { color: rgba(0,0,0,0.28); }
-  &:focus { border-color: ${t.colors.primary}; box-shadow: 0 0 0 3px ${t.colors.primaryGhost}; }
+  &::placeholder {
+    color: rgba(0, 0, 0, 0.28);
+  }
+  &:focus {
+    border-color: ${t.colors.primary};
+    box-shadow: 0 0 0 3px ${t.colors.primaryGhost};
+  }
 `;
 
 const TrackBtn = styled(Button)`
@@ -98,8 +124,8 @@ const TrackBtn = styled(Button)`
 const ErrorBox = styled.div`
   max-width: 680px;
   margin: 16px auto 0;
-  background: rgba(220,53,69,.07);
-  border: 1px solid rgba(220,53,69,.25);
+  background: rgba(220, 53, 69, 0.07);
+  border: 1px solid rgba(220, 53, 69, 0.25);
   border-radius: 8px;
   padding: 12px 18px;
   color: ${t.colors.danger};
@@ -116,11 +142,12 @@ const SpinnerWrap = styled.div`
   padding: 60px 0;
 `;
 const Spinner = styled.div`
-  width: 40px; height: 40px;
+  width: 40px;
+  height: 40px;
   border: 3px solid ${t.colors.border};
   border-top-color: ${t.colors.primary};
   border-radius: 50%;
-  animation: ${spin} .75s linear infinite;
+  animation: ${spin} 0.75s linear infinite;
 `;
 
 // ── Result layout ─────────────────────────────────────────────────────────────
@@ -134,7 +161,9 @@ const ResultGrid = styled.div`
   grid-template-columns: 1fr 340px;
   gap: 24px;
   align-items: start;
-  @media (max-width: ${t.breakpoints.lg}) { grid-template-columns: 1fr; }
+  @media (max-width: ${t.breakpoints.lg}) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const Card = styled.div<{ $noPad?: boolean }>`
@@ -143,7 +172,11 @@ const Card = styled.div<{ $noPad?: boolean }>`
   border-radius: 8px;
   overflow: hidden;
   box-shadow: ${t.shadows.sm};
-  ${({ $noPad }) => !$noPad && css`padding: 28px 28px;`}
+  ${({ $noPad }) =>
+    !$noPad &&
+    css`
+      padding: 28px 28px;
+    `}
 `;
 
 const CardHead = styled.div`
@@ -169,7 +202,9 @@ const CardTitle = styled.h3`
   letter-spacing: 1px;
 `;
 
-const CardBody = styled.div`padding: 24px;`;
+const CardBody = styled.div`
+  padding: 24px;
+`;
 
 // ── Order summary header ──────────────────────────────────────────────────────
 const OrderHeader = styled.div`
@@ -195,7 +230,7 @@ const OrderNumLabel = styled.div`
 const OrderStatusText = styled.div<{ $color?: string }>`
   font-size: 1.125rem;
   font-weight: ${t.fontWeights.semibold};
-  color: ${p => p.$color || t.colors.primary};
+  color: ${(p) => p.$color || t.colors.primary};
   display: flex;
   align-items: center;
   gap: 8px;
@@ -212,17 +247,17 @@ const StatusBadge = styled.span<{ $color: string }>`
   font-weight: ${t.fontWeights.semibold};
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  background: ${p => p.$color}18;
-  color: ${p => p.$color};
-  border: 1px solid ${p => p.$color}33;
+  background: ${(p) => p.$color}18;
+  color: ${(p) => p.$color};
+  border: 1px solid ${(p) => p.$color}33;
 `;
 
 const TrackCodeBox = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(11,165,236,.07);
-  border: 1px solid rgba(11,165,236,.2);
+  background: rgba(11, 165, 236, 0.07);
+  border: 1px solid rgba(11, 165, 236, 0.2);
   border-radius: 8px;
   padding: 10px 16px;
 `;
@@ -244,11 +279,12 @@ const TrackCodeVal = styled.div`
 
 // ── Progress steps ────────────────────────────────────────────────────────────
 const STEPS = [
-  { key: 'pending',    Icon: ClipboardList, label: 'Placed'    },
-  { key: 'confirmed',  Icon: CheckCircle2,  label: 'Confirmed' },
-  { key: 'processing', Icon: Package,       label: 'Preparing' },
-  { key: 'shipped',    Icon: Truck,         label: 'On the Way'},
-  { key: 'delivered',  Icon: PartyPopper,   label: 'Delivered' },
+  { key: "pending", Icon: ClipboardList, label: "Placed" },
+  { key: "confirmed", Icon: CheckCircle2, label: "Confirmed" },
+  { key: "processing", Icon: Package, label: "Preparing" },
+  { key: "shipped", Icon: Truck, label: "On the Way" },
+  { key: "delivered", Icon: PartyPopper, label: "Delivered" },
+  { key: "complete", Icon: CheckCircle2, label: "Complete" },
 ];
 
 const StepRow = styled.div`
@@ -266,16 +302,26 @@ const StepItem = styled.div<{ $done?: boolean; $active?: boolean }>`
   min-width: 80px;
 
   .step-circle {
-    width: 46px; height: 46px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 2px solid;
     transition: all ${t.transitions.base};
-    border-color: ${p => p.$done || p.$active ? t.colors.primary : t.colors.borderMid};
-    background:   ${p => p.$done ? t.colors.primary : p.$active ? t.colors.primaryGhost : 'white'};
-    color:        ${p => p.$done ? 'white' : p.$active ? t.colors.primary : t.colors.text};
-    box-shadow:   ${p => p.$active ? t.shadows.hover : 'none'};
-    ${p => p.$active && css`animation: ${bounce} 2s ease infinite;`}
+    border-color: ${(p) =>
+      p.$done || p.$active ? t.colors.primary : t.colors.borderMid};
+    background: ${(p) =>
+      p.$done ? t.colors.primary : p.$active ? t.colors.primaryGhost : "white"};
+    color: ${(p) =>
+      p.$done ? "white" : p.$active ? t.colors.primary : t.colors.text};
+    box-shadow: ${(p) => (p.$active ? t.shadows.hover : "none")};
+    ${(p) =>
+      p.$active &&
+      css`
+        animation: ${bounce} 2s ease infinite;
+      `}
   }
 
   .step-label {
@@ -283,7 +329,7 @@ const StepItem = styled.div<{ $done?: boolean; $active?: boolean }>`
     font-weight: ${t.fontWeights.semibold};
     text-align: center;
     white-space: nowrap;
-    color: ${p => p.$done || p.$active ? t.colors.primary : t.colors.text};
+    color: ${(p) => (p.$done || p.$active ? t.colors.primary : t.colors.text)};
     letter-spacing: 0.3px;
   }
 `;
@@ -294,7 +340,7 @@ const StepLine = styled.div<{ $done?: boolean }>`
   min-width: 14px;
   margin-bottom: 28px;
   border-radius: 2px;
-  background: ${p => p.$done ? t.colors.primary : t.colors.border};
+  background: ${(p) => (p.$done ? t.colors.primary : t.colors.border)};
   transition: background ${t.transitions.base};
 `;
 
@@ -303,7 +349,7 @@ const DeliveryBanner = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(130,174,70,.08);
+  background: rgba(130, 174, 70, 0.08);
   border: 1px solid ${t.colors.primary}33;
   border-radius: 8px;
   padding: 12px 18px;
@@ -317,8 +363,8 @@ const CancelledBanner = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(220,53,69,.06);
-  border: 1px solid rgba(220,53,69,.2);
+  background: rgba(220, 53, 69, 0.06);
+  border: 1px solid rgba(220, 53, 69, 0.2);
   border-radius: 8px;
   padding: 12px 18px;
   margin-bottom: 20px;
@@ -337,32 +383,53 @@ const CarrierLink = styled.a`
   text-decoration: none;
   margin-bottom: 20px;
   transition: ${t.transitions.fast};
-  &:hover { color: ${t.colors.primaryDark}; text-decoration: underline; }
+  &:hover {
+    color: ${t.colors.primaryDark};
+    text-decoration: underline;
+  }
 `;
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
-const TL = styled.div`position: relative; padding-left: 28px;`;
+const TL = styled.div`
+  position: relative;
+  padding-left: 28px;
+`;
 const TLLine = styled.div`
   position: absolute;
-  left: 7px; top: 6px; bottom: 0;
+  left: 7px;
+  top: 6px;
+  bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, ${t.colors.primary} 0%, ${t.colors.border} 85%);
+  background: linear-gradient(
+    to bottom,
+    ${t.colors.primary} 0%,
+    ${t.colors.border} 85%
+  );
   border-radius: 2px;
 `;
 const TLItem = styled.div`
   position: relative;
   margin-bottom: 24px;
-  &:last-child { margin-bottom: 0; }
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 const TLDot = styled.div<{ $color?: string; $active?: boolean }>`
   position: absolute;
-  left: -28px; top: 0px;
-  width: 16px; height: 16px;
+  left: -28px;
+  top: 0px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: ${p => p.$color || t.colors.primary};
+  background: ${(p) => p.$color || t.colors.primary};
   border: 2px solid white;
-  box-shadow: 0 0 0 3px ${p => p.$color ? `${p.$color}33` : t.colors.primaryGhost};
-  ${p => p.$active && css`animation: ${pulse} 2s ease infinite;`}
+  box-shadow: 0 0 0 3px
+    ${(p) => (p.$color ? `${p.$color}33` : t.colors.primaryGhost)};
+  ${(p) =>
+    p.$active &&
+    css`
+      animation: ${pulse} 2s ease infinite;
+    `}
 `;
 const TLTitle = styled.div`
   font-size: ${t.fontSizes.base};
@@ -390,8 +457,8 @@ const TLTag = styled.span<{ $color?: string }>`
   padding: 2px 10px;
   border-radius: ${t.radii.lg};
   letter-spacing: 0.3px;
-  background: ${p => p.$color ? `${p.$color}18` : t.colors.primaryGhost};
-  color: ${p => p.$color || t.colors.primary};
+  background: ${(p) => (p.$color ? `${p.$color}18` : t.colors.primaryGhost)};
+  color: ${(p) => p.$color || t.colors.primary};
   text-transform: uppercase;
 `;
 const TLLoc = styled.div`
@@ -415,14 +482,20 @@ const InfoItem = styled.div`
   gap: 12px;
   padding-bottom: 16px;
   border-bottom: 1px solid ${t.colors.border};
-  &:last-child { border-bottom: none; padding-bottom: 0; }
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
 `;
 const InfoIcon = styled.div`
-  width: 36px; height: 36px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: ${t.colors.primaryGhost};
   color: ${t.colors.primary};
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 `;
 const InfoLabel = styled.div`
@@ -451,8 +524,12 @@ const TipsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  @media (max-width: ${t.breakpoints.lg}) { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: ${t.breakpoints.xs}) { grid-template-columns: 1fr; }
+  @media (max-width: ${t.breakpoints.lg}) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: ${t.breakpoints.xs}) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const TipCard = styled.div`
@@ -462,14 +539,20 @@ const TipCard = styled.div`
   padding: 24px 20px;
   text-align: center;
   transition: ${t.transitions.base};
-  &:hover { box-shadow: ${t.shadows.hover}; transform: translateY(-3px); }
+  &:hover {
+    box-shadow: ${t.shadows.hover};
+    transform: translateY(-3px);
+  }
 `;
 const TipIconWrap = styled.div`
-  width: 52px; height: 52px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: ${t.colors.primaryGhost};
   color: ${t.colors.primary};
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0 auto 14px;
 `;
 const TipTitle = styled.div`
@@ -490,94 +573,127 @@ const Strip = styled.div`
 `;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmtDate = (s: string) => new Date(s).toLocaleString('en-US', {
-  month: 'short', day: 'numeric', year: 'numeric',
-  hour: '2-digit', minute: '2-digit',
-});
-const fmtDelivery = (s: string) => new Date(s).toLocaleDateString('en-US', {
-  weekday: 'long', month: 'long', day: 'numeric',
-});
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+const fmtDelivery = (s: string) =>
+  new Date(s).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export const TrackingPage: React.FC = () => {
-  const [input,   setInput]   = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
-  const [result,  setResult]  = useState<TrackingTimeline | null>(null);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<TrackingTimeline | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code   = params.get('code') || params.get('tracking') || params.get('order');
-    if (code) { setInput(code.toUpperCase()); handleSearch(code); }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Support ?order=, ?orderNumber=, ?code=, ?tracking= — NOT email
+    const code =
+      params.get("order") ||
+      params.get("orderNumber") ||
+      params.get("code") ||
+      params.get("tracking");
+    if (code) {
+      setInput(code.toUpperCase());
+      handleSearch(code);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = async (overrideCode?: string) => {
-    const code = (overrideCode || input).trim();
-    if (!code) { setError('Please enter a tracking number or order ID.'); return; }
+    const raw = (overrideCode || input).trim();
+    const code = raw.toUpperCase();
+    if (!code) {
+      setError("Please enter your Order Number (e.g. ORD-1A2B-3C4D).");
+      return;
+    }
     setLoading(true);
-    setError('');
+    setError("");
     setResult(null);
     try {
       const res = await publicTrackingApi.lookup(code);
       if (res.success && res.data) {
         setResult(res.data);
       } else {
-        setError('No order found for this tracking code. Please double-check and try again.');
+        setError(
+          "No order found for this order number. Please double-check and try again.",
+        );
       }
     } catch (e: any) {
-      setError(e?.message || 'Tracking lookup failed. Please try again.');
+      setError(e?.message || "Tracking lookup failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
+    if (e.key === "Enter") handleSearch();
   };
 
-  const status    = result?.status || '';
-  const cancelled = status === 'cancelled';
-  const activeIdx = STEPS.findIndex(s => s.key === status);
-  const tl        = result ? [...(result.timeline || [])].reverse() : [];
+  const status = result?.status || "";
+  const cancelled = status === "cancelled";
+  const completed = status === "complete";
+  const activeIdx = STEPS.findIndex((s) => s.key === status);
+  const tl = result ? [...(result.timeline || [])].reverse() : [];
 
   return (
     <>
-      <PageHero title="Track Order" breadcrumbs={[{ label: 'Track Order' }]} />
+      <PageHero title="Track Order" breadcrumbs={[{ label: "Track Order" }]} />
 
       {/* ── Search card ── */}
-      <SearchSection>
-        <Container>
-          <SearchCard>
-            <SearchTitle>Track Your Shipment</SearchTitle>
-            <SearchSub>Enter your tracking code or order number to get real-time delivery updates.</SearchSub>
-            <InputLabel>Tracking Number or Order ID</InputLabel>
-            <InputRow>
-              <TrackInput
-                ref={inputRef}
-                placeholder="e.g. VGF-X7K2-AB91CD or ORD-1A2B-3C4D"
-                value={input}
-                onChange={e => setInput(e.target.value.toUpperCase())}
-                onKeyDown={onKeyDown}
-              />
-              <TrackBtn onClick={() => handleSearch()} disabled={loading || !input.trim()}>
-                <Search size={15} />
-                {loading ? 'Searching…' : 'Track'}
-              </TrackBtn>
-            </InputRow>
-          </SearchCard>
+      {!result && !loading && (
+        <SearchSection>
+          <Container>
+            <SearchCard>
+              <SearchTitle>Track Your Order</SearchTitle>
+              <SearchSub>
+                Enter your Order Number to get real-time delivery updates. Your
+                order number was sent to your email when you placed the order
+                (e.g. ORD-1A2B-3C4D).
+              </SearchSub>
+              <InputLabel>Order Number</InputLabel>
+              <InputRow>
+                <TrackInput
+                  ref={inputRef}
+                  placeholder="e.g. ORD-1A2B-3C4D"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value.toUpperCase())}
+                  onKeyDown={onKeyDown}
+                />
+                <TrackBtn
+                  onClick={() => handleSearch()}
+                  disabled={loading || !input.trim()}
+                >
+                  <Search size={15} />
+                  {loading ? "Searching…" : "Track Order"}
+                </TrackBtn>
+              </InputRow>
+            </SearchCard>
 
-          {error && (
-            <ErrorBox>
-              <span style={{ fontSize: '1rem' }}>⚠️</span> {error}
-            </ErrorBox>
-          )}
-        </Container>
-        <Strip style={{ marginTop: 40 }} />
-      </SearchSection>
+            {error && (
+              <ErrorBox>
+                <span style={{ fontSize: "1rem" }}>⚠️</span> {error}
+              </ErrorBox>
+            )}
+          </Container>
+          <Strip style={{ marginTop: 40 }} />
+        </SearchSection>
+      )}
 
       {/* ── Spinner ── */}
       {loading && (
@@ -592,19 +708,38 @@ export const TrackingPage: React.FC = () => {
           <Container>
             <ResultGrid>
               {/* Left — timeline card */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+              >
                 {/* Order header */}
                 <Card $noPad>
                   <OrderHeader>
                     <div>
                       <OrderNumLabel>Order Number</OrderNumLabel>
-                      <OrderStatusText $color={cancelled ? t.colors.danger : STATUS_COLORS[status]}>
-                        {result.statusLabels?.[status]?.icon || '●'}&nbsp;
+                      <OrderStatusText
+                        $color={
+                          cancelled ? t.colors.danger : STATUS_COLORS[status]
+                        }
+                      >
+                        {result.statusLabels?.[status]?.icon || "●"}&nbsp;
                         {result.statusLabels?.[status]?.label || status}
                       </OrderStatusText>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <StatusBadge $color={cancelled ? t.colors.danger : STATUS_COLORS[status] || t.colors.primary}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <StatusBadge
+                        $color={
+                          cancelled
+                            ? t.colors.danger
+                            : STATUS_COLORS[status] || t.colors.primary
+                        }
+                      >
                         {result.orderNumber}
                       </StatusBadge>
                       {result.trackingCode && (
@@ -619,24 +754,43 @@ export const TrackingPage: React.FC = () => {
                   </OrderHeader>
 
                   <CardBody>
-                    {/* Delivery / cancelled banners */}
-                    {result.estimatedDelivery && !cancelled && (
+                    {/* Delivery / cancelled / complete banners */}
+                    {result.estimatedDelivery && !cancelled && !completed && (
                       <DeliveryBanner>
-                        <span style={{ fontSize: '1.1rem' }}>📅</span>
-                        Estimated Delivery:&nbsp;<strong>{fmtDelivery(result.estimatedDelivery)}</strong>
+                        <span style={{ fontSize: "1.1rem" }}>📅</span>
+                        Estimated Delivery:&nbsp;
+                        <strong>{fmtDelivery(result.estimatedDelivery)}</strong>
+                      </DeliveryBanner>
+                    )}
+                    {completed && (
+                      <DeliveryBanner
+                        style={{
+                          background: "rgba(22,163,74,.08)",
+                          border: "1px solid rgba(22,163,74,.25)",
+                          color: "#15803d",
+                        }}
+                      >
+                        <span style={{ fontSize: "1.1rem" }}>✅</span>
+                        Your order has been completed. Thank you for shopping
+                        with us!
                       </DeliveryBanner>
                     )}
                     {cancelled && (
                       <CancelledBanner>
-                        <span style={{ fontSize: '1.1rem' }}>❌</span>
-                        This order has been cancelled. Please contact support if you have questions.
+                        <span style={{ fontSize: "1.1rem" }}>❌</span>
+                        This order has been cancelled. Please contact support if
+                        you have questions.
                       </CancelledBanner>
                     )}
 
                     {/* Carrier link */}
                     {result.carrierInfo?.trackingUrl && (
                       <div style={{ marginBottom: 20 }}>
-                        <CarrierLink href={result.carrierInfo.trackingUrl} target="_blank" rel="noopener noreferrer">
+                        <CarrierLink
+                          href={result.carrierInfo.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           🔗 Track on {result.carrierInfo.label} website ↗
                         </CarrierLink>
                       </div>
@@ -645,19 +799,33 @@ export const TrackingPage: React.FC = () => {
                     {/* Progress steps */}
                     {!cancelled && (
                       <div style={{ marginBottom: 28 }}>
-                        <div style={{ fontSize: t.fontSizes.xs, fontWeight: t.fontWeights.semibold, color: t.colors.text, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 16 }}>
+                        <div
+                          style={{
+                            fontSize: t.fontSizes.xs,
+                            fontWeight: t.fontWeights.semibold,
+                            color: t.colors.text,
+                            textTransform: "uppercase",
+                            letterSpacing: "1.5px",
+                            marginBottom: 16,
+                          }}
+                        >
                           Order Progress
                         </div>
                         <StepRow>
                           {STEPS.map((s, i) => (
                             <React.Fragment key={s.key}>
-                              <StepItem $done={i < activeIdx} $active={i === activeIdx}>
+                              <StepItem
+                                $done={i < activeIdx}
+                                $active={i === activeIdx}
+                              >
                                 <div className="step-circle">
                                   <s.Icon size={18} strokeWidth={2} />
                                 </div>
                                 <div className="step-label">{s.label}</div>
                               </StepItem>
-                              {i < STEPS.length - 1 && <StepLine $done={i < activeIdx} />}
+                              {i < STEPS.length - 1 && (
+                                <StepLine $done={i < activeIdx} />
+                              )}
                             </React.Fragment>
                           ))}
                         </StepRow>
@@ -665,11 +833,27 @@ export const TrackingPage: React.FC = () => {
                     )}
 
                     {/* Timeline */}
-                    <div style={{ fontSize: t.fontSizes.xs, fontWeight: t.fontWeights.semibold, color: t.colors.text, textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: 16 }}>
+                    <div
+                      style={{
+                        fontSize: t.fontSizes.xs,
+                        fontWeight: t.fontWeights.semibold,
+                        color: t.colors.text,
+                        textTransform: "uppercase",
+                        letterSpacing: "1.5px",
+                        marginBottom: 16,
+                      }}
+                    >
                       Delivery Updates
                     </div>
                     {tl.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '28px 0', color: t.colors.text, fontSize: t.fontSizes.base }}>
+                      <div
+                        style={{
+                          textAlign: "center",
+                          padding: "28px 0",
+                          color: t.colors.text,
+                          fontSize: t.fontSizes.base,
+                        }}
+                      >
                         No tracking events yet — check back soon!
                       </div>
                     ) : (
@@ -677,7 +861,8 @@ export const TrackingPage: React.FC = () => {
                         <TLLine />
                         {tl.map((ev: TrackingEvent, i: number) => {
                           const isLatest = i === 0;
-                          const color    = STATUS_COLORS[ev.status] || t.colors.text;
+                          const color =
+                            STATUS_COLORS[ev.status] || t.colors.text;
                           return (
                             <TLItem key={ev.id || i}>
                               <TLDot $color={color} $active={isLatest} />
@@ -693,9 +878,10 @@ export const TrackingPage: React.FC = () => {
                                   <Clock size={11} />
                                   {fmtDate(ev.timestamp)}
                                 </TLTime>
-                                {ev.status && ev.status !== 'update' && (
+                                {ev.status && ev.status !== "update" && (
                                   <TLTag $color={color}>
-                                    {result.statusLabels?.[ev.status]?.label || ev.status}
+                                    {result.statusLabels?.[ev.status]?.label ||
+                                      ev.status}
                                   </TLTag>
                                 )}
                               </TLMeta>
@@ -709,7 +895,9 @@ export const TrackingPage: React.FC = () => {
               </div>
 
               {/* Right — order info sidebar */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 20 }}
+              >
                 <Card $noPad>
                   <CardHead>
                     <CardTitle>
@@ -720,31 +908,54 @@ export const TrackingPage: React.FC = () => {
                   <CardBody>
                     <InfoRow>
                       <InfoItem>
-                        <InfoIcon><Hash size={16} /></InfoIcon>
+                        <InfoIcon>
+                          <Hash size={16} />
+                        </InfoIcon>
                         <div>
                           <InfoLabel>Order Number</InfoLabel>
-                          <InfoValue style={{ fontFamily: t.fonts.mono, letterSpacing: '0.5px' }}>
+                          <InfoValue
+                            style={{
+                              fontFamily: t.fonts.mono,
+                              letterSpacing: "0.5px",
+                            }}
+                          >
                             {result.orderNumber}
                           </InfoValue>
                         </div>
                       </InfoItem>
                       {result.trackingCode && (
                         <InfoItem>
-                          <InfoIcon><Package size={16} /></InfoIcon>
+                          <InfoIcon>
+                            <Package size={16} />
+                          </InfoIcon>
                           <div>
                             <InfoLabel>Tracking Code</InfoLabel>
-                            <InfoValue style={{ fontFamily: t.fonts.mono, color: '#0891b2', letterSpacing: '1px' }}>
+                            <InfoValue
+                              style={{
+                                fontFamily: t.fonts.mono,
+                                color: "#0891b2",
+                                letterSpacing: "1px",
+                              }}
+                            >
                               {result.trackingCode}
                             </InfoValue>
                           </div>
                         </InfoItem>
                       )}
                       <InfoItem>
-                        <InfoIcon><Truck size={16} /></InfoIcon>
+                        <InfoIcon>
+                          <Truck size={16} />
+                        </InfoIcon>
                         <div>
                           <InfoLabel>Current Status</InfoLabel>
                           <InfoValue>
-                            <StatusBadge $color={cancelled ? t.colors.danger : STATUS_COLORS[status] || t.colors.primary}>
+                            <StatusBadge
+                              $color={
+                                cancelled
+                                  ? t.colors.danger
+                                  : STATUS_COLORS[status] || t.colors.primary
+                              }
+                            >
                               {result.statusLabels?.[status]?.label || status}
                             </StatusBadge>
                           </InfoValue>
@@ -752,16 +963,22 @@ export const TrackingPage: React.FC = () => {
                       </InfoItem>
                       {result.estimatedDelivery && !cancelled && (
                         <InfoItem>
-                          <InfoIcon><Clock size={16} /></InfoIcon>
+                          <InfoIcon>
+                            <Clock size={16} />
+                          </InfoIcon>
                           <div>
                             <InfoLabel>Est. Delivery</InfoLabel>
-                            <InfoValue>{fmtDelivery(result.estimatedDelivery)}</InfoValue>
+                            <InfoValue>
+                              {fmtDelivery(result.estimatedDelivery)}
+                            </InfoValue>
                           </div>
                         </InfoItem>
                       )}
                       {result.carrierInfo && (
                         <InfoItem>
-                          <InfoIcon><Truck size={16} /></InfoIcon>
+                          <InfoIcon>
+                            <Truck size={16} />
+                          </InfoIcon>
                           <div>
                             <InfoLabel>Carrier</InfoLabel>
                             <InfoValue>{result.carrierInfo.label}</InfoValue>
@@ -774,17 +991,49 @@ export const TrackingPage: React.FC = () => {
 
                 {/* Need help */}
                 <Card>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: 52, height: 52, borderRadius: '50%', background: t.colors.primaryGhost, color: t.colors.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: "50%",
+                        background: t.colors.primaryGhost,
+                        color: t.colors.primary,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        margin: "0 auto 12px",
+                      }}
+                    >
                       <HeadphonesIcon size={22} />
                     </div>
-                    <div style={{ fontWeight: t.fontWeights.semibold, color: t.colors.textDark, marginBottom: 6, fontSize: t.fontSizes.base }}>
+                    <div
+                      style={{
+                        fontWeight: t.fontWeights.semibold,
+                        color: t.colors.textDark,
+                        marginBottom: 6,
+                        fontSize: t.fontSizes.base,
+                      }}
+                    >
                       Need Help?
                     </div>
-                    <div style={{ fontSize: t.fontSizes.sm, color: t.colors.text, marginBottom: 16, lineHeight: 1.6 }}>
-                      Can't find your order or have questions about your delivery?
+                    <div
+                      style={{
+                        fontSize: t.fontSizes.sm,
+                        color: t.colors.text,
+                        marginBottom: 16,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      Can't find your order or have questions about your
+                      delivery?
                     </div>
-                    <Button as="a" href="/contact" $variant="outline" style={{ fontSize: t.fontSizes.sm, padding: '9px 22px' }}>
+                    <Button
+                      as="a"
+                      href="/contact"
+                      $variant="outline"
+                      style={{ fontSize: t.fontSizes.sm, padding: "9px 22px" }}
+                    >
                       Contact Support
                     </Button>
                   </div>
@@ -799,34 +1048,70 @@ export const TrackingPage: React.FC = () => {
       {!result && !loading && (
         <TipsSection>
           <Container>
-            <div style={{ textAlign: 'center', marginBottom: 32 }}>
-              <span style={{ fontSize: t.fontSizes.xs, fontWeight: t.fontWeights.semibold, color: t.colors.primary, textTransform: 'uppercase', letterSpacing: '3px' }}>
+            <div style={{ textAlign: "center", marginBottom: 32 }}>
+              <span
+                style={{
+                  fontSize: t.fontSizes.xs,
+                  fontWeight: t.fontWeights.semibold,
+                  color: t.colors.primary,
+                  textTransform: "uppercase",
+                  letterSpacing: "3px",
+                }}
+              >
                 Helpful Tips
               </span>
-              <h2 style={{ fontFamily: t.fonts.body, fontSize: '1.5rem', fontWeight: t.fontWeights.semibold, color: t.colors.textDark, margin: '8px 0 0' }}>
+              <h2
+                style={{
+                  fontFamily: t.fonts.body,
+                  fontSize: "1.5rem",
+                  fontWeight: t.fontWeights.semibold,
+                  color: t.colors.textDark,
+                  margin: "8px 0 0",
+                }}
+              >
                 How to Track Your Order
               </h2>
             </div>
             <TipsGrid>
               <TipCard>
-                <TipIconWrap><Mail size={22} /></TipIconWrap>
+                <TipIconWrap>
+                  <Mail size={22} />
+                </TipIconWrap>
                 <TipTitle>Check Your Email</TipTitle>
-                <TipText>Your tracking code was emailed to you when your order was shipped.</TipText>
+                <TipText>
+                  Your tracking code was emailed to you when your order was
+                  shipped.
+                </TipText>
               </TipCard>
               <TipCard>
-                <TipIconWrap><Hash size={22} /></TipIconWrap>
+                <TipIconWrap>
+                  <Hash size={22} />
+                </TipIconWrap>
                 <TipTitle>Use Order Number</TipTitle>
-                <TipText>You can also enter your order number (e.g. ORD-1A2B) to look up your shipment.</TipText>
+                <TipText>
+                  You can also enter your order number (e.g. ORD-1A2B) to look
+                  up your shipment.
+                </TipText>
               </TipCard>
               <TipCard>
-                <TipIconWrap><Clock size={22} /></TipIconWrap>
+                <TipIconWrap>
+                  <Clock size={22} />
+                </TipIconWrap>
                 <TipTitle>Processing Time</TipTitle>
-                <TipText>Orders are typically processed and dispatched within 24 hours of placement.</TipText>
+                <TipText>
+                  Orders are typically processed and dispatched within 24 hours
+                  of placement.
+                </TipText>
               </TipCard>
               <TipCard>
-                <TipIconWrap><HeadphonesIcon size={22} /></TipIconWrap>
+                <TipIconWrap>
+                  <HeadphonesIcon size={22} />
+                </TipIconWrap>
                 <TipTitle>Need Help?</TipTitle>
-                <TipText>Contact our support team if you have trouble locating your order.</TipText>
+                <TipText>
+                  Contact our support team if you have trouble locating your
+                  order.
+                </TipText>
               </TipCard>
             </TipsGrid>
           </Container>
