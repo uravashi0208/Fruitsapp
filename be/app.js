@@ -178,6 +178,7 @@ app.use(
       "http://localhost:3000",
       "http://localhost:3001",
       "http://172.20.10.2:3000",
+      "http://localhost:8100/",
       CLIENT_URL,
       /^https:\/\/.*\.vercel\.app$/,
       /^https:\/\/.*\.netlify\.app$/,
