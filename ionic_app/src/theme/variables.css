@@ -1,0 +1,72 @@
+/* ============================================================
+   src/theme/variables.css
+   Design tokens — single source of truth for the entire app
+   ============================================================ */
+
+:root {
+  /* Brand colours */
+  --color-primary:       #1a2340;
+  --color-primary-soft:  rgba(26, 35, 64, 0.08);
+  --color-accent:        #ff6b6b;
+  --color-accent-soft:   #ffe0e0;
+  --color-success:       #4caf50;
+  --color-warning:       #ffc107;
+  --color-info:          #2196f3;
+
+  /* Neutral palette */
+  --color-bg:            #ffffff;
+  --color-surface:       #f5f8f8;
+  --color-background:    #f2eaeb;
+  --color-border:        #e8ecf4;
+  --color-divider:       #f0f2f5;
+  --color-text:          #1a2340;
+  --color-text-sub:      #8f9bb3;
+  --color-text-muted:    #aab0c5;
+
+  /* Badge colours */
+  --badge-new-bg:        #c0dd97;
+  --badge-new-text:      #3b6d11;
+  --badge-fresh-bg:      #9fe1cb;
+  --badge-fresh-text:    #0f6e56;
+  --badge-sale-bg:       #fac775;
+  --badge-sale-text:     #854f0b;
+
+  /* Typography */
+  --font-primary:        'Poppins', sans-serif;
+
+  /* Spacing */
+  --spacing-xs:          4px;
+  --spacing-sm:          8px;
+  --spacing-md:          16px;
+  --spacing-lg:          24px;
+  --spacing-xl:          32px;
+  --spacing-xxl:         48px;
+
+  /* Radius */
+  --radius-sm:           8px;
+  --radius-md:           14px;
+  --radius-lg:           20px;
+  --radius-xl:           28px;
+  --radius-full:         9999px;
+
+  /* Shadows */
+  --shadow-sm:           0 1px 6px rgba(0, 0, 0, 0.06);
+  --shadow-md:           0 2px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg:           0 4px 24px rgba(0, 0, 0, 0.12);
+  --shadow-nav:          0 -4px 20px rgba(0, 0, 0, 0.25);
+
+  /* Nav */
+  --nav-height:          70px;
+  --header-height:       110px;
+
+  /* Ionic overrides */
+  --ion-background-color: var(--color-bg);
+  --ion-font-family:      var(--font-primary);
+
+  /* Legacy aliases (keeps older refs working) */
+  --grocery-dark:   var(--color-primary);
+  --grocery-text:   var(--color-text);
+  --grocery-sub:    var(--color-text-sub);
+  --grocery-accent: var(--color-accent);
+  --grocery-border: var(--color-border);
+}

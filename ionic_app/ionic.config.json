@@ -1,0 +1,7 @@
+{
+  "name": "daily-grocery",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}

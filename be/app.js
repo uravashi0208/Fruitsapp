@@ -157,6 +157,7 @@ const {
   adminRouter: couponAdmin,
 } = require("./routes/coupons");
 const notificationsRouter = require("./routes/notifications");
+const addressesRouter     = require("./routes/addresses");
 
 const app = express();
 
@@ -241,6 +242,7 @@ app.use("/api/gpay", gpayRouter);
 // ── User Protected ────────────────────────────────────────────────────────────
 app.use("/api/wishlist", wishUser);
 app.use("/api/orders", orderUser);
+app.use("/api/addresses", addressesRouter);
 
 // ── Admin Auth ────────────────────────────────────────────────────────────────
 app.use("/api/admin/auth", adminAuthRouter);
